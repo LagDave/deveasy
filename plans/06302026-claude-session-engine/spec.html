@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Session Engine Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#fff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); margin-top:14px; }
+    .eyebrow,dt { color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,5rem); line-height:.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:.1rem .3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:.92em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid > div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .task-card dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:0; }
+    .task-card dl > div { border:1px solid var(--line); border-radius:6px; padding:10px; background:var(--paper); }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    @media (max-width:640px){ .spec-shell{ width:min(100% - 20px,1120px); padding:24px 0; } .spec-hero,.spec-card{ padding:20px; } }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec · 2 of 4</p>
+        <span class="status-pill status-pending">Pending Execution</span>
+      </div>
+      <h1>Claude Session Engine</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/06302026-claude-session-engine</dd></div>
+        <div><dt>Size</dt><dd>Large</dd></div>
+        <div><dt>Risk</dt><dd>Level 3</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>The whole point of DevEasy is chatting with the Claude Code agent against the selected project — using the user's own subscription, not API credits. Verified constraint: the Agent SDK cannot use subscription auth, but the CLI can. So the engine spawns the real CLI in structured streaming mode and builds a custom chat UI on the event stream. This is the product's core loop.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>A backend that, for the active project, spawns <code>claude -p --output-format stream-json --input-format stream-json --verbose</code> with <code>cwd</code> set to the project and <code>ANTHROPIC_API_KEY</code> scrubbed from the environment (so the cached subscription login is used). It relays the NDJSON event stream to the browser over WebSocket, accepts user turns back, and persists the full transcript to Postgres. The frontend renders a streaming chat UI: user/assistant turns, tool-use and tool-result events, and final results. <strong>Done when:</strong> a user can send a message to a selected project, watch Claude respond with streamed tool calls, and reload the page to see the persisted transcript.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files (to create)</h3>
+      <ul>
+        <li><code>src/database/migrations/0002_sessions.ts</code> — <code>sessions</code>, <code>session_messages</code></li>
+        <li><code>src/models/{SessionModel,SessionMessageModel}.ts</code> — all DB access</li>
+        <li><code>src/services/ClaudeProcessService.ts</code> — child-process lifecycle, env scrubbing, stream-json I/O</li>
+        <li><code>src/controllers/sessions/</code> — controller + <code>feature-services/SessionStreamService.ts</code> + <code>feature-utils/</code></li>
+        <li><code>src/routes/sessions.ts</code>; WebSocket wiring in <code>src/index.ts</code> via <code>ws</code></li>
+        <li><code>frontend/src/api/sessions.ts</code>, <code>frontend/src/hooks/useSession.ts</code> (WS client), <code>frontend/src/components/Session/</code> chat components</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li>Backend domain mirrors <code>gbp-automation/</code> (§6.1): thin controller, logic in <code>feature-services/</code>, DB only via models, typed error + envelope.</li>
+        <li>Worker-style discipline for the long-lived process: idempotent start, clean teardown, failures logged with context (§21 spirit, applied to the process manager).</li>
+        <li>Frontend chat reads from a hook, not inline; errors surfaced via toast/error state (§14.3, §16).</li>
+      </ul>
+      <p><strong>Reference analogs:</strong> Constitution <strong>§6.1</strong> (backend skeleton), <strong>§12.1</strong> (frontend triad). Depends on the active-project state and shell from Spec 1.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li><strong>Subscription auth:</strong> spawn with <code>ANTHROPIC_API_KEY</code> deleted from the child env; never inject an API key</li>
+            <li><strong>§7.4</strong> all transcript persistence through models; <strong>§8.1</strong> REST endpoints use the envelope</li>
+            <li><strong>§3.1/§3.2</strong> every async/stream handler wrapped; never swallow a process error</li>
+            <li><strong>§9.1/§9.3</strong> Pino with session + project context on every log line</li>
+            <li>Stream parsing tolerant of partial NDJSON lines (buffer until newline)</li>
+            <li><strong>§14.2/§15.1</strong> WS data flows through a hook; persisted transcript fetched via React Query</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>Do not store config (agents/skills) in the DB — only session/message rows (§ Spec 1 boundary)</li>
+            <li>Do not run more than one live process per session; cap concurrent sessions</li>
+            <li>Do not log message content that could contain secrets verbatim at <code>info</code> (§5.3) — store in DB, log identifiers</li>
+            <li>No raw <code>fetch</code> in components (§14.2)</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>Git/Azure cockpit (Spec 3), agent editor (Spec 4)</li>
+        <li>Multi-user / shared sessions — local-first, single operator per instance</li>
+        <li>Resuming a CLI session across app restarts (persist transcript only; live process is ephemeral)</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 — long-lived child processes, auth-mode correctness, and stream parsing.</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li><strong>Wrong auth mode silently billing API credits.</strong> If <code>ANTHROPIC_API_KEY</code> leaks into the child env, the CLI bills pay-as-you-go instead of the subscription. <strong>Mitigation:</strong> explicitly <code>delete env.ANTHROPIC_API_KEY</code> in the spawn, and assert at startup that the CLI is logged in (surface a clear "log in with <code>claude</code> first" state if not).</li>
+        <li><strong>Orphaned processes.</strong> A crashed tab or server could leave CLI processes running. <strong>Mitigation:</strong> track child PIDs in a registry, kill on session close / server shutdown, bound max concurrent sessions.</li>
+        <li><strong>Partial NDJSON / backpressure.</strong> stream-json arrives in chunks. <strong>Mitigation:</strong> line-buffer stdout, parse per complete line, drop-and-log malformed lines rather than crash.</li>
+        <li><strong>CLI version drift changes the event schema.</strong> <strong>Mitigation:</strong> render known event types explicitly and fall back to a raw/JSON view for unknown types so nothing is lost.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> new tables + a WS endpoint; consumes Spec 1's active-project. No other slice depends on this.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li>An embedded xterm.js terminal would be faster to ship but gives a raw TUI, not the structured UI you want. Recommended: stream-json + custom UI as specced; keep a terminal tab as a later option only if needed.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <article class="task-card">
+        <h3>T1: Session schema &amp; models</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Migration for <code>sessions</code> (id, project_id, title, status, created_at) and <code>session_messages</code> (id, session_id, role, event_type, content jsonb, created_at). <code>SessionModel</code> + <code>SessionMessageModel</code> with parameterized Knex; index on <code>session_id</code> (§10.4).</dd></div>
+          <div><dt>Files</dt><dd><code>src/database/migrations/0002_sessions.ts</code>, <code>src/models/SessionModel.ts</code>, <code>src/models/SessionMessageModel.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>Spec 1</dd></div>
+          <div><dt>Verify</dt><dd><code>knex migrate:latest</code> creates tables; model unit tests for insert/list pass</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T2: Claude process service</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>ClaudeProcessService</code>: spawn the CLI with cwd = active project, env with <code>ANTHROPIC_API_KEY</code> removed; line-buffer stdout into parsed stream-json events; write user turns to stdin as stream-json; track PIDs in an in-memory registry; kill on close + on <code>SIGINT</code>/shutdown; a startup check that the CLI is installed and logged in.</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/ClaudeProcessService.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>Unit/integration: spawning against a temp project yields parsed events; killing removes the PID; missing login returns a typed "not logged in" error</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T3: WS relay + session controller</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Mount a <code>ws</code> server in <code>src/index.ts</code>; <code>SessionStreamService</code> bridges a WS client ↔ a <code>ClaudeProcessService</code> session, persisting each event via the models as it streams; <code>SessionsController</code> + routes for <code>POST /api/sessions</code> (create), <code>GET /api/sessions?projectId</code>, <code>GET /api/sessions/:id/messages</code>; envelope + typed error in <code>feature-utils/</code>.</dd></div>
+          <div><dt>Files</dt><dd><code>src/controllers/sessions/SessionsController.ts</code>, <code>src/controllers/sessions/feature-services/SessionStreamService.ts</code>, <code>src/controllers/sessions/feature-utils/*</code>, <code>src/routes/sessions.ts</code>, WS wiring in <code>src/index.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T2</dd></div>
+          <div><dt>Verify</dt><dd>Connect via WS, send a turn, receive streamed events; rows appear in <code>session_messages</code></dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T4: Frontend chat UI</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>api/sessions.ts</code> (REST for history); <code>useSession</code> hook owning the WS connection, send, and event accumulation; chat components rendering user/assistant text, tool-use and tool-result blocks, and a raw fallback for unknown event types; loading/error states via toast; load persisted history via React Query on mount.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/api/sessions.ts</code>, <code>frontend/src/hooks/useSession.ts</code>, <code>frontend/src/hooks/queries/useSessionHistory.ts</code>, <code>frontend/src/components/Session/*</code></dd></div>
+          <div><dt>Depends on</dt><dd>T3</dd></div>
+          <div><dt>Verify</dt><dd>Send a message → streamed response renders; reload → transcript restored from DB</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> Sending a turn to the active project streams a Claude response in the UI</li>
+        <li><input type="checkbox" disabled> Child process spawns with no <code>ANTHROPIC_API_KEY</code> in its env (verified); "not logged in" surfaces a clear prompt</li>
+        <li><input type="checkbox" disabled> Transcript persists to Postgres and restores on reload</li>
+        <li><input type="checkbox" disabled> Closing a session / shutting down kills child processes (no orphans)</li>
+        <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> zero errors; <code>npm run check:conventions --strict</code> no new violations</li>
+        <li><input type="checkbox" disabled> Model + process-service tests pass (§20.1/§20.2)</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

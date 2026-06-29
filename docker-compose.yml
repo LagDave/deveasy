@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: deveasy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: deveasy
+      POSTGRES_PASSWORD: deveasy
+      POSTGRES_DB: deveasy
+    ports:
+      - "1231:5432"
+    volumes:
+      - deveasy_pgdata:/var/lib/postgresql/data
+
+volumes:
+  deveasy_pgdata:

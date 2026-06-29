@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Azure / Git Cockpit Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#fff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); margin-top:14px; }
+    .eyebrow,dt { color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,5rem); line-height:.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:.1rem .3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:.92em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid > div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .task-card dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:0; }
+    .task-card dl > div { border:1px solid var(--line); border-radius:6px; padding:10px; background:var(--paper); }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    @media (max-width:640px){ .spec-shell{ width:min(100% - 20px,1120px); padding:24px 0; } .spec-hero,.spec-card{ padding:20px; } }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec · 3 of 4</p>
+        <span class="status-pill status-pending">Pending Execution</span>
+      </div>
+      <h1>Azure / Git Cockpit</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/06302026-azure-git-cockpit</dd></div>
+        <div><dt>Size</dt><dd>Large</dd></div>
+        <div><dt>Risk</dt><dd>Level 3</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>The team needs one place to see a project's git state and its Azure pull requests — history, open PRs, their status and review threads — and to open a new PR without leaving the app. This is the collaboration surface: a shared view of what's in flight. Scoped to Azure Repos via a per-user PAT for v1; pushing/merging stays manual for now.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>A cockpit for the active project: local git history/branch/status read via the git CLI; an Azure DevOps integration (PAT auth) that lists pull requests, shows a PR's detail (status, reviewers/votes, comment threads, changed files), and creates a new PR. The PAT is stored in the OS keychain, never in the DB or repo. <strong>Read + create only</strong> — no merge, approve, or vote from the app in v1. <strong>Done when:</strong> with a PAT configured and an Azure repo mapped to the project, the user sees git history and live PRs, opens a PR detail, and creates a PR that appears in Azure.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files (to create)</h3>
+      <ul>
+        <li><code>src/database/migrations/0003_azure.ts</code> — <code>azure_connections</code> (project_id → org, project, repo; no secrets)</li>
+        <li><code>src/services/SecretService.ts</code> — keychain access (keytar) for the PAT</li>
+        <li><code>src/lib/azureClient.ts</code> — typed Azure DevOps REST wrapper (the one place the PAT is used)</li>
+        <li><code>src/controllers/git/</code> and <code>src/controllers/azure/</code> — controllers + <code>feature-services/</code> + <code>feature-utils/</code></li>
+        <li><code>src/models/AzureConnectionModel.ts</code> — all DB access for the mapping</li>
+        <li><code>src/routes/{git,azure}.ts</code></li>
+        <li><code>frontend/src/api/{git,azure}.ts</code>, hooks, <code>components/Cockpit/</code> (history, PR list, PR detail, create-PR form, PAT settings)</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li>External HTTP (Azure) lives in a <code>lib/</code> client wrapped by a <code>feature-service</code>; only DB access goes in <code>models/</code> (§6.2, §7.4). The Azure client is not a model.</li>
+        <li>Backend domain shape mirrors <code>gbp-automation/</code> (§6.1); envelope + typed error; correct status codes incl. <code>401</code> when the PAT is missing/expired (§8.3/§8.4).</li>
+        <li>Frontend triad (§12.1); PR/list data is React Query server state (§15.1).</li>
+      </ul>
+      <p><strong>Reference analogs:</strong> Constitution <strong>§6.1</strong>, <strong>§12.1</strong>. Builds on Spec 1's active-project + shell.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li><strong>§5.1/§5.3</strong> PAT stored only in the OS keychain; never written to the DB, repo, logs, or the frontend bundle</li>
+            <li><strong>§5.2</strong> sanitize project paths before invoking git; run git with an explicit <code>cwd</code>, never shell-interpolate user input</li>
+            <li><strong>§7.4</strong> only the mapping table touches the DB via a model; Azure data is fetched live (optionally cached later)</li>
+            <li><strong>§8.4</strong> map a missing/expired PAT and Azure auth failures to <code>401</code> with a clear "reconnect" code</li>
+            <li><strong>§9</strong> Pino with project context; redact the PAT from all logs</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No merge / approve / vote / push actions in v1 (read + create PR only)</li>
+            <li>Do not post AI review output back to Azure (in-app panel only — that is a later slice)</li>
+            <li>Do not store Azure PR bodies as the source of truth — fetch live</li>
+            <li>No wildcard CORS; the API stays bound to localhost (§11.4)</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>GitHub/GitLab providers (Azure only for v1; pluggable provider interface is a nice-to-have, not required)</li>
+        <li>Automated push, merge, branch policies, build/pipeline views</li>
+        <li>OAuth / Azure AD app (per-user PAT only)</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 — secret handling and an external API with auth.</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li><strong>PAT leakage.</strong> A PAT in the DB, a log line, or an error response is a credential leak. <strong>Mitigation:</strong> keychain-only storage via <code>SecretService</code>; a redaction helper applied before logging; generic external error messages (§3.4); the PAT never crosses to the frontend (only a "connected/expired" status does).</li>
+        <li><strong>PAT expiry mid-use.</strong> Azure PATs expire. <strong>Mitigation:</strong> detect 401/403 from Azure, surface a typed <code>AZURE_RECONNECT_REQUIRED</code> → HTTP 401, and a UI affordance to re-enter the PAT.</li>
+        <li><strong>Command injection via git.</strong> <strong>Mitigation:</strong> invoke git via <code>execFile</code>/<code>spawn</code> with an argv array and a fixed <code>cwd</code> — never a shell string with interpolated input (§5.2).</li>
+        <li><strong>Azure REST shape assumptions.</strong> API versions differ. <strong>Mitigation:</strong> pin the <code>api-version</code> query param in <code>azureClient</code>; type the responses; fail loud on unexpected shapes.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> one new mapping table + keychain entries + outbound calls to Azure. Reads the active project from Spec 1; independent of Spec 2 and Spec 4.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li>PATs are user-managed and expire — recurring friction. Accepted for v1 per decision; Azure AD OAuth is the future upgrade. Flagged, not blocking.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <article class="task-card">
+        <h3>T1: Secret store + Azure connection mapping</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>SecretService</code> over keytar (set/get/delete PAT keyed per Azure org); migration + <code>AzureConnectionModel</code> for the project→(org, project, repo) mapping; endpoints to set the PAT and the mapping, returning only a connected/expired status (never the PAT).</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/SecretService.ts</code>, <code>src/database/migrations/0003_azure.ts</code>, <code>src/models/AzureConnectionModel.ts</code>, settings routes/controller</dd></div>
+          <div><dt>Depends on</dt><dd>Spec 1</dd></div>
+          <div><dt>Verify</dt><dd>Set a PAT → stored in keychain, absent from DB/logs; mapping persists; GET status shows "connected"</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T2: Git history service</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>GitService</code> running <code>git log</code>/<code>status</code>/<code>branch</code> via <code>execFile</code> with argv + project cwd; parse into typed structures; <code>GitController</code> + routes <code>GET /api/git/history</code>, <code>GET /api/git/status</code> scoped to the active project.</dd></div>
+          <div><dt>Files</dt><dd><code>src/controllers/git/GitController.ts</code>, <code>src/controllers/git/feature-services/GitService.ts</code>, <code>src/controllers/git/feature-utils/*</code>, <code>src/routes/git.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>History/status for the active project returns real commits/branch; non-repo path returns a clean typed error</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T3: Azure client + PR services</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>lib/azureClient.ts</code> (Basic-auth with PAT from <code>SecretService</code>, pinned <code>api-version</code>, PAT-redacting errors); <code>AzurePullRequestService</code>: list PRs, get PR detail (status, reviewers/votes, threads, iterations/changed files), create PR; <code>AzureController</code> + routes; 401 mapping for expired PAT.</dd></div>
+          <div><dt>Files</dt><dd><code>src/lib/azureClient.ts</code>, <code>src/controllers/azure/AzureController.ts</code>, <code>src/controllers/azure/feature-services/AzurePullRequestService.ts</code>, <code>src/controllers/azure/feature-utils/*</code>, <code>src/routes/azure.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>List/detail return live PR data; create opens a real PR in Azure; expired PAT → 401 reconnect</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T4: Cockpit UI</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>api/{git,azure}.ts</code> + React Query hooks; PAT/mapping settings panel; git history panel; PR list with status badges; PR detail (threads, votes, changed files); create-PR form (source/target branch, title, description); reconnect prompt on 401; errors via toast.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/api/{git,azure}.ts</code>, <code>frontend/src/hooks/queries/use{Git,Azure}*.ts</code>, <code>frontend/src/components/Cockpit/*</code></dd></div>
+          <div><dt>Depends on</dt><dd>T2, T3</dd></div>
+          <div><dt>Verify</dt><dd>End-to-end: configure PAT → see history + PRs → open a PR detail → create a PR visible in Azure</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> PAT stored in keychain only — verified absent from DB, logs, and network responses to the frontend</li>
+        <li><input type="checkbox" disabled> Git history + status render for the active project</li>
+        <li><input type="checkbox" disabled> Azure PR list + detail (threads, votes, files) render from live data</li>
+        <li><input type="checkbox" disabled> Creating a PR from the app produces a real PR in Azure</li>
+        <li><input type="checkbox" disabled> Expired/missing PAT surfaces a reconnect prompt (401), not a crash</li>
+        <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> zero errors; <code>npm run check:conventions --strict</code> no new violations; model tests pass</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

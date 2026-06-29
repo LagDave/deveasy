@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent &amp; Skill Manager Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#fff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); margin-top:14px; }
+    .eyebrow,dt { color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,5rem); line-height:.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:.1rem .3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:.92em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid > div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .task-card dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:0; }
+    .task-card dl > div { border:1px solid var(--line); border-radius:6px; padding:10px; background:var(--paper); }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    @media (max-width:640px){ .spec-shell{ width:min(100% - 20px,1120px); padding:24px 0; } .spec-hero,.spec-card{ padding:20px; } }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec · 4 of 4</p>
+        <span class="status-pill status-pending">Pending Execution</span>
+      </div>
+      <h1>Agent &amp; Skill Manager</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/06302026-agent-skill-manager</dd></div>
+        <div><dt>Size</dt><dd>Medium</dd></div>
+        <div><dt>Risk</dt><dd>Level 3</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>The shared agents, skills, and <code>CLAUDE.md</code> are the team's common workflow. They must be editable in-app and committed to version control so teammates stay in sync by pulling. This slice gives a simple editor over those files and commits changes — keeping every operator on the same agents without hand-editing files.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>A CRUD editor for the DevEasy-root config that gets injected into projects: subagent files in <code>.claude/agents/</code>, skill files in <code>.claude/skills/</code>, and the root <code>CLAUDE.md</code>. Each is markdown with YAML frontmatter; the editor exposes the frontmatter fields and the markdown body, and saving writes the file and commits it to the DevEasy repo with the configured author. <strong>Done when:</strong> a user can list, create, edit, and delete a subagent or skill in the UI, save it, and see a commit in the DevEasy repo containing exactly that change — which a teammate then gets by pulling.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files (to create)</h3>
+      <ul>
+        <li><code>src/services/AgentConfigService.ts</code> — list/read/write/delete within the config tree, frontmatter parse via <code>gray-matter</code>, path guard</li>
+        <li><code>src/services/GitCommitService.ts</code> — stage + commit config changes to the DevEasy repo with the profile author</li>
+        <li><code>src/controllers/agent-config/</code> — controller + <code>feature-utils/</code></li>
+        <li><code>src/routes/agentConfig.ts</code></li>
+        <li><code>frontend/src/api/agentConfig.ts</code>, hooks, <code>components/AgentManager/</code> (list, frontmatter+markdown editor, delete confirm)</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li>Backend domain shape mirrors <code>gbp-automation/</code> (§6.1): thin controller, logic in services, envelope + typed error. This domain has no DB — it is a filesystem + git domain, so there is no model; that is acceptable because there is no DB access to route (§7.4 applies only to DB calls).</li>
+        <li>Frontend triad (§12.1); list/content is React Query server state with invalidation on save (§15.1).</li>
+      </ul>
+      <p><strong>Reference analogs:</strong> Constitution <strong>§6.1</strong>, <strong>§12.1</strong>. Reuses the active-project-agnostic config at the DevEasy root from Spec 1; independent of Specs 2 and 3.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li><strong>§5.2</strong> hard path guard: every read/write resolves inside <code>.claude/agents</code>, <code>.claude/skills</code>, or the root <code>CLAUDE.md</code> — reject anything else</li>
+            <li>Preserve frontmatter validity: parse and re-serialize with <code>gray-matter</code>; validate required fields before write</li>
+            <li>Commit author = Project Profile (<code>git -c user.name=... -c user.email=...</code>); commit message states the file changed</li>
+            <li><strong>§8.1</strong> envelope; <strong>§9</strong> Pino; <strong>§3</strong> handle every async FS/git call</li>
+            <li><strong>§14.2</strong> all frontend HTTP through <code>api/index.ts</code></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>Do not store agent/skill content in the DB — files are the source of truth (Spec 1 boundary)</li>
+            <li>Do not auto-push — commit locally only; the user pushes manually (matches v1 git decision)</li>
+            <li>Do not write outside the config tree; no arbitrary file editor</li>
+            <li>No in-app agent test-runner in v1 (keep it simple)</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>Auto-push / PR for config changes, conflict resolution UI, diff viewer</li>
+        <li>Codex <code>AGENTS.md</code> management (Claude only for v1)</li>
+        <li>Testing an agent before committing</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 — this edits config that is injected into every project and is committed to version control, so a bad write affects the whole team after a pull.</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li><strong>Arbitrary file write / path traversal.</strong> A crafted filename could escape the config tree. <strong>Mitigation:</strong> resolve the absolute path and assert it is inside the whitelisted config directories before any write/delete (§5.2); reject path separators in names.</li>
+        <li><strong>Corrupt frontmatter breaks every session.</strong> Since these files load into Claude, malformed YAML degrades all projects. <strong>Mitigation:</strong> parse + validate required frontmatter fields before writing; reject invalid documents with a clear error rather than committing them.</li>
+        <li><strong>Noisy or wrong-author commits.</strong> <strong>Mitigation:</strong> one commit per save scoped to the changed file, message naming it, author forced to the profile identity; never amend or force.</li>
+        <li><strong>Editing live, injected symlinks.</strong> Because Spec 1 symlinks these into open projects, an edit is immediately visible to active sessions. <strong>Mitigation:</strong> acceptable and intended (that is the sync mechanism); note it in the UI so edits aren't surprising mid-session.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> writes to the DevEasy repo's config tree + local commits. Consumers: every project via Spec 1 injection, every teammate after a pull. No new DB tables.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li>No diff/preview before commit is a sharp edge for a shared artifact. Recommended minimum: show the rendered file and require an explicit Save. A proper diff viewer is a fast-follow, not v1.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <article class="task-card">
+        <h3>T1: Agent config service (FS + frontmatter)</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>AgentConfigService</code>: list agents/skills and read the root <code>CLAUDE.md</code>; read/write/delete with a strict path guard to the whitelisted dirs; parse/serialize frontmatter via <code>gray-matter</code>; validate required fields (e.g. agent <code>name</code>/<code>description</code>, skill <code>name</code>/<code>description</code>) before write.</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/AgentConfigService.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>Spec 1</dd></div>
+          <div><dt>Verify</dt><dd>List returns real files; write round-trips frontmatter; a traversal attempt is rejected; invalid frontmatter is rejected</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T2: Git commit service</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>GitCommitService</code>: stage a specific config file and commit to the DevEasy repo via <code>execFile</code> with <code>-c user.name</code>/<code>-c user.email</code> from the profile and a message naming the file; no push, no amend, no force.</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/GitCommitService.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>Saving a file produces one commit scoped to it with the correct author; <code>git log</code> shows it</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T3: Controller + routes</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>AgentConfigController</code> + <code>feature-utils</code> (envelope, typed error); routes: <code>GET /api/agent-config</code> (list), <code>GET /api/agent-config/:type/:name</code>, <code>PUT</code> (create/update → write + commit), <code>DELETE</code> (delete + commit). Validation at the boundary (§11.2).</dd></div>
+          <div><dt>Files</dt><dd><code>src/controllers/agent-config/AgentConfigController.ts</code>, <code>src/controllers/agent-config/feature-utils/*</code>, <code>src/routes/agentConfig.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1, T2</dd></div>
+          <div><dt>Verify</dt><dd>CRUD over HTTP works end to end; each mutating call commits exactly the changed file</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T4: Agent manager UI</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>api/agentConfig.ts</code> + React Query hooks (with invalidation on mutate); a list view grouped by agents / skills / <code>CLAUDE.md</code>; an editor with structured frontmatter fields plus a markdown body textarea; create + delete (with confirm); save surfaces success/error via toast; a note that edits sync live into open projects.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/api/agentConfig.ts</code>, <code>frontend/src/hooks/queries/useAgentConfig.ts</code>, <code>frontend/src/components/AgentManager/*</code></dd></div>
+          <div><dt>Depends on</dt><dd>T3</dd></div>
+          <div><dt>Verify</dt><dd>Create/edit/delete a subagent and a skill in the UI → file changes + commit appear; a teammate pulling gets the change</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> List/create/edit/delete subagents and skills, and edit <code>CLAUDE.md</code>, from the UI</li>
+        <li><input type="checkbox" disabled> Each save writes valid frontmatter and produces one commit scoped to the file, authored by the profile identity</li>
+        <li><input type="checkbox" disabled> Path guard rejects any write outside the config tree (verified)</li>
+        <li><input type="checkbox" disabled> Invalid frontmatter is rejected before commit</li>
+        <li><input type="checkbox" disabled> No auto-push (local commit only)</li>
+        <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> zero errors; <code>npm run check:conventions --strict</code> no new violations</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

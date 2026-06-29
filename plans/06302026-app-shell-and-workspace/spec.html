@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>App Shell &amp; Project Workspace Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#fff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); margin-top:14px; }
+    .eyebrow,dt { color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,5rem); line-height:.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:.1rem .3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:.92em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid > div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .task-card dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:0; }
+    .task-card dl > div { border:1px solid var(--line); border-radius:6px; padding:10px; background:var(--paper); }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    @media (max-width:640px){ .spec-shell{ width:min(100% - 20px,1120px); padding:24px 0; } .spec-hero,.spec-card{ padding:20px; } }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec · 1 of 4 (foundation)</p>
+        <span class="status-pill status-pending">Pending Execution</span>
+      </div>
+      <h1>App Shell &amp; Project Workspace</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/06302026-app-shell-and-workspace</dd></div>
+        <div><dt>Size</dt><dd>Large</dd></div>
+        <div><dt>Risk</dt><dd>Level 3</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>DevEasy is a local-first web app that wraps the Claude Code CLI so a team shares one version-controlled set of agents, skills, and <code>CLAUDE.md</code>. This spec is the foundation every other slice builds on: a running Express + React app, a Docker Postgres for app state, a project picker over a gitignored <code>projects/</code> folder, and the mechanism that injects the shared agent config into whichever project you select. Nothing else (sessions, git/Azure, agent editor) can run until this exists.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>A working app: backend Express API on <code>:1234</code> serving the built React/Vite SPA, a Knex/PostgreSQL connection to a Docker Postgres on <code>:1231</code>, and config validated at startup. The UI lists every clone in <code>projects/</code>, lets you select one as the active project, and on selection the backend injects the shared <code>CLAUDE.md</code>, <code>.claude/skills</code>, and <code>.claude/agents</code> into that project via symlink and adds them to the project's <code>.gitignore</code>. <strong>Done when:</strong> the app boots, the picker lists real folders, and selecting one produces verified symlinks + a managed gitignore block in the target project, with the active project persisted in Postgres.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files (to create)</h3>
+      <ul>
+        <li><code>docker-compose.yml</code> — Postgres service on host port 1231</li>
+        <li><code>src/index.ts</code> — Express entry, serves SPA + API on 1234</li>
+        <li><code>src/config/</code> — env loading + startup validation + named constants (ports, paths)</li>
+        <li><code>src/database/connection.ts</code>, <code>src/database/config.ts</code>, <code>src/database/migrations/</code></li>
+        <li><code>src/models/ProjectModel.ts</code> — all DB access for projects/app settings</li>
+        <li><code>src/controllers/projects/</code> — thin controller + <code>feature-services/</code> + <code>feature-utils/</code></li>
+        <li><code>src/services/ConfigInjectionService.ts</code> — symlink + gitignore injection</li>
+        <li><code>src/routes/projects.ts</code> — thin routes</li>
+        <li><code>frontend/src/api/index.ts</code> — the one HTTP client; <code>frontend/src/api/projects.ts</code></li>
+        <li><code>frontend/src/hooks/queries/useProjects.ts</code>, <code>frontend/src/pages/ProjectPicker.tsx</code></li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li>Backend domain shape mirrors the constitution's <code>gbp-automation/</code> skeleton: thin controller → service → model, <code>{ success, data, error }</code> envelope via <code>feature-utils/controllerResponses.ts</code>, typed domain error.</li>
+        <li>Frontend mirrors the <code>api/index.ts</code> + React Query + feature-folder triad: components never call <code>fetch</code> directly.</li>
+      </ul>
+      <p><strong>Reference analogs:</strong> Code Constitution <strong>§6.1</strong> (backend <code>gbp-automation/</code> skeleton, Part VI) and <strong>§12.1</strong> (frontend <code>api/</code> triad, Part VI). No in-repo analog exists yet — this spec establishes it.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li><strong>§6.2</strong> every file in its correct top-level folder; <strong>§6.3</strong> in-domain code under <code>feature-services/</code>/<code>feature-utils/</code></li>
+            <li><strong>§7.1/§7.4</strong> Routes → Controllers → Services → Models; all DB access in <code>models/</code></li>
+            <li><strong>§8.1</strong> the two-shape response envelope on every endpoint</li>
+            <li><strong>§5.6</strong> validate env/config (ports, <code>projects/</code> path, DB URL) at startup, fail fast</li>
+            <li><strong>§5.2</strong> path-traversal guard on every project path — resolve and assert it stays inside <code>projects/</code></li>
+            <li><strong>§9.1</strong> Pino logger, no <code>console.*</code></li>
+            <li><strong>§12.1/§14.2</strong> all frontend HTTP through <code>api/index.ts</code></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No commit of <code>projects/</code> into the DevEasy repo — it is gitignored</li>
+            <li>Do not overwrite a project's existing <code>CLAUDE.md</code>/<code>.claude</code> silently — detect and warn (graceful degradation)</li>
+            <li>No new state library on the frontend (§15.4)</li>
+            <li>No business logic in routes (§7.2)</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>Claude session spawning (Spec 2), git/Azure (Spec 3), agent editor (Spec 4)</li>
+        <li>Auth/login — local-first single-user-per-instance; no auth layer in v1</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 — the injection step writes symlinks and a <code>.gitignore</code> block into the user's real project repos.</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li><strong>Clobbering a project's own config.</strong> A project may already have <code>CLAUDE.md</code> or <code>.claude/</code>. <strong>Mitigation:</strong> before injecting, detect existing non-symlink files; if found, refuse and surface a warning rather than overwrite. Only manage symlinks DevEasy created (tagged via a managed gitignore block with sentinel comments).</li>
+        <li><strong>Path traversal.</strong> A crafted project name could escape <code>projects/</code>. <strong>Mitigation:</strong> resolve the absolute path and assert it is a direct child of the configured <code>projects/</code> root before any FS op (§5.2).</li>
+        <li><strong>Symlink portability.</strong> Symlinks behave differently if the repo is later opened on Windows. <strong>Mitigation:</strong> document macOS-first; the gitignore entries mean the links never enter version control regardless.</li>
+        <li><strong>Repo-root config boundary (verified).</strong> Because each project is its own git repo, Claude's config walk stops at the project root and will not see the DevEasy root config — injection is therefore mandatory, not optional. This is the core design constraint, not a risk to avoid.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> the FS injection touches files inside the selected project only. New consumers: Specs 2–4 all read the active-project state this spec persists.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li>Copying config instead of symlinking would be safer against symlink edge cases but breaks live sync (edits to shared config wouldn't propagate). Recommended: symlink, with the existing-file guard above. Revisit if Windows support lands.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <article class="task-card">
+        <h3>T1: Repo scaffold &amp; tooling</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Init <code>package.json</code>, TS config (backend + <code>frontend/tsconfig.app.json</code> strict), Vite, ESLint (typescript-eslint + react-hooks), Knex config, <code>docker-compose.yml</code> with Postgres on host <code>1231</code>. Add <code>.gitignore</code> with <code>projects/</code>, <code>node_modules/</code>, build output.</dd></div>
+          <div><dt>Files</dt><dd><code>package.json</code>, <code>tsconfig*.json</code>, <code>vite.config.ts</code>, <code>docker-compose.yml</code>, <code>.gitignore</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd><code>docker compose up -d</code> brings Postgres up on 1231; <code>npx tsc --noEmit</code> clean</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T2: Backend bootstrap (server, config, logger, DB)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Express server on 1234 serving the SPA build + <code>/api</code>; Pino + pino-http; <code>config/</code> with startup validation (§5.6) for ports, DB connection, and the <code>projects/</code> root; <code>database/connection.ts</code> central pool; first migration creating <code>projects</code> (id, name, path, last_opened_at) and <code>app_settings</code> (active_project_id, key/value).</dd></div>
+          <div><dt>Files</dt><dd><code>src/index.ts</code>, <code>src/config/*</code>, <code>src/database/connection.ts</code>, <code>src/database/config.ts</code>, <code>src/database/migrations/0001_init.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>Server boots; missing DB env fails fast with a clear message; <code>knex migrate:latest</code> creates tables</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T3: Project registry (scan, model, controller, routes)</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>ProjectModel</code> (all DB access); a service that scans <code>projects/</code> for direct child directories that are git repos, reconciles with the DB; thin <code>ProjectsController</code> + <code>feature-utils</code> response builders + typed error; routes <code>GET /api/projects</code>, <code>GET /api/projects/active</code>, <code>POST /api/projects/active</code> (select).</dd></div>
+          <div><dt>Files</dt><dd><code>src/models/ProjectModel.ts</code>, <code>src/controllers/projects/ProjectsController.ts</code>, <code>src/controllers/projects/feature-services/ProjectScanService.ts</code>, <code>src/controllers/projects/feature-utils/{controllerResponses,ProjectError}.ts</code>, <code>src/routes/projects.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T2</dd></div>
+          <div><dt>Verify</dt><dd>Drop a clone in <code>projects/</code> → <code>GET /api/projects</code> lists it; selecting persists <code>active_project_id</code></dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T4: Config injection service</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>ConfigInjectionService</code>: on project select, resolve+guard the path (§5.2); if target has a pre-existing real <code>CLAUDE.md</code>/<code>.claude</code> (not a DevEasy symlink) abort with a typed warning; else symlink root <code>CLAUDE.md</code> → project, and <code>.claude/skills</code>, <code>.claude/agents</code> → project <code>.claude/</code>; ensure a managed sentinel block in the project's <code>.gitignore</code> listing the injected paths. Idempotent.</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/ConfigInjectionService.ts</code>, wired into the select flow in T3's service</dd></div>
+          <div><dt>Depends on</dt><dd>T3</dd></div>
+          <div><dt>Verify</dt><dd>Select a project → <code>ls -la</code> shows the symlinks; project <code>.gitignore</code> has the managed block; re-selecting is a no-op; pre-existing config triggers the warning, not an overwrite</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T5: Frontend shell &amp; project picker</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>api/index.ts</code> client (apiGet/apiPost, envelope unwrap, ApiError); <code>api/projects.ts</code>; <code>useProjects</code>/<code>useSelectProject</code> React Query hooks; <code>ProjectPicker</code> page listing projects with select action and active-project indicator; app layout shell with a slot for the future session/cockpit panels; shared toast via <code>lib/toast</code> for the injection warning.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/api/{index,projects}.ts</code>, <code>frontend/src/hooks/queries/useProjects.ts</code>, <code>frontend/src/pages/ProjectPicker.tsx</code>, <code>frontend/src/lib/{toast,queryClient}.ts</code>, app shell + router</dd></div>
+          <div><dt>Depends on</dt><dd>T3, T4</dd></div>
+          <div><dt>Verify</dt><dd>Open <code>localhost:1234</code> → picker lists projects → selecting one flips the active indicator and triggers injection; a clobber warning shows as a toast</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>docker compose up -d</code> + <code>npm run dev</code> serves the app at <code>localhost:1234</code></li>
+        <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> — zero errors (backend + frontend)</li>
+        <li><input type="checkbox" disabled> <code>npm run check:conventions --strict</code> — no new backend violations</li>
+        <li><input type="checkbox" disabled> Manual: picker lists clones in <code>projects/</code>; selecting persists the active project</li>
+        <li><input type="checkbox" disabled> Manual: selecting a project creates verified symlinks + managed <code>.gitignore</code> block; pre-existing config warns instead of overwriting</li>
+        <li><input type="checkbox" disabled> <code>projects/</code> is gitignored in the DevEasy repo</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+dist/
+frontend/dist/
+
+# Local project clones live here — never version-controlled in the DevEasy repo
+projects/
+
+# Env / secrets
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
