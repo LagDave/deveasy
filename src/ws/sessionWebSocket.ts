@@ -43,8 +43,8 @@ export function attachSessionWebSocket(server: Server): void {
     }
 
     log.info({ sessionId }, "WS connection accepted");
-    SessionStreamService.bridge(ws, sessionId).catch((err) => {
-      log.error({ sessionId, err }, "Failed to bridge session");
+    SessionStreamService.attach(ws, sessionId).catch((err) => {
+      log.error({ sessionId, err }, "Failed to attach session");
       const message =
         err && typeof err === "object" && "message" in err
           ? String((err as { message: unknown }).message)

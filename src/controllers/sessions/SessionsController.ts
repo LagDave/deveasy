@@ -3,8 +3,8 @@ import { childLogger } from "../../lib/logger";
 import { ProjectModel } from "../../models/ProjectModel";
 import { SessionMessageModel } from "../../models/SessionMessageModel";
 import { SessionModel } from "../../models/SessionModel";
-import { ClaudeProcessService } from "../../services/ClaudeProcessService";
 import { ConfigInjectionService } from "../../services/ConfigInjectionService";
+import { SessionStreamService } from "./feature-services/SessionStreamService";
 import { handleSessionError, ok } from "./feature-utils/controllerResponses";
 import { SessionError } from "./feature-utils/SessionError";
 
@@ -68,9 +68,24 @@ export class SessionsController {
         sessions = await SessionModel.listAll();
       }
 
-      const liveIds = new Set(ClaudeProcessService.getLiveSessionIds());
-      const annotated = sessions.map((s) => ({ ...s, isLive: liveIds.has(s.id) }));
+      const states = SessionStreamService.getRuntimeStates();
+      const annotated = sessions.map((s) => ({ ...s, runtime: states.get(s.id) ?? null }));
       return ok(res, { sessions: annotated });
+    } catch (error) {
+      return handleSessionError(res, error);
+    }
+  }
+
+  /** POST /api/sessions/:id/stop — explicitly end a session's CLI process. */
+  static async stop(req: Request, res: Response): Promise<Response> {
+    try {
+      const sessionId = Number(req.params.id);
+      if (!Number.isInteger(sessionId) || sessionId <= 0) {
+        throw new SessionError("SESSION_INPUT_INVALID", "A valid session id is required.");
+      }
+      SessionStreamService.stop(sessionId);
+      log.info({ sessionId }, "Session stopped");
+      return ok(res, { sessionId });
     } catch (error) {
       return handleSessionError(res, error);
     }

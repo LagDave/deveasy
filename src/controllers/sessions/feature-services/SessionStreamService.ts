@@ -11,27 +11,52 @@ import { SessionError } from "../feature-utils/SessionError";
 
 const log = childLogger({ module: "SessionStreamService" });
 
-/** Shape of a message sent by the browser over the WebSocket. */
+/** Runtime status of a live session, surfaced to the sidebar indicator. */
+export type RuntimeState = "working" | "idle";
+
 interface ClientCommand {
   type: "user_turn";
   text: string;
 }
 
+interface Runtime {
+  /** Sockets currently watching this session (zero is fine — process keeps running). */
+  subscribers: Set<WebSocket>;
+  /** working = producing a response; idle = alive and awaiting input. */
+  state: RuntimeState;
+}
+
 /**
- * Bridges one WS client to one ClaudeProcessService session, persisting each
- * streamed event via the models as it flows (Constitution §7.1: services own the
- * orchestration, models own the DB). Business logic only — never touches req/res.
+ * Owns the runtime of chat sessions. The CLI process lives here independently of
+ * any WebSocket: switching away (socket close) only detaches a subscriber — it
+ * never kills the process. A reconnecting socket re-attaches to the running
+ * process and resumes receiving events; the transcript is always persisted, even
+ * with zero watchers. This is the long-running-process model the feature needs —
+ * no job queue, because a session is interactive, not a run-to-completion job.
  */
 export class SessionStreamService {
+  /** Live session runtimes keyed by sessionId. Absent = no live process. */
+  private static readonly runtimes = new Map<number, Runtime>();
+
+  /** Runtime state for one session (null when not live) — for the list indicator. */
+  static getRuntimeState(sessionId: number): RuntimeState | null {
+    return this.runtimes.get(sessionId)?.state ?? null;
+  }
+
+  /** All live runtime states, for annotating the session list. */
+  static getRuntimeStates(): Map<number, RuntimeState> {
+    const out = new Map<number, RuntimeState>();
+    for (const [id, rt] of this.runtimes) out.set(id, rt.state);
+    return out;
+  }
+
   /**
-   * Attach a connected WebSocket to a session: resolve the project, spawn the CLI,
-   * and wire the bidirectional bridge. Throws SessionError on bad preconditions.
+   * Attach a socket to a session. Starts the CLI process on first attach; later
+   * attaches just subscribe to the already-running process.
    */
-  static async bridge(ws: WebSocket, sessionId: number): Promise<void> {
+  static async attach(ws: WebSocket, sessionId: number): Promise<void> {
     const session = await SessionModel.findById(sessionId);
-    if (!session) {
-      throw new SessionError("SESSION_NOT_FOUND", "Session not found.", { sessionId });
-    }
+    if (!session) throw new SessionError("SESSION_NOT_FOUND", "Session not found.", { sessionId });
 
     const project = await ProjectModel.findById(session.project_id);
     if (!project) {
@@ -41,70 +66,73 @@ export class SessionStreamService {
       });
     }
 
-    // Surfaces SESSION_CLI_NOT_READY if the CLI is missing or logged out.
-    ClaudeProcessService.assertReady();
-
-    ClaudeProcessService.start(sessionId, project.path, {
-      onEvent: (event) => {
-        void this.handleEvent(ws, sessionId, event);
-      },
-      onClose: (code) => {
-        void this.handleClose(ws, sessionId, code);
-      },
-      onError: (error) => {
-        log.error({ sessionId, err: error }, "Process error relayed to client");
-        this.safeSend(ws, { type: "error", message: "The Claude process errored." });
-      },
-    });
-
-    ws.on("message", (raw) => {
-      void this.handleClientMessage(ws, sessionId, raw.toString());
-    });
-
-    ws.on("close", () => {
-      log.info({ sessionId }, "WS closed; stopping process");
-      ClaudeProcessService.stop(sessionId);
-      void SessionModel.setStatus(sessionId, "closed").catch((err) => {
-        log.error({ sessionId, err }, "Failed to mark session closed");
+    let runtime = this.runtimes.get(sessionId);
+    if (!runtime) {
+      ClaudeProcessService.assertReady(); // throws SESSION_CLI_NOT_READY if logged out
+      runtime = { subscribers: new Set(), state: "idle" };
+      this.runtimes.set(sessionId, runtime);
+      await SessionModel.setStatus(sessionId, "active");
+      ClaudeProcessService.start(sessionId, project.path, {
+        onEvent: (event) => void this.onProcessEvent(sessionId, event),
+        onClose: (code) => void this.onProcessClose(sessionId, code),
+        onError: (error) => {
+          log.error({ sessionId, err: error }, "Process error");
+          this.broadcast(sessionId, { type: "error", message: "The Claude process errored." });
+        },
       });
+      log.info({ sessionId }, "Session process started");
+    }
+
+    runtime.subscribers.add(ws);
+
+    ws.on("message", (raw) => void this.handleClientMessage(ws, sessionId, raw.toString()));
+    ws.on("close", () => {
+      this.runtimes.get(sessionId)?.subscribers.delete(ws);
+      log.info({ sessionId }, "WS detached; process kept alive");
+    });
+    ws.on("error", () => {
+      this.runtimes.get(sessionId)?.subscribers.delete(ws);
     });
 
-    ws.on("error", (err) => {
-      log.error({ sessionId, err }, "WS error; stopping process");
-      ClaudeProcessService.stop(sessionId);
-    });
-
-    this.safeSend(ws, { type: "ready", sessionId });
+    // Tell the client the current state so a reattach to a busy session shows it.
+    this.safeSend(ws, { type: "ready", sessionId, state: runtime.state });
   }
 
-  private static async handleClientMessage(
-    ws: WebSocket,
-    sessionId: number,
-    raw: string,
-  ): Promise<void> {
+  /** Explicitly end a session: kill the process (triggers cleanup) and mark closed. */
+  static stop(sessionId: number): void {
+    ClaudeProcessService.stop(sessionId); // fires onClose -> onProcessClose cleanup
+    if (!ClaudeProcessService.isLive(sessionId)) {
+      this.runtimes.delete(sessionId);
+      void SessionModel.setStatus(sessionId, "closed").catch((err) =>
+        log.error({ sessionId, err }, "Failed to mark session closed"),
+      );
+    }
+  }
+
+  // --- internals ---
+
+  private static async handleClientMessage(ws: WebSocket, sessionId: number, raw: string): Promise<void> {
     let command: ClientCommand;
     try {
       command = JSON.parse(raw) as ClientCommand;
     } catch {
-      log.warn({ sessionId }, "Dropped malformed client command");
       this.safeSend(ws, { type: "error", message: "Malformed command." });
       return;
     }
-
     if (command.type !== "user_turn" || typeof command.text !== "string") {
       this.safeSend(ws, { type: "error", message: "Unsupported command." });
       return;
     }
 
     try {
-      // Persist the user turn (content in DB, only identifiers logged — §5.3).
       await SessionMessageModel.create({
         sessionId,
         role: "user",
         eventType: "user_turn",
         content: { text: command.text },
       });
-      log.info({ sessionId }, "User turn persisted; forwarding to process");
+      const runtime = this.runtimes.get(sessionId);
+      if (runtime) runtime.state = "working";
       ClaudeProcessService.send(sessionId, command.text);
     } catch (err) {
       log.error({ sessionId, err }, "Failed to handle user turn");
@@ -112,13 +140,12 @@ export class SessionStreamService {
     }
   }
 
-  private static async handleEvent(
-    ws: WebSocket,
-    sessionId: number,
-    event: ClaudeStreamEvent,
-  ): Promise<void> {
-    // Relay first so the UI stays live, then persist (§ never lose a streamed event).
-    this.safeSend(ws, event);
+  private static async onProcessEvent(sessionId: number, event: ClaudeStreamEvent): Promise<void> {
+    const runtime = this.runtimes.get(sessionId);
+    // A `result` event ends the turn -> the session is idle / awaiting input.
+    if (runtime && event.type === "result") runtime.state = "idle";
+
+    this.broadcast(sessionId, event);
     try {
       await SessionMessageModel.create({
         sessionId,
@@ -131,17 +158,21 @@ export class SessionStreamService {
     }
   }
 
-  private static async handleClose(
-    ws: WebSocket,
-    sessionId: number,
-    code: number | null,
-  ): Promise<void> {
-    this.safeSend(ws, { type: "process_closed", code });
+  private static async onProcessClose(sessionId: number, code: number | null): Promise<void> {
+    this.broadcast(sessionId, { type: "process_closed", code });
+    this.runtimes.delete(sessionId);
     try {
       await SessionModel.setStatus(sessionId, "closed");
     } catch (err) {
       log.error({ sessionId, err }, "Failed to mark session closed on process close");
     }
+  }
+
+  /** Fan an event out to every socket currently watching the session. */
+  private static broadcast(sessionId: number, payload: unknown): void {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) return;
+    for (const ws of runtime.subscribers) this.safeSend(ws, payload);
   }
 
   private static roleForEvent(event: ClaudeStreamEvent): MessageRole {
@@ -150,7 +181,6 @@ export class SessionStreamService {
     return "system";
   }
 
-  /** Send JSON to the client, tolerating a closed socket. */
   private static safeSend(ws: WebSocket, payload: unknown): void {
     try {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));

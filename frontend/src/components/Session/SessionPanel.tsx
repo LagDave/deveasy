@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "../../api";
 import { useProjects } from "../../hooks/queries/useProjects";
-import { useAllSessions, useCreateSession } from "../../hooks/queries/useSessionHistory";
+import { useAllSessions, useCreateSession, useStopSession } from "../../hooks/queries/useSessionHistory";
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
 import { EmptyState } from "../ui/EmptyState";
@@ -26,6 +26,7 @@ export function SessionPanel() {
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: sessions, isLoading: sessionsLoading } = useAllSessions();
   const createSession = useCreateSession();
+  const stopSession = useStopSession();
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [creatingProjectId, setCreatingProjectId] = useState<number | null>(null);
 
@@ -54,7 +55,6 @@ export function SessionPanel() {
         projects={projects ?? []}
         sessions={sessions ?? []}
         activeSessionId={activeSessionId}
-        streamingSessionId={streaming ? activeSessionId : null}
         creatingProjectId={creatingProjectId}
         onSelect={setActiveSessionId}
         onNewSession={onNewSession}
@@ -67,10 +67,22 @@ export function SessionPanel() {
               <span className="truncate font-mono text-sm text-muted">
                 {activeSession?.title ?? `Session #${activeSessionId}`}
               </span>
-              <span className={`pill ${STATUS_PILL[status] ?? "pill"}`}>
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {streaming ? "responding" : status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`pill ${STATUS_PILL[status] ?? "pill"}`}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {streaming ? "responding" : status}
+                </span>
+                {activeSession?.runtime && (
+                  <button
+                    className="btn btn-danger"
+                    disabled={stopSession.isPending}
+                    onClick={() => stopSession.mutate(activeSessionId)}
+                    title="End this session's process"
+                  >
+                    End session
+                  </button>
+                )}
+              </div>
             </div>
             <SessionTranscript events={events} thinking={streaming} />
             <SessionComposer

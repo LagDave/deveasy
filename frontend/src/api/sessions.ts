@@ -9,6 +9,9 @@ import { apiGet, apiPost } from "./index";
 
 export type SessionStatus = "active" | "closed";
 
+/** Runtime status of a live session: working = responding, idle = awaiting input. */
+export type SessionRuntime = "working" | "idle" | null;
+
 export interface Session {
   id: number;
   project_id: number;
@@ -16,8 +19,8 @@ export interface Session {
   status: SessionStatus;
   created_at: string;
   updated_at: string;
-  /** True when the session currently has a live CLI process (running indicator). */
-  isLive?: boolean;
+  /** null when no live process; otherwise working or idle (running indicator). */
+  runtime?: SessionRuntime;
 }
 
 export type SessionRole = "user" | "assistant" | "system";
@@ -50,4 +53,9 @@ export async function getAllSessions(): Promise<Session[]> {
 export async function getSessionMessages(sessionId: number): Promise<SessionMessage[]> {
   const data = await apiGet<{ messages: SessionMessage[] }>(`/api/sessions/${sessionId}/messages`);
   return data.messages;
+}
+
+/** Explicitly end a session's CLI process. */
+export async function stopSession(sessionId: number): Promise<void> {
+  await apiPost<{ sessionId: number }>(`/api/sessions/${sessionId}/stop`);
 }

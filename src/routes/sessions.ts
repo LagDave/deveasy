@@ -10,5 +10,6 @@ const router = express.Router();
 router.post("/", SessionsController.create);
 router.get("/", SessionsController.list);
 router.get("/:id/messages", SessionsController.listMessages);
+router.post("/:id/stop", SessionsController.stop);
 
 export default router;

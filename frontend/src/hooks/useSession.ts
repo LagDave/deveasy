@@ -88,7 +88,12 @@ export function useSession(sessionId: number | null): UseSessionResult {
       }
       if (parsed.type === "ready") {
         setIsReady(true);
+        // Reattaching to a session that's mid-turn should show "responding".
+        setStreaming(parsed.state === "working");
         return;
+      }
+      if (parsed.type === "process_closed") {
+        setStreaming(false);
       }
       // A `result` event ends the current turn.
       if (parsed.type === "result") setStreaming(false);

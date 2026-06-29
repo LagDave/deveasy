@@ -4,6 +4,7 @@ import {
   getAllSessions,
   getSessionMessages,
   getSessions,
+  stopSession,
   type Session,
   type SessionMessage,
 } from "../../api/sessions";
@@ -53,5 +54,13 @@ export function useCreateSession() {
       void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.list(session.project_id) });
       void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.all });
     },
+  });
+}
+
+export function useStopSession() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, number>({
+    mutationFn: (sessionId) => stopSession(sessionId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.all }),
   });
 }

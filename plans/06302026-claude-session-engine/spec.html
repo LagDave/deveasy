@@ -199,6 +199,13 @@
         <p><strong>Reason:</strong> User request: list sessions in a sidebar grouped by project, show a running indicator, and start sessions by selecting a project rather than switching the active project.</p>
         <p><strong>Updated Done criteria:</strong> Verified live — session create injects config and persists; <code>GET /api/sessions</code> returns all projects' sessions with <code>isLive</code>.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 4 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Decoupled the CLI process lifetime from the WebSocket. Previously closing the socket (which happens whenever you switch sessions) killed the other session's process. Now <code>SessionStreamService</code> is a runtime registry: the process lives in the backend independently of any socket, sockets <em>attach/detach</em> as subscribers (multi-subscriber fan-out), and the transcript persists even with zero watchers. A reconnecting socket re-attaches to the running process and is told the current state on the <code>ready</code> event. Runtime state is now <code>working</code> (responding) vs <code>idle</code> (alive, awaiting input), replacing the boolean <code>isLive</code> — the sidebar shows pulsing amber "working", steady green "ready", or grey offline. Added explicit end-of-session via <code>POST /api/sessions/:id/stop</code> + an "End session" button (processes otherwise persist up to the concurrency cap).</p>
+        <p><strong>Reason:</strong> User report: switching sessions cancelled the other session. The fix is a long-running-process model, not a job queue.</p>
+        <p><strong>Pushback (recorded):</strong> A BullMQ/Redis worker was requested but is the wrong primitive — it models discrete run-to-completion jobs, whereas a Claude session is a long-lived interactive process that pauses for human input. The in-memory process registry + DB-persisted transcript already deliver background continuation, reattach, and the working/awaiting-input indicator. Redis/BullMQ would only matter for multiple backend instances (not the local-first model); a child process cannot survive a server restart regardless, so it would not add durability here.</p>
+        <p><strong>Verified:</strong> live lifecycle test — process stays <code>idle</code> after the socket closes (switch), and goes <code>null</code> only on explicit stop.</p>
+      </article>
     </section>
   </main>
 </body>

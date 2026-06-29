@@ -12,7 +12,6 @@ interface Props {
   projects: Project[];
   sessions: Session[];
   activeSessionId: number | null;
-  streamingSessionId: number | null;
   creatingProjectId: number | null;
   onSelect: (sessionId: number) => void;
   onNewSession: (projectId: number) => void;
@@ -22,7 +21,6 @@ export function SessionSidebar({
   projects,
   sessions,
   activeSessionId,
-  streamingSessionId,
   creatingProjectId,
   onSelect,
   onNewSession,
@@ -63,7 +61,7 @@ export function SessionSidebar({
                 <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
                   {list.map((s) => {
                     const isActive = s.id === activeSessionId;
-                    const running = Boolean(s.isLive) || (s.id === streamingSessionId);
+                    const runtime = s.runtime ?? null;
                     return (
                       <li key={s.id}>
                         <button
@@ -72,11 +70,12 @@ export function SessionSidebar({
                             isActive ? "bg-surface-2 text-ink" : "text-muted hover:bg-surface/60 hover:text-ink"
                           }`}
                         >
-                          <RunningDot running={running} />
+                          <RuntimeDot runtime={runtime} />
                           <span className="min-w-0 flex-1 truncate text-sm">
                             {s.title ?? `Session #${s.id}`}
                           </span>
-                          {running && <span className="eyebrow !text-accent">live</span>}
+                          {runtime === "working" && <span className="eyebrow !text-accent">working</span>}
+                          {runtime === "idle" && <span className="eyebrow !text-success">ready</span>}
                         </button>
                       </li>
                     );
@@ -91,8 +90,10 @@ export function SessionSidebar({
   );
 }
 
-function RunningDot({ running }: { running: boolean }) {
-  if (!running) return <span className="h-2 w-2 shrink-0 rounded-full bg-faint" />;
+function RuntimeDot({ runtime }: { runtime: "working" | "idle" | null }) {
+  // offline: faint static; idle/ready: steady green; working: pulsing amber.
+  if (runtime === null) return <span className="h-2 w-2 shrink-0 rounded-full bg-faint" />;
+  if (runtime === "idle") return <span className="h-2 w-2 shrink-0 rounded-full bg-success" />;
   return (
     <span className="relative grid h-2 w-2 shrink-0 place-items-center">
       <motion.span
