@@ -1,4 +1,6 @@
+import { motion } from "framer-motion";
 import type { ConfigListing, ConfigSummary, ConfigType } from "../../api/agentConfig";
+import { fadeUp, staggerContainer } from "../ui/motion";
 
 interface Props {
   listing: ConfigListing;
@@ -15,59 +17,88 @@ export function AgentConfigList({ listing, selected, onSelect, onCreate }: Props
   const isSelected = (type: ConfigType, name: string) =>
     selected?.type === type && selected?.name === name;
 
-  const renderItem = (item: ConfigSummary) => (
-    <li key={`${item.type}-${item.name}`}>
-      <button
-        type="button"
-        className={isSelected(item.type, item.name) ? "config-item active" : "config-item"}
-        onClick={() => onSelect(item.type, item.name)}
-      >
-        <strong>{item.title ?? item.name}</strong>
-        {item.description ? <span className="muted">{item.description}</span> : null}
-      </button>
-    </li>
-  );
+  const renderItem = (item: ConfigSummary) => {
+    const active = isSelected(item.type, item.name);
+    return (
+      <motion.li key={`${item.type}-${item.name}`} variants={fadeUp}>
+        <button
+          type="button"
+          onClick={() => onSelect(item.type, item.name)}
+          className={`surface-2 card-hover flex w-full flex-col items-start gap-1 px-3.5 py-3 text-left ${
+            active ? "!border-accent-line bg-surface-2" : ""
+          }`}
+        >
+          <span className="truncate font-mono text-sm text-ink">{item.title ?? item.name}</span>
+          {item.description ? (
+            <span className="line-clamp-2 text-xs text-muted">{item.description}</span>
+          ) : null}
+        </button>
+      </motion.li>
+    );
+  };
 
   return (
-    <div className="config-list">
-      <section>
-        <header className="config-group-header">
-          <h3>Agents</h3>
-          <button type="button" onClick={() => onCreate("agent")}>
-            + New
-          </button>
-        </header>
+    <div className="flex w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-line px-5 py-5">
+      <Group label="Agents" onCreate={() => onCreate("agent")}>
         {listing.agents.length === 0 ? (
-          <p className="muted">No subagents yet.</p>
+          <p className="text-sm text-muted">No subagents yet.</p>
         ) : (
-          <ul>{listing.agents.map(renderItem)}</ul>
+          <ItemList>{listing.agents.map(renderItem)}</ItemList>
         )}
-      </section>
+      </Group>
 
-      <section>
-        <header className="config-group-header">
-          <h3>Skills</h3>
-          <button type="button" onClick={() => onCreate("skill")}>
+      <Group label="Skills" onCreate={() => onCreate("skill")}>
+        {listing.skills.length === 0 ? (
+          <p className="text-sm text-muted">No skills yet.</p>
+        ) : (
+          <ItemList>{listing.skills.map(renderItem)}</ItemList>
+        )}
+      </Group>
+
+      <Group label="CLAUDE.md">
+        {listing.claudemd ? (
+          <ItemList>{renderItem(listing.claudemd)}</ItemList>
+        ) : (
+          <p className="text-sm text-muted">No root CLAUDE.md found.</p>
+        )}
+      </Group>
+    </div>
+  );
+}
+
+function Group({
+  label,
+  onCreate,
+  children,
+}: {
+  label: string;
+  onCreate?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-2.5">
+      <header className="flex items-center justify-between">
+        <span className="eyebrow">{label}</span>
+        {onCreate ? (
+          <button type="button" className="btn btn-ghost px-2 py-1" onClick={onCreate}>
             + New
           </button>
-        </header>
-        {listing.skills.length === 0 ? (
-          <p className="muted">No skills yet.</p>
-        ) : (
-          <ul>{listing.skills.map(renderItem)}</ul>
-        )}
-      </section>
+        ) : null}
+      </header>
+      {children}
+    </section>
+  );
+}
 
-      <section>
-        <header className="config-group-header">
-          <h3>CLAUDE.md</h3>
-        </header>
-        {listing.claudemd ? (
-          <ul>{renderItem(listing.claudemd)}</ul>
-        ) : (
-          <p className="muted">No root CLAUDE.md found.</p>
-        )}
-      </section>
-    </div>
+function ItemList({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.ul
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+      className="m-0 flex list-none flex-col gap-2 p-0"
+    >
+      {children}
+    </motion.ul>
   );
 }

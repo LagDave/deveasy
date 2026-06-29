@@ -23,6 +23,8 @@ interface UseSessionResult {
   status: ConnectionStatus;
   send: (text: string) => void;
   isReady: boolean;
+  /** True from the moment a turn is sent until the CLI emits its `result` event. */
+  streaming: boolean;
 }
 
 /** Build the absolute ws:// URL from the current page origin (Vite proxies /ws). */
@@ -45,6 +47,7 @@ export function useSession(sessionId: number | null): UseSessionResult {
   const [events, setEvents] = useState<SessionEvent[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [isReady, setIsReady] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
 
   // Load persisted history once per session, then open the live stream.
@@ -54,6 +57,7 @@ export function useSession(sessionId: number | null): UseSessionResult {
 
     setEvents([]);
     setIsReady(false);
+    setStreaming(false);
     setStatus("connecting");
 
     getSessionMessages(sessionId)
@@ -73,6 +77,7 @@ export function useSession(sessionId: number | null): UseSessionResult {
     ws.onclose = () => {
       setStatus("closed");
       setIsReady(false);
+      setStreaming(false);
     };
     ws.onmessage = (ev) => {
       let parsed: SessionEvent;
@@ -85,6 +90,8 @@ export function useSession(sessionId: number | null): UseSessionResult {
         setIsReady(true);
         return;
       }
+      // A `result` event ends the current turn.
+      if (parsed.type === "result") setStreaming(false);
       setEvents((prev) => [...prev, parsed]);
     };
 
@@ -99,6 +106,7 @@ export function useSession(sessionId: number | null): UseSessionResult {
     const ws = socketRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: "user_turn", text }));
+    setStreaming(true);
     // Optimistically echo the user turn so it appears immediately.
     setEvents((prev) => [
       ...prev,
@@ -106,5 +114,5 @@ export function useSession(sessionId: number | null): UseSessionResult {
     ]);
   }, []);
 
-  return { events, status, send, isReady };
+  return { events, status, send, isReady, streaming };
 }

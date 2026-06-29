@@ -1,5 +1,8 @@
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import type { ConfigDocument, ConfigType, Frontmatter } from "../../api/agentConfig";
+import { fadeUp } from "../ui/motion";
+import { Spinner } from "../ui/Spinner";
 
 interface Props {
   type: ConfigType;
@@ -68,30 +71,48 @@ export function AgentConfigEditor({
     }
   };
 
-  if (isLoading) return <p className="muted">Loading…</p>;
+  if (isLoading) {
+    return (
+      <div className="px-8 py-7">
+        <Spinner label="Loading config" />
+      </div>
+    );
+  }
 
   return (
-    <div className="config-editor">
-      <p className="config-sync-note">
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate="show"
+      className="flex flex-1 flex-col gap-5 overflow-y-auto px-8 py-6"
+    >
+      <header className="flex items-center gap-2">
+        <span className="pill pill-accent">{type}</span>
+        <span className="font-mono text-sm text-ink">{name}</span>
+      </header>
+
+      <p className="surface-2 px-4 py-3 text-xs text-muted">
         Edits sync live into every open project — DevEasy symlinks this config in, so a save is
         visible to active sessions immediately and is committed to the DevEasy repo.
       </p>
 
       {hasFrontmatter ? (
-        <div className="config-fields">
-          <label>
-            <span>Name</span>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="eyebrow">Name</span>
             <input
               type="text"
+              className="field font-mono text-sm"
               value={fmName}
               onChange={(e) => setFmName(e.target.value)}
               placeholder="kebab-case-name"
             />
           </label>
-          <label>
-            <span>Description</span>
+          <label className="flex flex-col gap-1.5">
+            <span className="eyebrow">Description</span>
             <input
               type="text"
+              className="field text-sm"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What this is for"
@@ -100,21 +121,31 @@ export function AgentConfigEditor({
         </div>
       ) : null}
 
-      <label className="config-body-field">
-        <span>Markdown body</span>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={20} spellCheck={false} />
+      <label className="flex flex-1 flex-col gap-1.5">
+        <span className="eyebrow">Markdown body</span>
+        <textarea
+          className="field min-h-[22rem] flex-1 resize-y font-mono text-xs leading-relaxed"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          spellCheck={false}
+        />
       </label>
 
-      <div className="config-editor-actions">
-        <button type="button" onClick={submit} disabled={isSaving}>
+      <div className="flex items-center gap-3">
+        <button type="button" className="btn btn-primary" onClick={submit} disabled={isSaving}>
           {isSaving ? "Saving…" : "Save & commit"}
         </button>
         {canDelete ? (
-          <button type="button" className="danger" onClick={confirmDelete} disabled={isDeleting}>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={confirmDelete}
+            disabled={isDeleting}
+          >
             {isDeleting ? "Deleting…" : "Delete"}
           </button>
         ) : null}
       </div>
-    </div>
+    </motion.div>
   );
 }

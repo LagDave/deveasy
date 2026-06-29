@@ -200,6 +200,12 @@
         <p><strong>Reason:</strong> Execution deviation: <code>knexfile.ts</code> removed from the <code>tsconfig.json</code> <code>include</code> (it lives outside <code>rootDir: src</code> and is run via the tsx loader at runtime, so it does not need to be in the build program). Nav items rendered as <code>&lt;button&gt;</code> with CSS resets rather than anchors, to drive in-app section switching without a router.</p>
         <p><strong>Note:</strong> The Constitution's <code>npm run check:conventions</code> script is not ported to this greenfield repo yet; the mechanized checks (§9.1, §7.4, §17.2, §14.2, size ceiling) were run as equivalent greps and all passed. Porting the script is a fast-follow.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 2 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Frontend design system introduced and the app shell + Projects panel redesigned. Added Tailwind v4 (<code>@tailwindcss/vite</code>), Framer Motion, and self-hosted fonts (JetBrains Mono + Hanken Grotesk via <code>@fontsource</code>). New dark "precision developer instrument" theme with a reusable kit (<code>index.css</code>: tokens + <code>.surface</code>/<code>.btn</code>/<code>.field</code>/<code>.pill</code>/<code>.eyebrow</code>) and shared UI primitives (<code>components/ui/</code>: <code>EmptyState</code>, <code>Spinner</code>, <code>motion.ts</code>). Shell rebuilt with animated section switching; nav items now full sections with active indicator.</p>
+        <p><strong>Reason:</strong> User QA: the default styling was not usable. New dependencies are presentation-only (Tailwind, Framer Motion, fontsource) — justified per §4.4 as the agreed UI stack; no new state library (§15.4 respected).</p>
+        <p><strong>Updated Done criteria:</strong> Frontend builds clean (513 modules, fonts bundled offline); §9.1/§17.2/§14.2 + size checks still pass.</p>
+      </article>
     </section>
   </main>
 </body>

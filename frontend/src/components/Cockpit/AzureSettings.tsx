@@ -36,28 +36,46 @@ export function AzureSettings({ state, forceOpen }: Props) {
   };
 
   return (
-    <section className="cockpit-azure-settings">
-      <h3>Azure connection</h3>
-      <p className={needsAttention ? "error" : "muted"}>
-        Status: <strong>{state?.status ?? "loading…"}</strong>
-        {needsAttention && " — enter your PAT to (re)connect."}
-      </p>
-      <form onSubmit={onSubmit} className="cockpit-form">
-        <label>
-          Organization
-          <input value={organization} onChange={(e) => setOrganization(e.target.value)} required />
-        </label>
-        <label>
-          Project
-          <input value={project} onChange={(e) => setProject(e.target.value)} required />
-        </label>
-        <label>
-          Repository
-          <input value={repository} onChange={(e) => setRepository(e.target.value)} required />
-        </label>
-        <label>
-          Personal Access Token
+    <section className="surface px-6 py-5">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <p className="eyebrow">Azure connection</p>
+        <span
+          className={`pill ${needsAttention ? "pill-danger" : state?.status === "connected" ? "pill-success" : ""}`}
+        >
+          {state?.status ?? "loading"}
+        </span>
+        {needsAttention && (
+          <span className="text-xs text-muted">Enter your PAT to (re)connect.</span>
+        )}
+      </div>
+
+      <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">Organization</span>
           <input
+            className="field"
+            value={organization}
+            onChange={(e) => setOrganization(e.target.value)}
+            required
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">Project</span>
+          <input className="field" value={project} onChange={(e) => setProject(e.target.value)} required />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">Repository</span>
+          <input
+            className="field"
+            value={repository}
+            onChange={(e) => setRepository(e.target.value)}
+            required
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">Personal Access Token</span>
+          <input
+            className="field"
             type="password"
             value={pat}
             onChange={(e) => setPat(e.target.value)}
@@ -66,9 +84,11 @@ export function AzureSettings({ state, forceOpen }: Props) {
             required
           />
         </label>
-        <button type="submit" disabled={connect.isPending}>
-          {connect.isPending ? "Saving…" : "Save connection"}
-        </button>
+        <div className="sm:col-span-2">
+          <button type="submit" className="btn btn-primary" disabled={connect.isPending}>
+            {connect.isPending ? "Saving…" : "Save connection"}
+          </button>
+        </div>
       </form>
     </section>
   );

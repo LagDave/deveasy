@@ -184,6 +184,11 @@
         <p><strong>Change:</strong> Executed. All files built and typecheck-clean; the list endpoint is verified live (<code>GET /api/agent-config</code> returns agents/skills/CLAUDE.md). Create/edit/delete + commit and the path-guard rejection are left <code>pending</code> in <code>test-results.json</code> — quick to verify via the UI on the operator machine (deferred to avoid stray commits into the repo mid-integration).</p>
         <p><strong>Reason:</strong> Execution deviation: <code>AgentConfigService.ts</code> is 324 lines — just over the ~300 single-purpose target but one cohesive responsibility and far under the 800 hard ceiling (§2.4 permits this). The create flow uses a <code>window.prompt</code> for the new file name (minimal v1; an inline form is a fast-follow). <code>GitCommitService</code> treats "nothing to commit" as a logged no-op so an idempotent re-save of unchanged content does not error (§3.2 respected — logged, not swallowed silently).</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 2 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Agent Manager panel restyled to the new dark design system (Tailwind + Framer Motion): full-height two-column layout (grouped list + editor pane), <code>.field</code> frontmatter inputs and a tall monospace body textarea, Save/Delete as primary/danger buttons, and the live-sync note rendered as a subtle surface callout.</p>
+        <p><strong>Reason:</strong> User QA: whole-app UI redesign. Presentational only — no API/hook/data-flow changes; create still uses <code>window.prompt</code>.</p>
+      </article>
     </section>
   </main>
 </body>

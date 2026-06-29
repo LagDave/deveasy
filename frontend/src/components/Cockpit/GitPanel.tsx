@@ -1,35 +1,42 @@
+import { motion } from "framer-motion";
 import { ApiError } from "../../api";
 import { useGitHistory, useGitStatus } from "../../hooks/queries/useGit";
+import { Spinner } from "../ui/Spinner";
+import { fadeUp, staggerContainer } from "../ui/motion";
+
+const errorMessage = (err: unknown): string =>
+  err instanceof ApiError ? err.message : "Could not read git state";
 
 /** Local git state for the active project: branch, working-tree status, and history. */
 export function GitPanel() {
   const { data: history, isLoading: historyLoading, error: historyError } = useGitHistory();
   const { data: status, isLoading: statusLoading, error: statusError } = useGitStatus();
 
-  const errorMessage = (err: unknown): string =>
-    err instanceof ApiError ? err.message : "Could not read git state";
-
   return (
-    <section className="cockpit-git">
-      <h3>Git</h3>
+    <section className="surface px-6 py-5">
+      <p className="eyebrow mb-3">Git</p>
 
-      <div className="cockpit-git-status">
-        {statusLoading && <p className="muted">Reading status…</p>}
-        {statusError && <p className="error">{errorMessage(statusError)}</p>}
+      <div className="mb-5">
+        {statusLoading && <Spinner label="Reading status" />}
+        {statusError && <p className="text-sm text-danger">{errorMessage(statusError)}</p>}
         {status && (
           <>
-            <p>
-              <strong>Branch:</strong> {status.branch}
-              {status.ahead > 0 && <span className="muted"> ↑{status.ahead}</span>}
-              {status.behind > 0 && <span className="muted"> ↓{status.behind}</span>}
-            </p>
-            {status.isClean ? (
-              <p className="muted">Working tree clean</p>
-            ) : (
-              <ul className="cockpit-status-files">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="pill pill-accent">{status.branch}</span>
+              {status.ahead > 0 && <span className="pill">↑{status.ahead}</span>}
+              {status.behind > 0 && <span className="pill">↓{status.behind}</span>}
+              <span className={`pill ${status.isClean ? "pill-success" : ""}`}>
+                {status.isClean ? "clean" : `${status.files.length} changed`}
+              </span>
+            </div>
+            {!status.isClean && (
+              <ul className="m-0 mt-3 flex list-none flex-col gap-1 p-0 font-mono text-xs">
                 {status.files.map((f) => (
-                  <li key={f.path}>
-                    <code>{f.state.trim() || "??"}</code> {f.path}
+                  <li key={f.path} className="flex items-center gap-2 text-muted">
+                    <code className="rounded bg-surface-2 px-1.5 py-0.5 text-accent">
+                      {f.state.trim() || "??"}
+                    </code>
+                    <span className="truncate">{f.path}</span>
                   </li>
                 ))}
               </ul>
@@ -38,23 +45,34 @@ export function GitPanel() {
         )}
       </div>
 
-      <div className="cockpit-git-history">
-        <h4>History</h4>
-        {historyLoading && <p className="muted">Loading history…</p>}
-        {historyError && <p className="error">{errorMessage(historyError)}</p>}
-        {history && history.commits.length === 0 && <p className="muted">No commits yet.</p>}
+      <div>
+        <p className="eyebrow mb-2">History</p>
+        {historyLoading && <Spinner label="Loading history" />}
+        {historyError && <p className="text-sm text-danger">{errorMessage(historyError)}</p>}
+        {history && history.commits.length === 0 && (
+          <p className="text-sm text-faint">No commits yet.</p>
+        )}
         {history && history.commits.length > 0 && (
-          <ul className="cockpit-commit-list">
+          <motion.ul
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="m-0 flex list-none flex-col gap-1 p-0"
+          >
             {history.commits.map((c) => (
-              <li key={c.hash} className="cockpit-commit">
-                <code className="cockpit-commit-hash">{c.hash.slice(0, 8)}</code>
-                <span className="cockpit-commit-subject">{c.subject}</span>
-                <span className="muted cockpit-commit-meta">
+              <motion.li
+                key={c.hash}
+                variants={fadeUp}
+                className="surface-2 flex items-center gap-3 px-3 py-2 font-mono text-xs"
+              >
+                <code className="text-accent">{c.hash.slice(0, 8)}</code>
+                <span className="min-w-0 flex-1 truncate text-ink">{c.subject}</span>
+                <span className="shrink-0 text-faint">
                   {c.author} · {c.date.slice(0, 10)}
                 </span>
-              </li>
+              </motion.li>
             ))}
-          </ul>
+          </motion.ul>
         )}
       </div>
     </section>

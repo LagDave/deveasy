@@ -188,6 +188,11 @@
         <p><strong>Reason:</strong> Execution deviation: WebSocket uses a <code>noServer</code> server with manual <code>upgrade</code> routing on the pathname (rather than a path-bound server) so additional WS endpoints can attach without conflict. CLI/concurrency constants (<code>MAX_CONCURRENT_SESSIONS</code>) live locally in <code>ClaudeProcessService</code> rather than the shared <code>config/constants.ts</code>, to respect the parallel-build file lane.</p>
         <p><strong>Updated Done criteria:</strong> Model/process unit tests (§20.1/§20.2) were not written during the parallel build (outside the assigned file lane) and remain open follow-up work.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 2 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Chat UI rebuilt for usability. The transcript previously dumped every raw stream-json event (including <code>init</code> and <code>hook_started</code>/<code>hook_progress</code> system noise) as JSON, burying the conversation and pushing the composer off-screen. Now: a classifier (<code>sessionEvents.ts</code>) flattens events into clean render items; assistant/user turns render as message bubbles, tool calls as collapsible cards, and all system/hook events are quarantined behind a single collapsible "N system events" strip. The composer is pinned to the bottom with auto-grow + Enter-to-send, the transcript scrolls and auto-follows, and a "Claude is working" indicator shows while streaming (new <code>streaming</code> flag on <code>useSession</code>, cleared on the <code>result</code> event).</p>
+        <p><strong>Reason:</strong> User QA: "not usable" — the raw-JSON flood made the chat unreadable and the input appeared to do nothing because it was below the fold.</p>
+      </article>
     </section>
   </main>
 </body>

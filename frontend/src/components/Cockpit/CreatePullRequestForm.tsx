@@ -38,33 +38,46 @@ export function CreatePullRequestForm({ disabled, onReconnect }: Props) {
   };
 
   return (
-    <section className="cockpit-create-pr">
-      <h3>Create pull request</h3>
-      <form onSubmit={onSubmit} className="cockpit-form">
-        <label>
-          Source branch
+    <section className="surface px-6 py-5">
+      <p className="eyebrow mb-4">Create pull request</p>
+      <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">Source branch</span>
           <input
+            className="field font-mono text-xs"
             value={sourceRefName}
             onChange={(e) => setSourceRefName(e.target.value)}
             placeholder="feature/my-branch"
             required
           />
         </label>
-        <label>
-          Target branch
-          <input value={targetRefName} onChange={(e) => setTargetRefName(e.target.value)} required />
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">Target branch</span>
+          <input
+            className="field font-mono text-xs"
+            value={targetRefName}
+            onChange={(e) => setTargetRefName(e.target.value)}
+            required
+          />
         </label>
-        <label>
-          Title
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className="eyebrow">Title</span>
+          <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} required />
         </label>
-        <label>
-          Description
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className="eyebrow">Description</span>
+          <textarea
+            className="field"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+          />
         </label>
-        <button type="submit" disabled={disabled || create.isPending}>
-          {create.isPending ? "Creating…" : "Create PR"}
-        </button>
+        <div className="sm:col-span-2">
+          <button type="submit" className="btn btn-primary" disabled={disabled || create.isPending}>
+            {create.isPending ? "Creating…" : "Create PR"}
+          </button>
+        </div>
       </form>
     </section>
   );

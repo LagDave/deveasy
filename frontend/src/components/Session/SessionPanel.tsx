@@ -4,14 +4,22 @@ import { useActiveProject } from "../../hooks/queries/useProjects";
 import { useCreateSession, useSessions } from "../../hooks/queries/useSessionHistory";
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
+import { EmptyState } from "../ui/EmptyState";
+import { Spinner } from "../ui/Spinner";
 import { SessionComposer } from "./SessionComposer";
 import { SessionTranscript } from "./SessionTranscript";
 
+const STATUS_PILL: Record<string, string> = {
+  open: "pill-success",
+  connecting: "pill-accent",
+  closed: "pill",
+  error: "pill-danger",
+};
+
 /**
- * Self-contained Sessions panel mounted in the app shell. Picks the active
- * project, lets the operator open/create a chat session, and renders the live
- * streaming transcript. Data-fetching lives in hooks (Constitution §14.3); errors
- * surface via toast (§16.3).
+ * Sessions panel: pick or start a chat session against the active project and
+ * stream the conversation. Full-height layout — toolbar, scrolling transcript,
+ * pinned composer.
  */
 export function SessionPanel() {
   const { data: active } = useActiveProject();
@@ -21,14 +29,13 @@ export function SessionPanel() {
   const createSession = useCreateSession();
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
 
-  // Default the selection to the most recent session for the project.
   useEffect(() => {
     if (activeSessionId === null && sessions && sessions.length > 0) {
       setActiveSessionId(sessions[0].id);
     }
   }, [sessions, activeSessionId]);
 
-  const { events, status, send } = useSession(activeSessionId);
+  const { events, status, send, streaming } = useSession(activeSessionId);
 
   const onNewSession = () => {
     if (!projectId) return;
@@ -36,30 +43,37 @@ export function SessionPanel() {
       { projectId },
       {
         onSuccess: (session) => setActiveSessionId(session.id),
-        onError: (e) =>
-          toast.error(e instanceof ApiError ? e.message : "Could not start a session"),
+        onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not start a session"),
       },
     );
   };
 
   if (!projectId) {
-    return <p className="muted">Select a project first to start a session.</p>;
+    return (
+      <div className="h-full px-8 py-7">
+        <EmptyState icon="▤" title="No active project" hint="Select a project first, then start a session here." />
+      </div>
+    );
   }
-  if (isLoading) return <p className="muted">Loading sessions…</p>;
+  if (isLoading) {
+    return <div className="px-8 py-7"><Spinner label="Loading sessions" /></div>;
+  }
   if (error) {
     return (
-      <p className="error">
-        {error instanceof ApiError ? error.message : "Failed to load sessions"}
-      </p>
+      <div className="px-8 py-7">
+        <p className="text-sm text-danger">{error instanceof ApiError ? error.message : "Failed to load sessions"}</p>
+      </div>
     );
   }
 
   return (
-    <div className="session-panel">
-      <div className="session-toolbar">
+    <div className="flex h-full flex-col">
+      {/* toolbar */}
+      <div className="flex items-center gap-3 border-b border-line px-6 py-3">
         <select
           value={activeSessionId ?? ""}
           onChange={(e) => setActiveSessionId(e.target.value ? Number(e.target.value) : null)}
+          className="field max-w-xs font-mono text-xs"
         >
           <option value="">Select a session…</option>
           {(sessions ?? []).map((s) => (
@@ -68,19 +82,45 @@ export function SessionPanel() {
             </option>
           ))}
         </select>
-        <button onClick={onNewSession} disabled={createSession.isPending}>
-          New session
+        <button onClick={onNewSession} disabled={createSession.isPending} className="btn btn-primary">
+          + New session
         </button>
-        {activeSessionId && <span className={`session-status ${status}`}>{status}</span>}
+        {activeSessionId && (
+          <span className={`pill ${STATUS_PILL[status] ?? "pill"} ml-auto`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {status}
+          </span>
+        )}
       </div>
 
       {activeSessionId ? (
         <>
-          <SessionTranscript events={events} />
-          <SessionComposer onSend={send} disabled={status !== "open"} />
+          <SessionTranscript events={events} thinking={streaming} />
+          <SessionComposer
+            onSend={send}
+            disabled={status !== "open" || streaming}
+            hint={
+              status !== "open"
+                ? "Reconnecting to the session…"
+                : streaming
+                  ? "Claude is responding…"
+                  : "Enter to send · Shift+Enter for a new line"
+            }
+          />
         </>
       ) : (
-        <p className="muted">Open a session or start a new one to chat with Claude.</p>
+        <div className="flex-1 px-8 py-7">
+          <EmptyState
+            icon="▤"
+            title="Start a conversation"
+            hint="Open an existing session above, or start a new one to chat with Claude in this project."
+            action={
+              <button onClick={onNewSession} disabled={createSession.isPending} className="btn btn-primary">
+                + New session
+              </button>
+            }
+          />
+        </div>
       )}
     </div>
   );

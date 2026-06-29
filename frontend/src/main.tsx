@@ -1,3 +1,5 @@
+import "@fontsource-variable/hanken-grotesk";
+import "@fontsource-variable/jetbrains-mono";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -13,7 +15,18 @@ createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
-      <Toaster position="bottom-right" />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "#181820",
+            color: "#ededf1",
+            border: "1px solid rgba(255,255,255,0.12)",
+            fontFamily: "'Hanken Grotesk Variable', sans-serif",
+            fontSize: "0.875rem",
+          },
+        }}
+      />
     </QueryClientProvider>
   </StrictMode>,
 );

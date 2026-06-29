@@ -187,6 +187,11 @@
         <p><strong>Change:</strong> Executed. All files built and typecheck-clean; git/azure routes mounted and verified live (the no-active-project path returns typed errors; <code>0003_azure</code> migrates). PAT-handling and live Azure PR flows are left <code>pending</code> in <code>test-results.json</code> — they need a real Azure DevOps PAT + repo and cannot run in CI.</p>
         <p><strong>Reason:</strong> Execution deviation: Azure constants (<code>AZURE_API_VERSION</code> = 7.1, base URL, keychain service name) live in <code>azureClient.ts</code>/<code>SecretService.ts</code> rather than the shared <code>config/constants.ts</code>, to respect the parallel-build file lane. Added typed git mappings (<code>GIT_NOT_A_REPO</code> → 422, <code>NO_ACTIVE_PROJECT</code> → 404) and a light status probe that distinguishes <code>connected</code> vs <code>expired</code> without masking non-auth failures.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 2 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Cockpit panel restyled to the new dark design system (Tailwind + Framer Motion): full-height layout, PR list/detail as cards with status pills, git history as compact mono rows, <code>.field</code> settings inputs, and the expired-PAT (401) state rendered as a clear reconnect <code>EmptyState</code> rather than a raw error string. Added <code>Cockpit/prStatus.ts</code> helpers for the status-pill mapping.</p>
+        <p><strong>Reason:</strong> User QA: whole-app UI redesign. Presentational only — no API/hook/data-flow changes; PAT stays write-only and never crosses to the frontend.</p>
+      </article>
     </section>
   </main>
 </body>
