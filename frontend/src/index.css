@@ -38,13 +38,10 @@
     font-family: var(--font-sans);
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
-    /* atmosphere: a faint warm glow + grid, kept subtle for an all-day tool */
+    /* atmosphere: faint warm glows only (grid removed per preference) */
     background-image:
       radial-gradient(900px 500px at 12% -8%, rgba(255, 159, 67, 0.08), transparent 60%),
-      radial-gradient(700px 600px at 100% 0%, rgba(62, 207, 142, 0.05), transparent 55%),
-      linear-gradient(var(--color-line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--color-line) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px;
+      radial-gradient(700px 600px at 100% 0%, rgba(62, 207, 142, 0.05), transparent 55%);
     background-attachment: fixed;
   }
 
