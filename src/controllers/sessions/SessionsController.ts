@@ -3,6 +3,8 @@ import { childLogger } from "../../lib/logger";
 import { ProjectModel } from "../../models/ProjectModel";
 import { SessionMessageModel } from "../../models/SessionMessageModel";
 import { SessionModel } from "../../models/SessionModel";
+import { ClaudeProcessService } from "../../services/ClaudeProcessService";
+import { ConfigInjectionService } from "../../services/ConfigInjectionService";
 import { handleSessionError, ok } from "./feature-utils/controllerResponses";
 import { SessionError } from "./feature-utils/SessionError";
 
@@ -28,6 +30,18 @@ export class SessionsController {
         throw new SessionError("PROJECT_NOT_FOUND", "Project not found.", { projectId });
       }
 
+      // Starting a session in a project no longer requires making it the active
+      // project first, so ensure the shared config is injected here. Best-effort:
+      // if the project has its own config (CONFIG_INJECTION_CONFLICT), its config
+      // wins and we proceed rather than blocking the session.
+      try {
+        await ConfigInjectionService.inject(project.path);
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        if (code !== "CONFIG_INJECTION_CONFLICT") throw err;
+        log.warn({ projectId, path: project.path }, "Project has its own config; skipped injection");
+      }
+
       const session = await SessionModel.create(projectId, title);
       log.info({ sessionId: session.id, projectId }, "Session created");
       return ok(res, { session }, 201);
@@ -36,15 +50,27 @@ export class SessionsController {
     }
   }
 
-  /** GET /api/sessions?projectId= — list sessions for a project. */
+  /**
+   * GET /api/sessions[?projectId=] — list sessions (all projects, or one), each
+   * annotated with `isLive` so the sidebar can show a running indicator.
+   */
   static async list(req: Request, res: Response): Promise<Response> {
     try {
-      const projectId = Number(req.query.projectId);
-      if (!Number.isInteger(projectId) || projectId <= 0) {
-        throw new SessionError("SESSION_INPUT_INVALID", "A valid projectId query param is required.");
+      const hasFilter = req.query.projectId !== undefined;
+      let sessions;
+      if (hasFilter) {
+        const projectId = Number(req.query.projectId);
+        if (!Number.isInteger(projectId) || projectId <= 0) {
+          throw new SessionError("SESSION_INPUT_INVALID", "A valid projectId query param is required.");
+        }
+        sessions = await SessionModel.listByProject(projectId);
+      } else {
+        sessions = await SessionModel.listAll();
       }
-      const sessions = await SessionModel.listByProject(projectId);
-      return ok(res, { sessions });
+
+      const liveIds = new Set(ClaudeProcessService.getLiveSessionIds());
+      const annotated = sessions.map((s) => ({ ...s, isLive: liveIds.has(s.id) }));
+      return ok(res, { sessions: annotated });
     } catch (error) {
       return handleSessionError(res, error);
     }

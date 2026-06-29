@@ -37,6 +37,11 @@ export class SessionModel extends BaseModel {
     return this.table(trx).where({ project_id: projectId }).orderBy("created_at", "desc");
   }
 
+  /** Every session across all projects, newest first (for the grouped sidebar). */
+  static async listAll(trx?: Knex.Transaction): Promise<ISession[]> {
+    return this.table(trx).orderBy("created_at", "desc");
+  }
+
   static async setStatus(
     id: number,
     status: SessionStatus,

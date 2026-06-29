@@ -16,6 +16,8 @@ export interface Session {
   status: SessionStatus;
   created_at: string;
   updated_at: string;
+  /** True when the session currently has a live CLI process (running indicator). */
+  isLive?: boolean;
 }
 
 export type SessionRole = "user" | "assistant" | "system";
@@ -36,6 +38,12 @@ export async function createSession(projectId: number, title?: string): Promise<
 
 export async function getSessions(projectId: number): Promise<Session[]> {
   const data = await apiGet<{ sessions: Session[] }>(`/api/sessions?projectId=${projectId}`);
+  return data.sessions;
+}
+
+/** Every session across all projects (for the grouped sidebar). */
+export async function getAllSessions(): Promise<Session[]> {
+  const data = await apiGet<{ sessions: Session[] }>("/api/sessions");
   return data.sessions;
 }
 

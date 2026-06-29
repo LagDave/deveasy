@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createSession,
+  getAllSessions,
   getSessionMessages,
   getSessions,
   type Session,
@@ -13,9 +14,19 @@ import {
  * lib/queryClient barrel).
  */
 export const SESSION_QUERY_KEYS = {
+  all: ["sessions", "all"] as const,
   list: (projectId: number) => ["sessions", "list", projectId] as const,
   messages: (sessionId: number) => ["sessions", "messages", sessionId] as const,
 };
+
+/** Live-polled so the running indicators refresh without a manual reload. */
+export function useAllSessions() {
+  return useQuery({
+    queryKey: SESSION_QUERY_KEYS.all,
+    queryFn: getAllSessions,
+    refetchInterval: 4000,
+  });
+}
 
 export function useSessions(projectId: number | null | undefined) {
   return useQuery({
@@ -40,6 +51,7 @@ export function useCreateSession() {
     mutationFn: ({ projectId, title }) => createSession(projectId, title),
     onSuccess: (session) => {
       void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.list(session.project_id) });
+      void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.all });
     },
   });
 }

@@ -181,6 +181,11 @@ export class ClaudeProcessService {
     return this.live.has(sessionId);
   }
 
+  /** Session ids that currently have a live CLI process (for the "running" indicator). */
+  static getLiveSessionIds(): number[] {
+    return [...this.live.keys()];
+  }
+
   // --- internals ---
 
   /** Build the child env with the API key scrubbed (subscription auth, critical). */

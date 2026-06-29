@@ -193,6 +193,12 @@
         <p><strong>Change:</strong> Chat UI rebuilt for usability. The transcript previously dumped every raw stream-json event (including <code>init</code> and <code>hook_started</code>/<code>hook_progress</code> system noise) as JSON, burying the conversation and pushing the composer off-screen. Now: a classifier (<code>sessionEvents.ts</code>) flattens events into clean render items; assistant/user turns render as message bubbles, tool calls as collapsible cards, and all system/hook events are quarantined behind a single collapsible "N system events" strip. The composer is pinned to the bottom with auto-grow + Enter-to-send, the transcript scrolls and auto-follows, and a "Claude is working" indicator shows while streaming (new <code>streaming</code> flag on <code>useSession</code>, cleared on the <code>result</code> event).</p>
         <p><strong>Reason:</strong> User QA: "not usable" — the raw-JSON flood made the chat unreadable and the input appeared to do nothing because it was below the fold.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 3 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Sessions reorganized into a project-grouped left rail (replacing the dropdown). Each session shows a running indicator — a pulsing dot driven by <code>isLive</code>, derived from the CLI process registry (<code>ClaudeProcessService.getLiveSessionIds()</code>) and polled every 4s via a new <code>useAllSessions</code> query. A session is now started by hitting "+" next to any project, decoupled from the global active-project selection. New backend: <code>GET /api/sessions</code> lists across all projects with <code>isLive</code> annotation (<code>SessionModel.listAll</code>); session create now injects the shared config into the chosen project (best-effort — tolerates <code>CONFIG_INJECTION_CONFLICT</code> so a project's own config wins) so a session no longer requires making the project active first.</p>
+        <p><strong>Reason:</strong> User request: list sessions in a sidebar grouped by project, show a running indicator, and start sessions by selecting a project rather than switching the active project.</p>
+        <p><strong>Updated Done criteria:</strong> Verified live — session create injects config and persists; <code>GET /api/sessions</code> returns all projects' sessions with <code>isLive</code>.</p>
+      </article>
     </section>
   </main>
 </body>
