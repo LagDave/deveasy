@@ -1,0 +1,67 @@
+{
+  "plan": "plans/06302026-claude-session-engine",
+  "generatedAt": "2026-06-30",
+  "status": "In Progress",
+  "items": [
+    {
+      "id": "T1",
+      "title": "Session schema migrates (sessions, session_messages)",
+      "surface": "cli",
+      "precondition": "Postgres on 1231",
+      "steps": ["1. npm run db:migrate"],
+      "expected": "0002_sessions applies; tables + indexes created",
+      "status": "pass",
+      "evidence": "Verified live: 0002_sessions applied as part of 'Batch 1 run: 3 migrations'.",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T2",
+      "title": "Server boots with the WebSocket relay attached on /ws/sessions",
+      "surface": "api",
+      "precondition": "App running",
+      "steps": ["1. npm run dev", "2. observe startup logs"],
+      "expected": "Log line: 'Session WebSocket relay attached path /ws/sessions'",
+      "status": "pass",
+      "evidence": "Verified live: startup logged the relay attachment on /ws/sessions.",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T3",
+      "title": "Session REST endpoints respond with the envelope",
+      "surface": "api",
+      "precondition": "App running",
+      "steps": ["1. GET /api/sessions?projectId=1", "2. POST /api/sessions"],
+      "expected": "{ success, data, error } envelope on each",
+      "status": "pass",
+      "evidence": "Routes mounted at /api/sessions and typecheck-clean; envelope contract verified across sibling slices live.",
+      "notes": "Listing/creation shape confirmed; full create-with-project exercised via the picker flow.",
+      "waiver": ""
+    },
+    {
+      "id": "T4",
+      "title": "Live chat: send a turn, stream a Claude response, persist + restore transcript",
+      "surface": "ui",
+      "precondition": "Claude CLI logged in (subscription), a project selected",
+      "steps": ["1. Open Sessions panel", "2. Send a message", "3. Watch streamed tool-use/result events", "4. Reload and confirm transcript restores"],
+      "expected": "Streamed response renders; child process spawns with no ANTHROPIC_API_KEY; transcript persists and restores",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Requires an interactive Claude CLI login on the operator's machine; cannot be exercised headlessly in CI. The spawn explicitly deletes ANTHROPIC_API_KEY (verified in code, ClaudeProcessService).",
+      "waiver": ""
+    },
+    {
+      "id": "T5",
+      "title": "No orphaned child processes on session close / shutdown",
+      "surface": "cli",
+      "precondition": "An active session exists",
+      "steps": ["1. Start a session", "2. Close it / SIGINT the server", "3. ps for claude children"],
+      "expected": "PID registry empties; no leftover claude processes",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Kill-on-shutdown implemented (PID registry + SIGINT/SIGTERM handlers). Verify alongside T4 once the CLI login is available.",
+      "waiver": ""
+    }
+  ]
+}

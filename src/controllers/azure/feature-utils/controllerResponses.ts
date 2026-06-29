@@ -1,0 +1,39 @@
+import type { Response } from "express";
+import { logger } from "../../../lib/logger";
+import { AzureError } from "./AzureError";
+
+/**
+ * Thin response builders — the two-shape envelope, never hand-rolled per handler
+ * (Constitution §8.1, §8.2). Copied shape from projects/feature-utils.
+ */
+export function ok(res: Response, data: unknown, status = 200): Response {
+  return res.status(status).json({ success: true, data, error: null });
+}
+
+function fail(
+  res: Response,
+  status: number,
+  code: string,
+  message: string,
+  details: unknown = null,
+): Response {
+  return res.status(status).json({ success: false, data: null, error: { code, message, details } });
+}
+
+/**
+ * Map an Azure domain error to an HTTP status in one place (Constitution §8.3, §8.4).
+ * A missing/expired PAT (AZURE_RECONNECT_REQUIRED) → 401 so the UI can prompt a
+ * reconnect, mirroring handleProjectError.
+ */
+export function handleAzureError(res: Response, error: unknown): Response {
+  if (error instanceof AzureError) {
+    let status = 400;
+    if (error.code.includes("RECONNECT_REQUIRED")) status = 401;
+    if (error.code.includes("NOT_FOUND") || error.code.includes("NOT_CONNECTED")) status = 404;
+    if (error.code.includes("INPUT_INVALID")) status = 400;
+    return fail(res, status, error.code, error.message, error.details);
+  }
+  // Never leak internals to the client (§3.4); log full detail internally.
+  logger.error({ err: error }, "Unhandled azure error");
+  return fail(res, 500, "AZURE_ERROR", "Azure operation failed.");
+}

@@ -38,11 +38,11 @@
     <header class="spec-hero">
       <div class="hero-topline">
         <p class="eyebrow">DevEasy Plan Spec · 4 of 4</p>
-        <span class="status-pill status-pending">Pending Execution</span>
+        <span class="status-pill">In Progress</span>
       </div>
       <h1>Agent &amp; Skill Manager</h1>
       <dl class="meta-grid">
-        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div class="status-card"><dt>Status</dt><dd>In Progress</dd></div>
         <div><dt>Plan Folder</dt><dd>plans/06302026-agent-skill-manager</dd></div>
         <div><dt>Size</dt><dd>Medium</dd></div>
         <div><dt>Risk</dt><dd>Level 3</dd></div>
@@ -175,6 +175,15 @@
         <li><input type="checkbox" disabled> No auto-push (local commit only)</li>
         <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> zero errors; <code>npm run check:conventions --strict</code> no new violations</li>
       </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Executed. All files built and typecheck-clean; the list endpoint is verified live (<code>GET /api/agent-config</code> returns agents/skills/CLAUDE.md). Create/edit/delete + commit and the path-guard rejection are left <code>pending</code> in <code>test-results.json</code> — quick to verify via the UI on the operator machine (deferred to avoid stray commits into the repo mid-integration).</p>
+        <p><strong>Reason:</strong> Execution deviation: <code>AgentConfigService.ts</code> is 324 lines — just over the ~300 single-purpose target but one cohesive responsibility and far under the 800 hard ceiling (§2.4 permits this). The create flow uses a <code>window.prompt</code> for the new file name (minimal v1; an inline form is a fast-follow). <code>GitCommitService</code> treats "nothing to commit" as a logged no-op so an idempotent re-save of unchanged content does not error (§3.2 respected — logged, not swallowed silently).</p>
+      </article>
     </section>
   </main>
 </body>

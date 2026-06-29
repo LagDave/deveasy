@@ -7,6 +7,7 @@ import { REPO_ROOT } from "./config/constants";
 import { destroyDb } from "./database/connection";
 import { logger } from "./lib/logger";
 import { registerRoutes } from "./routes";
+import { attachSessionWebSocket } from "./ws/sessionWebSocket";
 
 /**
  * DevEasy entry point. Validates config at startup (fail fast, §5.6), serves the
@@ -43,9 +44,8 @@ function main(): void {
     logger.info({ port: config.port }, "DevEasy listening");
   });
 
-  // <deveasy:websockets> — feature slices needing the live server (Spec 2 session
-  // relay) attach here during integration: attachSessionWebSocket(server).
-  void server;
+  // <deveasy:websockets> — feature slices needing the live server attach here.
+  attachSessionWebSocket(server);
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, "Shutting down");

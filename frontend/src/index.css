@@ -23,7 +23,10 @@ body {
 .brand { font-size: 1.3rem; margin: 0; letter-spacing: -0.02em; }
 .sidebar nav { display: flex; flex-direction: column; gap: 4px; }
 .nav-item { text-decoration: none; color: var(--muted); padding: 8px 10px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; }
+/* nav items rendered as <button> reset the default filled-button look */
+button.nav-item { border: none; background: none; text-align: left; cursor: pointer; }
 .nav-item.active { color: var(--ink); background: var(--soft); }
+button.nav-item.active { background: var(--soft); }
 .active-project { margin-top: auto; border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
 
 .panel { padding: 32px 36px; }

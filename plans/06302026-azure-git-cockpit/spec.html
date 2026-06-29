@@ -38,11 +38,11 @@
     <header class="spec-hero">
       <div class="hero-topline">
         <p class="eyebrow">DevEasy Plan Spec · 3 of 4</p>
-        <span class="status-pill status-pending">Pending Execution</span>
+        <span class="status-pill">In Progress</span>
       </div>
       <h1>Azure / Git Cockpit</h1>
       <dl class="meta-grid">
-        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div class="status-card"><dt>Status</dt><dd>In Progress</dd></div>
         <div><dt>Plan Folder</dt><dd>plans/06302026-azure-git-cockpit</dd></div>
         <div><dt>Size</dt><dd>Large</dd></div>
         <div><dt>Risk</dt><dd>Level 3</dd></div>
@@ -178,6 +178,15 @@
         <li><input type="checkbox" disabled> Expired/missing PAT surfaces a reconnect prompt (401), not a crash</li>
         <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> zero errors; <code>npm run check:conventions --strict</code> no new violations; model tests pass</li>
       </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Executed. All files built and typecheck-clean; git/azure routes mounted and verified live (the no-active-project path returns typed errors; <code>0003_azure</code> migrates). PAT-handling and live Azure PR flows are left <code>pending</code> in <code>test-results.json</code> — they need a real Azure DevOps PAT + repo and cannot run in CI.</p>
+        <p><strong>Reason:</strong> Execution deviation: Azure constants (<code>AZURE_API_VERSION</code> = 7.1, base URL, keychain service name) live in <code>azureClient.ts</code>/<code>SecretService.ts</code> rather than the shared <code>config/constants.ts</code>, to respect the parallel-build file lane. Added typed git mappings (<code>GIT_NOT_A_REPO</code> → 422, <code>NO_ACTIVE_PROJECT</code> → 404) and a light status probe that distinguishes <code>connected</code> vs <code>expired</code> without masking non-auth failures.</p>
+      </article>
     </section>
   </main>
 </body>

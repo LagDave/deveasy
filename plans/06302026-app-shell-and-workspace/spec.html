@@ -38,11 +38,11 @@
     <header class="spec-hero">
       <div class="hero-topline">
         <p class="eyebrow">DevEasy Plan Spec · 1 of 4 (foundation)</p>
-        <span class="status-pill status-pending">Pending Execution</span>
+        <span class="status-pill">Completed</span>
       </div>
       <h1>App Shell &amp; Project Workspace</h1>
       <dl class="meta-grid">
-        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div class="status-card"><dt>Status</dt><dd>Completed</dd></div>
         <div><dt>Plan Folder</dt><dd>plans/06302026-app-shell-and-workspace</dd></div>
         <div><dt>Size</dt><dd>Large</dd></div>
         <div><dt>Risk</dt><dd>Level 3</dd></div>
@@ -190,6 +190,16 @@
         <li><input type="checkbox" disabled> Manual: selecting a project creates verified symlinks + managed <code>.gitignore</code> block; pre-existing config warns instead of overwriting</li>
         <li><input type="checkbox" disabled> <code>projects/</code> is gitignored in the DevEasy repo</li>
       </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Executed. Foundation built and verified end-to-end: app boots on :1234, Postgres on :1231, migrations apply, project scan/select works, and config injection creates the symlinks + managed <code>.gitignore</code> block. Conflict guard confirmed (a project with its own <code>CLAUDE.md</code> is not overwritten).</p>
+        <p><strong>Reason:</strong> Execution deviation: <code>knexfile.ts</code> removed from the <code>tsconfig.json</code> <code>include</code> (it lives outside <code>rootDir: src</code> and is run via the tsx loader at runtime, so it does not need to be in the build program). Nav items rendered as <code>&lt;button&gt;</code> with CSS resets rather than anchors, to drive in-app section switching without a router.</p>
+        <p><strong>Note:</strong> The Constitution's <code>npm run check:conventions</code> script is not ported to this greenfield repo yet; the mechanized checks (§9.1, §7.4, §17.2, §14.2, size ceiling) were run as equivalent greps and all passed. Porting the script is a fast-follow.</p>
+      </article>
     </section>
   </main>
 </body>

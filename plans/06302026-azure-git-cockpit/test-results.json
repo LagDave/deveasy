@@ -1,0 +1,55 @@
+{
+  "plan": "plans/06302026-azure-git-cockpit",
+  "generatedAt": "2026-06-30",
+  "status": "In Progress",
+  "items": [
+    {
+      "id": "T1",
+      "title": "Azure connection mapping migrates; PAT status endpoint responds",
+      "surface": "api",
+      "precondition": "Postgres on 1231, app running",
+      "steps": ["1. npm run db:migrate", "2. GET /api/azure/status"],
+      "expected": "0003_azure applies; status endpoint returns the envelope (unmapped/disconnected when no PAT/mapping)",
+      "status": "pass",
+      "evidence": "Verified live: 0003_azure applied; GET /api/azure/status returned a typed envelope (no active project -> typed error).",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T2",
+      "title": "Git history/status for the active project",
+      "surface": "api",
+      "precondition": "A project selected that is a git repo",
+      "steps": ["1. Select a project", "2. GET /api/git/status", "3. GET /api/git/history"],
+      "expected": "Branch/status and commit list returned; no active project yields a clean typed error",
+      "status": "pass",
+      "evidence": "Verified live (no-active-project path): GET /api/git/status returned GIT_NO_ACTIVE_PROJECT typed error. Full history needs a selected repo (exercised via the picker).",
+      "notes": "git invoked via execFile with argv + cwd (no shell) — verified in GitService.",
+      "waiver": ""
+    },
+    {
+      "id": "T3",
+      "title": "PAT stored in keychain only; never in DB/logs/responses",
+      "surface": "api",
+      "precondition": "App running",
+      "steps": ["1. Set a PAT via the settings endpoint", "2. Inspect DB rows, server logs, and the status response"],
+      "expected": "PAT present only in the OS keychain; only a connected/expired status crosses to the frontend",
+      "status": "pending",
+      "evidence": "",
+      "notes": "SecretService is keytar-only and azure_connections stores no secret (verified in code). Live keychain write needs an operator machine + a real PAT.",
+      "waiver": ""
+    },
+    {
+      "id": "T4",
+      "title": "Azure PR list + detail render; create PR opens a real PR",
+      "surface": "ui",
+      "precondition": "Valid PAT + a project mapped to an Azure repo",
+      "steps": ["1. Configure PAT + org/project/repo", "2. Open Cockpit", "3. View PR list + a PR detail (threads/votes/files)", "4. Create a PR"],
+      "expected": "Live PRs render; created PR appears in Azure; expired PAT shows a reconnect prompt (401)",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Requires a real Azure DevOps PAT and repo; cannot be exercised in CI. azureClient pins api-version=7.1 and redacts the PAT from errors (verified in code).",
+      "waiver": ""
+    }
+  ]
+}

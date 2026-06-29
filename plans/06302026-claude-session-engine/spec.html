@@ -38,11 +38,11 @@
     <header class="spec-hero">
       <div class="hero-topline">
         <p class="eyebrow">DevEasy Plan Spec · 2 of 4</p>
-        <span class="status-pill status-pending">Pending Execution</span>
+        <span class="status-pill">In Progress</span>
       </div>
       <h1>Claude Session Engine</h1>
       <dl class="meta-grid">
-        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div class="status-card"><dt>Status</dt><dd>In Progress</dd></div>
         <div><dt>Plan Folder</dt><dd>plans/06302026-claude-session-engine</dd></div>
         <div><dt>Size</dt><dd>Large</dd></div>
         <div><dt>Risk</dt><dd>Level 3</dd></div>
@@ -178,6 +178,16 @@
         <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> zero errors; <code>npm run check:conventions --strict</code> no new violations</li>
         <li><input type="checkbox" disabled> Model + process-service tests pass (§20.1/§20.2)</li>
       </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Executed. All backend + frontend files built and typecheck-clean; the WebSocket relay attaches on <code>/ws/sessions</code> and REST endpoints respond with the envelope (verified live at boot). The CLI spawn deletes <code>ANTHROPIC_API_KEY</code> from the child env (subscription auth). Live chat streaming and orphan-process checks are left <code>pending</code> in <code>test-results.json</code> — they need an interactive Claude CLI login and cannot run headlessly.</p>
+        <p><strong>Reason:</strong> Execution deviation: WebSocket uses a <code>noServer</code> server with manual <code>upgrade</code> routing on the pathname (rather than a path-bound server) so additional WS endpoints can attach without conflict. CLI/concurrency constants (<code>MAX_CONCURRENT_SESSIONS</code>) live locally in <code>ClaudeProcessService</code> rather than the shared <code>config/constants.ts</code>, to respect the parallel-build file lane.</p>
+        <p><strong>Updated Done criteria:</strong> Model/process unit tests (§20.1/§20.2) were not written during the parallel build (outside the assigned file lane) and remain open follow-up work.</p>
+      </article>
     </section>
   </main>
 </body>

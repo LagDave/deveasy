@@ -1,0 +1,67 @@
+{
+  "plan": "plans/06302026-app-shell-and-workspace",
+  "generatedAt": "2026-06-30",
+  "status": "Passed",
+  "items": [
+    {
+      "id": "T1",
+      "title": "App boots: Postgres up on 1231, server on 1234, /api/health ok",
+      "surface": "api",
+      "precondition": "docker compose up -d; npm install; .env present",
+      "steps": ["1. docker compose up -d", "2. npm run dev", "3. curl http://localhost:1234/api/health"],
+      "expected": "{ success: true, data: { status: 'ok' } }",
+      "status": "pass",
+      "evidence": "Verified live during execution: health returned ok; server logged 'DevEasy listening port 1234'.",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T2",
+      "title": "Migrations create projects + app_settings",
+      "surface": "cli",
+      "precondition": "Postgres reachable on 1231",
+      "steps": ["1. npm run db:migrate"],
+      "expected": "Batch 1 runs 3 migrations with no error",
+      "status": "pass",
+      "evidence": "Verified live: 'Batch 1 run: 3 migrations' (0001_init, 0002_sessions, 0003_azure).",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T3",
+      "title": "Project picker scans projects/ and registers git repos",
+      "surface": "api",
+      "precondition": "A git repo exists under projects/",
+      "steps": ["1. Drop a git clone into projects/", "2. GET /api/projects"],
+      "expected": "The clone appears in the projects array with id/name/path",
+      "status": "pass",
+      "evidence": "Verified live with projects/demo-app: GET /api/projects returned it (id 1).",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T4",
+      "title": "Selecting a project injects shared config via symlink + managed .gitignore",
+      "surface": "api",
+      "precondition": "A registered project exists",
+      "steps": ["1. POST /api/projects/active {projectId}", "2. ls -la projects/<name>", "3. cat projects/<name>/.gitignore"],
+      "expected": "CLAUDE.md, .claude/skills, .claude/agents symlinks point at the DevEasy root config; managed .gitignore block present",
+      "status": "pass",
+      "evidence": "Verified live: all three symlinks resolved to the shared config; managed sentinel block written to .gitignore.",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T5",
+      "title": "Pre-existing project config triggers a conflict, not an overwrite",
+      "surface": "api",
+      "precondition": "A project that already has its own real CLAUDE.md or .claude/",
+      "steps": ["1. POST /api/projects/active for that project"],
+      "expected": "CONFIG_INJECTION_CONFLICT error; the project's own file is untouched",
+      "status": "pass",
+      "evidence": "Verified live with projects/own-config (own CLAUDE.md): returned CONFIG_INJECTION_CONFLICT and the project's CLAUDE.md was untouched.",
+      "notes": "",
+      "waiver": ""
+    }
+  ]
+}

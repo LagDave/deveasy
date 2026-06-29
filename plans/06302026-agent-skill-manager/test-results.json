@@ -1,0 +1,55 @@
+{
+  "plan": "plans/06302026-agent-skill-manager",
+  "generatedAt": "2026-06-30",
+  "status": "In Progress",
+  "items": [
+    {
+      "id": "T1",
+      "title": "List shared config (agents, skills, CLAUDE.md)",
+      "surface": "api",
+      "precondition": "App running",
+      "steps": ["1. GET /api/agent-config"],
+      "expected": "Envelope with agents[], skills[], and the CLAUDE.md entry",
+      "status": "pass",
+      "evidence": "Verified live: GET /api/agent-config returned { agents: [], skills: [], claudemd: { type: 'claudemd', name: 'CLAUDE.md' } }.",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T2",
+      "title": "Create/edit a subagent and a skill; save writes valid frontmatter",
+      "surface": "ui",
+      "precondition": "App running, Agents panel open",
+      "steps": ["1. Create a subagent (name + description + body)", "2. Save", "3. Create a skill (folder + SKILL.md)", "4. Edit and re-save"],
+      "expected": "Files written under .claude/agents and .claude/skills with valid YAML frontmatter; re-read round-trips",
+      "status": "pending",
+      "evidence": "",
+      "notes": "gray-matter parse/serialize + required-field validation implemented (verified in code). Exercise via the UI on the operator machine.",
+      "waiver": ""
+    },
+    {
+      "id": "T3",
+      "title": "Each save produces one commit scoped to the file, authored by the profile",
+      "surface": "cli",
+      "precondition": "A save performed via T2",
+      "steps": ["1. After a save, run git log -1 --stat in the DevEasy repo"],
+      "expected": "One commit naming the changed file, authored 'LagDave <laggy80@gmail.com>'; no push",
+      "status": "pending",
+      "evidence": "",
+      "notes": "GitCommitService stages only the changed file and commits with -c user.name/-c user.email; no push/amend/force (verified in code). Verify alongside T2.",
+      "waiver": ""
+    },
+    {
+      "id": "T4",
+      "title": "Path guard rejects writes outside the config tree",
+      "surface": "api",
+      "precondition": "App running",
+      "steps": ["1. PUT /api/agent-config/agent/..%2f..%2fevil with any body"],
+      "expected": "Rejected with a typed error; nothing written outside .claude/agents|skills or CLAUDE.md",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Path guard implemented (rejects names with / \\ .. and resolves inside the whitelisted dirs). Quick to verify with a crafted request.",
+      "waiver": ""
+    }
+  ]
+}
