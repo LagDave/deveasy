@@ -8,10 +8,14 @@ import { fadeUp, staggerContainer } from "../ui/motion";
 const errorMessage = (err: unknown): string =>
   err instanceof ApiError ? err.message : "Could not read git state";
 
-/** Local git state for the active project: branch, working-tree status, and history. */
-export function GitPanel() {
-  const { data: history, isLoading: historyLoading, error: historyError } = useGitHistory();
-  const { data: status, isLoading: statusLoading, error: statusError } = useGitStatus();
+interface Props {
+  projectId: number | null;
+}
+
+/** Local git state for the chosen project: branch, working-tree status, and history. */
+export function GitPanel({ projectId }: Props) {
+  const { data: history, isLoading: historyLoading, error: historyError } = useGitHistory(projectId);
+  const { data: status, isLoading: statusLoading, error: statusError } = useGitStatus(projectId);
 
   return (
     <section className="surface px-6 py-5">

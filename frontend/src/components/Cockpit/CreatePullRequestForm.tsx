@@ -5,13 +5,14 @@ import { toast } from "../../lib/toast";
 import { Icon } from "../ui/Icon";
 
 interface Props {
+  projectId: number | null;
   disabled: boolean;
   onReconnect: () => void;
 }
 
 /** Create-PR form: source/target branch, title, description. Read+create only. */
-export function CreatePullRequestForm({ disabled, onReconnect }: Props) {
-  const create = useCreateAzurePullRequest();
+export function CreatePullRequestForm({ projectId, disabled, onReconnect }: Props) {
+  const create = useCreateAzurePullRequest(projectId);
   const [sourceRefName, setSourceRefName] = useState("");
   const [targetRefName, setTargetRefName] = useState("main");
   const [title, setTitle] = useState("");

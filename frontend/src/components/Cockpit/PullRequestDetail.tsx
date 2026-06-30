@@ -7,6 +7,7 @@ import { Icon } from "../ui/Icon";
 import { prStatusPill, shortRef } from "./prStatus";
 
 interface Props {
+  projectId: number | null;
   pullRequestId: number | null;
 }
 
@@ -20,8 +21,8 @@ function voteMeta(vote: AzureReviewerVote["vote"]): { label: string; pill: strin
 }
 
 /** Full detail for a selected PR: status, reviewer votes, threads, changed files. */
-export function PullRequestDetail({ pullRequestId }: Props) {
-  const { data: pr, isLoading, error } = useAzurePullRequestDetail(pullRequestId);
+export function PullRequestDetail({ projectId, pullRequestId }: Props) {
+  const { data: pr, isLoading, error } = useAzurePullRequestDetail(projectId, pullRequestId);
 
   if (pullRequestId === null) {
     return (

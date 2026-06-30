@@ -5,14 +5,22 @@ import { getGitHistory, getGitStatus } from "../../api/git";
 
 /** Query keys defined locally to avoid editing the shared queryClient (slice lane). */
 const GIT_KEYS = {
-  history: ["git", "history"] as const,
-  status: ["git", "status"] as const,
+  history: (projectId: number | null) => ["git", "history", projectId] as const,
+  status: (projectId: number | null) => ["git", "status", projectId] as const,
 };
 
-export function useGitHistory() {
-  return useQuery({ queryKey: GIT_KEYS.history, queryFn: getGitHistory });
+export function useGitHistory(projectId: number | null) {
+  return useQuery({
+    queryKey: GIT_KEYS.history(projectId),
+    queryFn: () => getGitHistory(projectId as number),
+    enabled: Boolean(projectId),
+  });
 }
 
-export function useGitStatus() {
-  return useQuery({ queryKey: GIT_KEYS.status, queryFn: getGitStatus });
+export function useGitStatus(projectId: number | null) {
+  return useQuery({
+    queryKey: GIT_KEYS.status(projectId),
+    queryFn: () => getGitStatus(projectId as number),
+    enabled: Boolean(projectId),
+  });
 }

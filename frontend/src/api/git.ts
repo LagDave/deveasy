@@ -27,10 +27,10 @@ export interface GitHistory {
   commits: GitCommit[];
 }
 
-export async function getGitHistory(): Promise<GitHistory> {
-  return apiGet<GitHistory>("/api/git/history");
+export async function getGitHistory(projectId: number): Promise<GitHistory> {
+  return apiGet<GitHistory>(`/api/git/history?projectId=${projectId}`);
 }
 
-export async function getGitStatus(): Promise<GitStatus> {
-  return apiGet<GitStatus>("/api/git/status");
+export async function getGitStatus(projectId: number): Promise<GitStatus> {
+  return apiGet<GitStatus>(`/api/git/status?projectId=${projectId}`);
 }

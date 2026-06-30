@@ -14,7 +14,6 @@ import {
   type IAzureConnection,
   type IAzureConnectionInput,
 } from "../../../models/AzureConnectionModel";
-import { ProjectModel } from "../../../models/ProjectModel";
 import { SecretService } from "../../../services/SecretService";
 import { AZURE_RECONNECT_REQUIRED, AzureError } from "../feature-utils/AzureError";
 
@@ -37,12 +36,12 @@ export interface AzureConnectionState {
  * AzureTarget passed into the client; it is never logged or returned to a caller.
  */
 export class AzurePullRequestService {
-  private static async getActiveProjectId(): Promise<number> {
-    const id = await ProjectModel.getActiveProjectId();
-    if (!id) {
-      throw new AzureError("AZURE_NO_ACTIVE_PROJECT_NOT_FOUND", "No active project is selected.");
+  /** Validate a caller-supplied projectId, or raise a typed error. */
+  private static requireProjectId(projectId: number): number {
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      throw new AzureError("AZURE_NO_ACTIVE_PROJECT_NOT_FOUND", "A valid projectId is required.");
     }
-    return id;
+    return projectId;
   }
 
   private static async getConnectionOrThrow(projectId: number): Promise<IAzureConnection> {
@@ -86,7 +85,10 @@ export class AzurePullRequestService {
   }
 
   /** Persist the PAT (keychain) + mapping (DB) and return a connected status. */
-  static async connect(input: IAzureConnectionInput & { pat: string }): Promise<AzureConnectionState> {
+  static async connect(
+    projectId: number,
+    input: IAzureConnectionInput & { pat: string },
+  ): Promise<AzureConnectionState> {
     const org = input.organization?.trim();
     const project = input.project?.trim();
     const repository = input.repository?.trim();
@@ -98,22 +100,22 @@ export class AzurePullRequestService {
       );
     }
 
-    const projectId = await AzurePullRequestService.getActiveProjectId();
+    const id = AzurePullRequestService.requireProjectId(projectId);
     await SecretService.setAzurePat(org, pat);
-    await AzureConnectionModel.upsertForProject(projectId, {
+    await AzureConnectionModel.upsertForProject(id, {
       organization: org,
       project,
       repository,
     });
-    log.info({ projectId, organization: org }, "Azure connection saved");
+    log.info({ projectId: id, organization: org }, "Azure connection saved");
 
-    return AzurePullRequestService.getStatus();
+    return AzurePullRequestService.getStatus(id);
   }
 
   /** Connected/expired/disconnected/unmapped status — never exposes the PAT. */
-  static async getStatus(): Promise<AzureConnectionState> {
-    const projectId = await AzurePullRequestService.getActiveProjectId();
-    const conn = await AzureConnectionModel.findByProjectId(projectId);
+  static async getStatus(projectId: number): Promise<AzureConnectionState> {
+    const id = AzurePullRequestService.requireProjectId(projectId);
+    const conn = await AzureConnectionModel.findByProjectId(id);
     if (!conn) {
       return { status: "unmapped", organization: null, project: null, repository: null };
     }
@@ -137,9 +139,9 @@ export class AzurePullRequestService {
     }
   }
 
-  static async listPullRequests(): Promise<AzurePullRequestRef[]> {
-    const projectId = await AzurePullRequestService.getActiveProjectId();
-    const conn = await AzurePullRequestService.getConnectionOrThrow(projectId);
+  static async listPullRequests(projectId: number): Promise<AzurePullRequestRef[]> {
+    const id = AzurePullRequestService.requireProjectId(projectId);
+    const conn = await AzurePullRequestService.getConnectionOrThrow(id);
     const target = await AzurePullRequestService.buildTarget(conn);
     try {
       return await listPullRequests(target);
@@ -148,12 +150,15 @@ export class AzurePullRequestService {
     }
   }
 
-  static async getPullRequestDetail(pullRequestId: number): Promise<AzurePullRequestDetail> {
+  static async getPullRequestDetail(
+    projectId: number,
+    pullRequestId: number,
+  ): Promise<AzurePullRequestDetail> {
     if (!Number.isInteger(pullRequestId) || pullRequestId <= 0) {
       throw new AzureError("AZURE_INPUT_INVALID", "A valid pullRequestId is required.");
     }
-    const projectId = await AzurePullRequestService.getActiveProjectId();
-    const conn = await AzurePullRequestService.getConnectionOrThrow(projectId);
+    const id = AzurePullRequestService.requireProjectId(projectId);
+    const conn = await AzurePullRequestService.getConnectionOrThrow(id);
     const target = await AzurePullRequestService.buildTarget(conn);
     try {
       return await getPullRequestDetail(target, pullRequestId);
@@ -162,7 +167,10 @@ export class AzurePullRequestService {
     }
   }
 
-  static async createPullRequest(input: CreatePullRequestInput): Promise<AzurePullRequestRef> {
+  static async createPullRequest(
+    projectId: number,
+    input: CreatePullRequestInput,
+  ): Promise<AzurePullRequestRef> {
     const source = input.sourceRefName?.trim();
     const target = input.targetRefName?.trim();
     const title = input.title?.trim();
@@ -172,8 +180,8 @@ export class AzurePullRequestService {
         "sourceRefName, targetRefName, and title are required.",
       );
     }
-    const projectId = await AzurePullRequestService.getActiveProjectId();
-    const conn = await AzurePullRequestService.getConnectionOrThrow(projectId);
+    const id = AzurePullRequestService.requireProjectId(projectId);
+    const conn = await AzurePullRequestService.getConnectionOrThrow(id);
     const azureTarget = await AzurePullRequestService.buildTarget(conn);
     try {
       return await createPullRequest(azureTarget, {

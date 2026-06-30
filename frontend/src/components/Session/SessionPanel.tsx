@@ -55,7 +55,7 @@ export function SessionPanel() {
     });
   };
 
-  const { events, status, send, streaming } = useSession(activeSessionId);
+  const { events, status, send, streaming, partialText } = useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
 
   const onNewSession = (projectId: number) => {
@@ -112,7 +112,7 @@ export function SessionPanel() {
                 )}
               </div>
             </div>
-            <SessionTranscript key={activeSessionId} events={events} thinking={streaming} />
+            <SessionTranscript key={activeSessionId} events={events} thinking={streaming} partialText={partialText} />
             <SessionComposer
               onSend={send}
               disabled={status !== "open" || streaming}

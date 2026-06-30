@@ -192,6 +192,12 @@
         <p><strong>Change:</strong> Cockpit panel restyled to the new dark design system (Tailwind + Framer Motion): full-height layout, PR list/detail as cards with status pills, git history as compact mono rows, <code>.field</code> settings inputs, and the expired-PAT (401) state rendered as a clear reconnect <code>EmptyState</code> rather than a raw error string. Added <code>Cockpit/prStatus.ts</code> helpers for the status-pill mapping.</p>
         <p><strong>Reason:</strong> User QA: whole-app UI redesign. Presentational only — no API/hook/data-flow changes; PAT stays write-only and never crosses to the frontend.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 3 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Decoupled the Cockpit from the now-removed global "active project". It has its own project dropdown (from the project list); git and Azure endpoints take an explicit <code>projectId</code> (query param for GETs, body for connect/create-PR), validated server-side and resolved via <code>ProjectModel.findById</code>. No more <code>getActiveProjectId</code> usage.</p>
+        <p><strong>Reason:</strong> The "active project" concept was removed app-wide (app-shell Rev 3); the Cockpit needed an explicit project source.</p>
+        <p><strong>Pushback (recorded):</strong> these endpoints trust the client-supplied <code>projectId</code> with no ownership check — consistent with the v1 single-operator/no-auth design, but if DevEasy goes multi-user, <code>projectId</code> becomes untrusted input needing server-side tenant scoping (§5.5/§11.7).</p>
+      </article>
     </section>
   </main>
 </body>

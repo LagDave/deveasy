@@ -7,6 +7,7 @@ import { GitController } from "../controllers/git/GitController";
  */
 const router = express.Router();
 
+// Both GETs require a ?projectId= query param identifying the target project.
 router.get("/history", GitController.history);
 router.get("/status", GitController.status);
 

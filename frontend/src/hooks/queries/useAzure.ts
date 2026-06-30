@@ -13,48 +13,53 @@ import {
 
 /** Query keys defined locally to avoid editing the shared queryClient (slice lane). */
 const AZURE_KEYS = {
-  status: ["azure", "status"] as const,
-  pullRequests: ["azure", "pull-requests"] as const,
-  pullRequestDetail: (id: number) => ["azure", "pull-requests", id] as const,
+  status: (projectId: number | null) => ["azure", "status", projectId] as const,
+  pullRequests: (projectId: number | null) => ["azure", "pull-requests", projectId] as const,
+  pullRequestDetail: (projectId: number | null, id: number) =>
+    ["azure", "pull-requests", projectId, id] as const,
 };
 
-export function useAzureStatus() {
-  return useQuery({ queryKey: AZURE_KEYS.status, queryFn: getAzureStatus });
-}
-
-export function useAzurePullRequests(enabled: boolean) {
+export function useAzureStatus(projectId: number | null) {
   return useQuery({
-    queryKey: AZURE_KEYS.pullRequests,
-    queryFn: getAzurePullRequests,
-    enabled,
+    queryKey: AZURE_KEYS.status(projectId),
+    queryFn: () => getAzureStatus(projectId as number),
+    enabled: Boolean(projectId),
   });
 }
 
-export function useAzurePullRequestDetail(id: number | null) {
+export function useAzurePullRequests(projectId: number | null, enabled: boolean) {
   return useQuery({
-    queryKey: AZURE_KEYS.pullRequestDetail(id ?? 0),
-    queryFn: () => getAzurePullRequestDetail(id as number),
-    enabled: id !== null,
+    queryKey: AZURE_KEYS.pullRequests(projectId),
+    queryFn: () => getAzurePullRequests(projectId as number),
+    enabled: Boolean(projectId) && enabled,
   });
 }
 
-export function useConnectAzure() {
+export function useAzurePullRequestDetail(projectId: number | null, id: number | null) {
+  return useQuery({
+    queryKey: AZURE_KEYS.pullRequestDetail(projectId, id ?? 0),
+    queryFn: () => getAzurePullRequestDetail(projectId as number, id as number),
+    enabled: Boolean(projectId) && id !== null,
+  });
+}
+
+export function useConnectAzure(projectId: number | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: AzureConnectInput) => connectAzure(input),
+    mutationFn: (input: AzureConnectInput) => connectAzure(projectId as number, input),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: AZURE_KEYS.status });
-      void qc.invalidateQueries({ queryKey: AZURE_KEYS.pullRequests });
+      void qc.invalidateQueries({ queryKey: AZURE_KEYS.status(projectId) });
+      void qc.invalidateQueries({ queryKey: AZURE_KEYS.pullRequests(projectId) });
     },
   });
 }
 
-export function useCreateAzurePullRequest() {
+export function useCreateAzurePullRequest(projectId: number | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreatePullRequestInput) => createAzurePullRequest(input),
+    mutationFn: (input: CreatePullRequestInput) => createAzurePullRequest(projectId as number, input),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: AZURE_KEYS.pullRequests });
+      void qc.invalidateQueries({ queryKey: AZURE_KEYS.pullRequests(projectId) });
     },
   });
 }

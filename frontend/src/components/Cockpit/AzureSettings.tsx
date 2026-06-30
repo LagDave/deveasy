@@ -6,14 +6,15 @@ import { toast } from "../../lib/toast";
 import { Icon } from "../ui/Icon";
 
 interface Props {
+  projectId: number | null;
   state: AzureConnectionState | undefined;
   /** When true (e.g. after a 401), the form is expanded to prompt a reconnect. */
   forceOpen?: boolean;
 }
 
 /** PAT + (org, project, repo) mapping form. The PAT is write-only — never read back. */
-export function AzureSettings({ state, forceOpen }: Props) {
-  const connect = useConnectAzure();
+export function AzureSettings({ projectId, state, forceOpen }: Props) {
+  const connect = useConnectAzure(projectId);
   const [organization, setOrganization] = useState(state?.organization ?? "");
   const [project, setProject] = useState(state?.project ?? "");
   const [repository, setRepository] = useState(state?.repository ?? "");

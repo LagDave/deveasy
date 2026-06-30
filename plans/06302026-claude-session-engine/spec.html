@@ -222,6 +222,11 @@
         <p><strong>Reason:</strong> User request: auto-name sessions from the first prompt, and add rename + delete.</p>
         <p><strong>Verified:</strong> rename + delete tested live (title updates, empty rejected, row removed); auto-naming wired + builds, pending a live first-turn run.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 8 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Token-by-token streaming. Added <code>--include-partial-messages</code> to the CLI args; the backend relays the partial <code>stream_event</code> deltas live but does not persist them (only the final assistant message is persisted, so history replay is unchanged). The client accumulates text deltas into a live "Claude" bubble that fills in as it generates, replaced by the committed message when the full event lands; the working spinner shows only before the first token.</p>
+        <p><strong>Reason:</strong> User request: stream the response as it generates instead of waiting for the whole message.</p>
+      </article>
     </section>
   </main>
 </body>

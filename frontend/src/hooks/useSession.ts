@@ -25,6 +25,17 @@ interface UseSessionResult {
   isReady: boolean;
   /** True from the moment a turn is sent until the CLI emits its `result` event. */
   streaming: boolean;
+  /** Live, not-yet-committed assistant text streaming in token-by-token. */
+  partialText: string;
+}
+
+/** Pull a text delta out of a partial `stream_event`, if present. */
+function extractTextDelta(event: SessionEvent): string | null {
+  const inner = (event as { event?: { type?: string; delta?: { type?: string; text?: string } } }).event;
+  if (inner?.type === "content_block_delta" && inner.delta?.type === "text_delta") {
+    return typeof inner.delta.text === "string" ? inner.delta.text : null;
+  }
+  return null;
 }
 
 /** Build the absolute ws:// URL from the current page origin (Vite proxies /ws). */
@@ -48,6 +59,7 @@ export function useSession(sessionId: number | null): UseSessionResult {
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [isReady, setIsReady] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  const [partialText, setPartialText] = useState("");
   const socketRef = useRef<WebSocket | null>(null);
 
   // Load persisted history once per session, then open the live stream.
@@ -58,6 +70,7 @@ export function useSession(sessionId: number | null): UseSessionResult {
     setEvents([]);
     setIsReady(false);
     setStreaming(false);
+    setPartialText("");
     setStatus("connecting");
 
     getSessionMessages(sessionId)
@@ -94,11 +107,30 @@ export function useSession(sessionId: number | null): UseSessionResult {
       }
       if (parsed.type === "process_closed") {
         setStreaming(false);
+        setPartialText("");
       }
-      // Keep the in-chat indicator in sync with live activity: assistant/tool
-      // events mean Claude is working; a `result` ends the turn.
-      if (parsed.type === "result") setStreaming(false);
-      else if (parsed.type === "assistant" || parsed.type === "user") setStreaming(true);
+
+      // Partial token deltas: accumulate into the live bubble, don't commit.
+      if (parsed.type === "stream_event") {
+        const delta = extractTextDelta(parsed);
+        if (delta) {
+          setStreaming(true);
+          setPartialText((prev) => prev + delta);
+        }
+        return;
+      }
+
+      // Keep the indicator in sync; a full assistant message commits and clears
+      // the live partial; a `result` ends the turn.
+      if (parsed.type === "result") {
+        setStreaming(false);
+        setPartialText("");
+      } else if (parsed.type === "assistant") {
+        setStreaming(true);
+        setPartialText("");
+      } else if (parsed.type === "user") {
+        setStreaming(true);
+      }
       setEvents((prev) => [...prev, parsed]);
     };
 
@@ -121,5 +153,5 @@ export function useSession(sessionId: number | null): UseSessionResult {
     ]);
   }, []);
 
-  return { events, status, send, isReady, streaming };
+  return { events, status, send, isReady, streaming, partialText };
 }

@@ -152,15 +152,20 @@ export class SessionStreamService {
   private static async onProcessEvent(sessionId: number, event: ClaudeStreamEvent): Promise<void> {
     const runtime = this.runtimes.get(sessionId);
     // Drive state from the actual stream: a `result` ends the turn (idle/awaiting
-    // input); any assistant message or tool result means it's actively working.
-    // System/init/hook events don't change state. This stays correct even after a
-    // reattach mid-turn, where keying only off the user's send would be stale.
+    // input); any assistant/tool/partial activity means it's actively working.
     if (runtime) {
       if (event.type === "result") runtime.state = "idle";
-      else if (event.type === "assistant" || event.type === "user") runtime.state = "working";
+      else if (event.type === "assistant" || event.type === "user" || event.type === "stream_event") {
+        runtime.state = "working";
+      }
     }
 
+    // Always relay so the UI streams live. Partial `stream_event` chunks are
+    // transient token deltas — relay them but do NOT persist (the final assistant
+    // message is persisted below and is what history replays).
     this.broadcast(sessionId, event);
+    if (event.type === "stream_event") return;
+
     try {
       await SessionMessageModel.create({
         sessionId,

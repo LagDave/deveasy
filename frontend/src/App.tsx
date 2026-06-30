@@ -5,10 +5,9 @@ import { CockpitPanel } from "./components/Cockpit/CockpitPanel";
 import { SessionPanel } from "./components/Session/SessionPanel";
 import { Icon, type IconName } from "./components/ui/Icon";
 import { panelSwap } from "./components/ui/motion";
-import { useActiveProject } from "./hooks/queries/useProjects";
 import { ProjectPicker } from "./pages/ProjectPicker";
 
-type SectionId = "projects" | "sessions" | "cockpit" | "agents";
+type SectionId = "sessions" | "cockpit" | "agents" | "projects";
 
 interface Section {
   id: SectionId;
@@ -18,16 +17,16 @@ interface Section {
   render: () => React.ReactNode;
 }
 
+// Projects is last: projects aren't "opened" — they just appear in the session list.
 const SECTIONS: Section[] = [
-  { id: "projects", label: "Projects", icon: "projects", blurb: "Workspace", render: () => <ProjectPicker /> },
   { id: "sessions", label: "Sessions", icon: "sessions", blurb: "Chat with Claude", render: () => <SessionPanel /> },
   { id: "cockpit", label: "Cockpit", icon: "cockpit", blurb: "Git & pull requests", render: () => <CockpitPanel /> },
   { id: "agents", label: "Agents", icon: "agents", blurb: "Shared config", render: () => <AgentManagerPanel /> },
+  { id: "projects", label: "Projects", icon: "projects", blurb: "Workspace", render: () => <ProjectPicker /> },
 ];
 
 export default function App() {
-  const { data: active } = useActiveProject();
-  const [section, setSection] = useState<SectionId>("projects");
+  const [section, setSection] = useState<SectionId>("sessions");
   const current = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
 
   return (
@@ -66,16 +65,6 @@ export default function App() {
             );
           })}
         </nav>
-
-        <div className="mt-auto">
-          <div className="surface-2 flex flex-col gap-1 px-3.5 py-3">
-            <span className="eyebrow">Active project</span>
-            <span className="flex items-center gap-2 truncate font-mono text-sm">
-              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${active ? "bg-success" : "bg-faint"}`} />
-              <span className="truncate">{active ? active.name : "None selected"}</span>
-            </span>
-          </div>
-        </div>
       </aside>
 
       {/* ── Main panel ── */}

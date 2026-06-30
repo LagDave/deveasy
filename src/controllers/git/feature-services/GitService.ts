@@ -42,20 +42,19 @@ export interface GitHistory {
 }
 
 /**
- * Reads local git state for the active project. Git is invoked via execFile with an
- * argv array and a fixed cwd — never a shell string with interpolated input
+ * Reads local git state for an explicitly-chosen project. Git is invoked via execFile
+ * with an argv array and a fixed cwd — never a shell string with interpolated input
  * (Constitution §5.2 command-injection). DB access goes through the model (§7.4).
  */
 export class GitService {
-  /** Resolve the active project's on-disk path, or throw a typed error. */
-  private static async resolveActiveProjectPath(): Promise<string> {
-    const id = await ProjectModel.getActiveProjectId();
-    if (!id) {
-      throw new GitError("GIT_NO_ACTIVE_PROJECT", "No active project is selected.");
+  /** Resolve a project's on-disk path by id, or throw a typed error. */
+  private static async resolveProjectPath(projectId: number): Promise<string> {
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      throw new GitError("GIT_NO_ACTIVE_PROJECT", "A valid projectId is required.");
     }
-    const project = await ProjectModel.findById(id);
+    const project = await ProjectModel.findById(projectId);
     if (!project) {
-      throw new GitError("GIT_PROJECT_NOT_FOUND", "Active project not found.", { projectId: id });
+      throw new GitError("GIT_PROJECT_NOT_FOUND", "Project not found.", { projectId });
     }
     await GitService.assertGitRepo(project.path);
     return project.path;
@@ -65,11 +64,11 @@ export class GitService {
     try {
       const stat = await fs.stat(path.join(dir, ".git"));
       if (!stat.isDirectory() && !stat.isFile()) {
-        throw new GitError("GIT_NOT_A_REPO", "The active project is not a git repository.", { dir });
+        throw new GitError("GIT_NOT_A_REPO", "The selected project is not a git repository.", { dir });
       }
     } catch (err) {
       if (err instanceof GitError) throw err;
-      throw new GitError("GIT_NOT_A_REPO", "The active project is not a git repository.", { dir });
+      throw new GitError("GIT_NOT_A_REPO", "The selected project is not a git repository.", { dir });
     }
   }
 
@@ -84,9 +83,9 @@ export class GitService {
     }
   }
 
-  /** Commit history + current branch for the active project. */
-  static async getHistory(limit = DEFAULT_HISTORY_LIMIT): Promise<GitHistory> {
-    const cwd = await GitService.resolveActiveProjectPath();
+  /** Commit history + current branch for the given project. */
+  static async getHistory(projectId: number, limit = DEFAULT_HISTORY_LIMIT): Promise<GitHistory> {
+    const cwd = await GitService.resolveProjectPath(projectId);
     const branch = await GitService.getCurrentBranch(cwd);
     const format = ["%H", "%an", "%aI", "%s"].join(LOG_FIELD_SEP) + LOG_RECORD_SEP;
     const out = await GitService.runGit(cwd, [
@@ -98,9 +97,9 @@ export class GitService {
     return { branch, commits };
   }
 
-  /** Working-tree status for the active project. */
-  static async getStatus(): Promise<GitStatus> {
-    const cwd = await GitService.resolveActiveProjectPath();
+  /** Working-tree status for the given project. */
+  static async getStatus(projectId: number): Promise<GitStatus> {
+    const cwd = await GitService.resolveProjectPath(projectId);
     const out = await GitService.runGit(cwd, ["status", "--porcelain=v1", "--branch"]);
     return GitService.parseStatus(out);
   }

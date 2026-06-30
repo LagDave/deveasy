@@ -9,5 +9,4 @@ export const queryClient = new QueryClient({
 /** Centralized query keys so cache invalidation is consistent across slices. */
 export const QUERY_KEYS = {
   projects: ["projects"] as const,
-  activeProject: ["projects", "active"] as const,
 };

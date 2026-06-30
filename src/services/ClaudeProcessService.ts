@@ -14,6 +14,7 @@ const CLI_ARGS = [
   "stream-json",
   "--input-format",
   "stream-json",
+  "--include-partial-messages",
   "--verbose",
 ] as const;
 

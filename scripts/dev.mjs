@@ -1,14 +1,12 @@
 /**
  * One-command dev launcher: brings up Postgres, applies migrations, then runs the
- * backend (:1234) and the Vite SPA (:5173) together. Run with `npm run dev:all`.
- *
- * In dev you open the Vite server — it serves the SPA with hot reload and proxies
- * /api and /ws to the backend on :1234.
+ * backend on :1234. In dev the backend hosts Vite in middleware mode, so the app
+ * AND its hot-reload are served on a single port — save a file and it updates
+ * instantly, no built files. Run with `npm run dev:all`.
  */
 import { spawn, spawnSync } from "node:child_process";
 
-const WEB_URL = "http://localhost:5173";
-const API_URL = "http://localhost:1234";
+const APP_URL = "http://localhost:1234";
 
 function run(label, cmd, args) {
   process.stdout.write(`\n[dev:all] ${label}…\n`);
@@ -43,21 +41,17 @@ process.stdout.write(
   [
     "",
     "  ============================================================",
-    "   DevEasy is starting.",
+    "   DevEasy is starting (hot-reload dev).",
     "",
-    `   ▶  Open the app:   ${WEB_URL}`,
-    `      API server:      ${API_URL}   (proxied via /api and /ws)`,
+    `   ▶  Open the app:   ${APP_URL}`,
+    "      Edit a file and it updates instantly — no rebuild.",
     "",
-    "   Press Ctrl+C to stop both servers.",
+    "   Press Ctrl+C to stop.",
     "  ============================================================",
     "",
   ].join("\n") + "\n",
 );
 
-// 4. Run both dev servers together. Ctrl+C propagates to the process group.
-// Pass a single shell string so the quoted sub-commands survive intact.
-const child = spawn(
-  'npx concurrently -n api,web -c blue,magenta "npm run dev" "npm run frontend:dev"',
-  { stdio: "inherit", shell: true },
-);
+// 4. Run the backend (which hosts the Vite HMR frontend on the same port).
+const child = spawn("npm run dev", { stdio: "inherit", shell: true });
 child.on("exit", (code) => process.exit(code ?? 0));

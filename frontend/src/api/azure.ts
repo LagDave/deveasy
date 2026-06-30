@@ -72,25 +72,34 @@ export interface CreatePullRequestInput {
   description: string;
 }
 
-export async function getAzureStatus(): Promise<AzureConnectionState> {
-  return apiGet<AzureConnectionState>("/api/azure/status");
+export async function getAzureStatus(projectId: number): Promise<AzureConnectionState> {
+  return apiGet<AzureConnectionState>(`/api/azure/status?projectId=${projectId}`);
 }
 
-export async function connectAzure(input: AzureConnectInput): Promise<AzureConnectionState> {
-  return apiPut<AzureConnectionState>("/api/azure/connection", input);
+export async function connectAzure(
+  projectId: number,
+  input: AzureConnectInput,
+): Promise<AzureConnectionState> {
+  return apiPut<AzureConnectionState>("/api/azure/connection", { ...input, projectId });
 }
 
-export async function getAzurePullRequests(): Promise<AzurePullRequestRef[]> {
-  const data = await apiGet<{ pullRequests: AzurePullRequestRef[] }>("/api/azure/pull-requests");
+export async function getAzurePullRequests(projectId: number): Promise<AzurePullRequestRef[]> {
+  const data = await apiGet<{ pullRequests: AzurePullRequestRef[] }>(
+    `/api/azure/pull-requests?projectId=${projectId}`,
+  );
   return data.pullRequests;
 }
 
-export async function getAzurePullRequestDetail(id: number): Promise<AzurePullRequestDetail> {
-  return apiGet<AzurePullRequestDetail>(`/api/azure/pull-requests/${id}`);
+export async function getAzurePullRequestDetail(
+  projectId: number,
+  id: number,
+): Promise<AzurePullRequestDetail> {
+  return apiGet<AzurePullRequestDetail>(`/api/azure/pull-requests/${id}?projectId=${projectId}`);
 }
 
 export async function createAzurePullRequest(
+  projectId: number,
   input: CreatePullRequestInput,
 ): Promise<AzurePullRequestRef> {
-  return apiPost<AzurePullRequestRef>("/api/azure/pull-requests", input);
+  return apiPost<AzurePullRequestRef>("/api/azure/pull-requests", { ...input, projectId });
 }

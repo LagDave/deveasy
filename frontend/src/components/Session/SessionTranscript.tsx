@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { SessionEvent } from "../../hooks/useSession";
 import { EmptyState } from "../ui/EmptyState";
 import { Icon } from "../ui/Icon";
+import { Markdown } from "../ui/Markdown";
 import { Spinner } from "../ui/Spinner";
 import { staggerContainer } from "../ui/motion";
 import { SessionMessage } from "./SessionMessage";
@@ -13,7 +14,15 @@ import { flattenEvents, meaningfulCount } from "./sessionEvents";
  * CLI's internal system/hook events behind a collapsible strip so the chat stays
  * readable. Auto-scrolls to the newest message.
  */
-export function SessionTranscript({ events, thinking }: { events: SessionEvent[]; thinking: boolean }) {
+export function SessionTranscript({
+  events,
+  thinking,
+  partialText,
+}: {
+  events: SessionEvent[];
+  thinking: boolean;
+  partialText: string;
+}) {
   const items = useMemo(() => flattenEvents(events), [events]);
   const systemItems = items.filter((it) => it.kind === "system");
   const visible = items.filter((it) => it.kind !== "system");
@@ -28,16 +37,16 @@ export function SessionTranscript({ events, thinking }: { events: SessionEvent[]
       block: "end",
     });
     firstScroll.current = false;
-  }, [items.length, thinking]);
+  }, [items.length, thinking, partialText]);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
-        {meaningfulCount(items) === 0 && !thinking && (
+        {meaningfulCount(items) === 0 && !thinking && !partialText && (
           <EmptyState
             icon={<Icon name="sessions" size={26} />}
             title="Say something to start"
-            hint="Your message runs against the active project on your Claude subscription."
+            hint="Your message runs against the selected project on your Claude subscription."
           />
         )}
 
@@ -47,7 +56,17 @@ export function SessionTranscript({ events, thinking }: { events: SessionEvent[]
           ))}
         </motion.div>
 
-        {thinking && (
+        {/* Live, token-streaming assistant text (not yet committed). */}
+        {partialText && (
+          <div className="flex justify-start">
+            <div className="surface-2 max-w-[85%] break-words rounded-2xl rounded-bl-md px-4 py-2.5">
+              <div className="eyebrow mb-1 !text-faint">Claude</div>
+              <Markdown>{partialText}</Markdown>
+            </div>
+          </div>
+        )}
+
+        {thinking && !partialText && (
           <div className="surface-2 w-fit rounded-2xl rounded-bl-md px-4 py-3">
             <Spinner label="Claude is working" />
           </div>

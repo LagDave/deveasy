@@ -8,6 +8,7 @@ import { fadeUp, staggerContainer } from "../ui/motion";
 import { prStatusPill, shortRef } from "./prStatus";
 
 interface Props {
+  projectId: number | null;
   enabled: boolean;
   selectedId: number | null;
   onSelect: (id: number) => void;
@@ -16,8 +17,8 @@ interface Props {
 }
 
 /** Active pull requests with status pills; selecting one opens its detail. */
-export function PullRequestList({ enabled, selectedId, onSelect, onReconnect }: Props) {
-  const { data: pullRequests, isLoading, error } = useAzurePullRequests(enabled);
+export function PullRequestList({ projectId, enabled, selectedId, onSelect, onReconnect }: Props) {
+  const { data: pullRequests, isLoading, error } = useAzurePullRequests(projectId, enabled);
 
   if (error instanceof ApiError && error.code === "AZURE_RECONNECT_REQUIRED") {
     onReconnect();

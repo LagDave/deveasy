@@ -8,7 +8,5 @@ import { ProjectsController } from "../controllers/projects/ProjectsController";
 const router = express.Router();
 
 router.get("/", ProjectsController.list);
-router.get("/active", ProjectsController.getActive);
-router.post("/active", ProjectsController.setActive);
 
 export default router;

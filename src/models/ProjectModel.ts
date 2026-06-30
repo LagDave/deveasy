@@ -11,8 +11,6 @@ export interface IProject {
   updated_at: string;
 }
 
-const ACTIVE_PROJECT_KEY = "active_project_id";
-
 /**
  * All DB access for projects and app settings (Constitution §7.4).
  */
@@ -49,21 +47,5 @@ export class ProjectModel extends BaseModel {
 
   static async touchOpened(id: number, trx?: Knex.Transaction): Promise<void> {
     await this.table(trx).where({ id }).update({ last_opened_at: db().fn.now() });
-  }
-
-  // --- app_settings: active project ---
-
-  static async getActiveProjectId(trx?: Knex.Transaction): Promise<number | null> {
-    const conn = trx ?? db();
-    const row = await conn("app_settings").where({ key: ACTIVE_PROJECT_KEY }).first();
-    return row?.value ? Number(row.value) : null;
-  }
-
-  static async setActiveProjectId(id: number, trx?: Knex.Transaction): Promise<void> {
-    const conn = trx ?? db();
-    await conn("app_settings")
-      .insert({ key: ACTIVE_PROJECT_KEY, value: String(id) })
-      .onConflict("key")
-      .merge({ value: String(id), updated_at: db().fn.now() });
   }
 }

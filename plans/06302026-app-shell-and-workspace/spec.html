@@ -206,6 +206,12 @@
         <p><strong>Reason:</strong> User QA: the default styling was not usable. New dependencies are presentation-only (Tailwind, Framer Motion, fontsource) — justified per §4.4 as the agreed UI stack; no new state library (§15.4 respected).</p>
         <p><strong>Updated Done criteria:</strong> Frontend builds clean (513 modules, fonts bundled offline); §9.1/§17.2/§14.2 + size checks still pass.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 3 - 2026-06-30</h3>
+        <p><strong>Change:</strong> (1) Removed the global "active project" concept entirely — projects are no longer "opened"/activated; they simply appear in the Sessions rail and the Cockpit/Projects views. Dropped <code>GET/POST /api/projects/active</code>, <code>ProjectModel.getActiveProjectId/setActiveProjectId</code>, the sidebar "Active project" footer, and the activation flow. Config injection now happens on session create (Spec 2 Rev 3) and the Cockpit picks a project explicitly (azure-git-cockpit Rev 3). Nav reordered so <strong>Projects is last</strong>; default view is Sessions. (2) <strong>Single-port hot-reload dev</strong>: the backend now hosts Vite in middleware mode in development, so <code>localhost:1234</code> serves the live SPA with HMR (no built files) and the API/WebSocket on the same port; production still serves <code>frontend/dist</code>. <code>npm run dev:all</code> simplified to one server.</p>
+        <p><strong>Reason:</strong> User request: no active project (projects just feed the session list, Projects menu last); and hot reload in dev instead of serving stale built files.</p>
+        <p><strong>Verified:</strong> dev mode serves <code>/@vite/client</code> + <code>/src/main.tsx</code> on :1234 with the API working; backend tsc + frontend build clean; no active-project references remain.</p>
+      </article>
     </section>
   </main>
 </body>
