@@ -39,6 +39,8 @@ interface Runtime {
   cliSessionId: string;
   /** Currently selected model (null = CLI default). */
   model: string | null;
+  /** True once a turn has been sent — i.e. the CLI has a conversation to --resume. */
+  hasConversation: boolean;
   /** Latest capabilities from the init event, replayed to late-attaching sockets. */
   capabilities: Capabilities | null;
   /** Latest context-window usage, replayed to late-attaching sockets. */
@@ -98,6 +100,7 @@ export class SessionStreamService {
         projectPath: project.path,
         cliSessionId,
         model: session.model,
+        hasConversation: false,
         capabilities: null,
         context: null,
       };
@@ -163,12 +166,21 @@ export class SessionStreamService {
     }
     runtime.model = model;
     await SessionModel.setModel(sessionId, model);
+
+    // Resume only when the CLI actually has a conversation under this id; resuming
+    // an unused id fails with "No conversation found". Before the first turn there
+    // is nothing to preserve, so start fresh under a new id instead.
+    let resume = runtime.hasConversation;
+    if (!resume) {
+      runtime.cliSessionId = ClaudeProcessService.newCliSessionId();
+      await SessionModel.setCliSessionId(sessionId, runtime.cliSessionId);
+    }
     ClaudeProcessService.restart(sessionId, runtime.projectPath, this.handlersFor(sessionId), {
       model,
       cliSessionId: runtime.cliSessionId,
-      resume: true,
+      resume,
     });
-    log.info({ sessionId, model }, "Session model switched (resumed)");
+    log.info({ sessionId, model, resume }, "Session model switched");
   }
 
   /** Explicitly end a session: kill the process (triggers cleanup) and mark closed. */
@@ -218,7 +230,11 @@ export class SessionStreamService {
         content: { text: command.text },
       });
       const runtime = this.runtimes.get(sessionId);
-      if (runtime) runtime.state = "working";
+      if (runtime) {
+        runtime.state = "working";
+        // A turn now exists, so a later model switch can safely --resume this id.
+        runtime.hasConversation = true;
+      }
       ClaudeProcessService.send(sessionId, command.text);
 
       // Auto-name the session from its first prompt (fire-and-forget).

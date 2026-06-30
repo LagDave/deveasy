@@ -173,7 +173,8 @@ export class ClaudeProcessService {
    * Restart a session's process with a (possibly new) model, resuming the same CLI
    * conversation so context carries over. The old child's listeners are detached
    * before it is killed, so its asynchronous `close` can never tear down the freshly
-   * started process (§ risk: restart race). Always restarts with `resume: true`.
+   * started process (§ risk: restart race). The caller decides via `opts.resume`
+   * whether to resume the conversation or start fresh.
    */
   static restart(
     sessionId: number,
@@ -194,7 +195,7 @@ export class ClaudeProcessService {
       }
       this.live.delete(sessionId);
     }
-    this.start(sessionId, projectPath, handlers, { ...opts, resume: true });
+    this.start(sessionId, projectPath, handlers, opts);
   }
 
   /** Build the CLI argv: base streaming args + optional model + session id/resume. */

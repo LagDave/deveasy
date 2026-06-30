@@ -321,6 +321,12 @@
         <p><strong>Evidence:</strong> <code>GET /api/usage/limits</code> → 200 with live 5h/weekly utilization + reset, no token in payload. Drove the real WebSocket session: created with <code>model:"haiku"</code> (init reported <code>claude-haiku-4-5</code>), captured a <code>capabilities</code> event (32 slash commands incl. <code>compact</code>, 17 skills) and <code>context</code> events (haiku 57865/200000 → sonnet 77594/1000000), then <code>set_model: "sonnet"</code> restarted resumed → <code>model_updated: claude-sonnet-5</code> and turn 2 recalled the planted codeword <code>ZEBRA-42</code> (resume preserved context). Sessions cleaned up afterward.</p>
         <p><strong>Note:</strong> The two purely-presentational SVG rings were verified at the data contract (real socket/API), not by pixel screenshot — no headless Electron harness in this environment.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 3 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Fixed a "SESSION ERROR" when switching model <em>before</em> sending any turn. <code>SessionStreamService.setModel</code> now resumes only when a conversation exists (<code>runtime.hasConversation</code>, set when the first turn is sent); otherwise it restarts under a fresh CLI session id with no <code>--resume</code>. <code>ClaudeProcessService.restart</code> no longer forces <code>resume: true</code> — the caller decides.</p>
+        <p><strong>Reason:</strong> User QA: switching model on a brand-new session showed SESSION ERROR. Root cause: <code>--resume &lt;id&gt;</code> on a session the CLI never wrote returns "No conversation found with session ID" + an <code>is_error</code> result. The original verification only switched <em>after</em> a turn, so it missed this.</p>
+        <p><strong>Verification:</strong> reproduced the CLI error directly, then drove the fixed server (port 1235): switch-before-turn → <code>resume: false</code>, no error, session usable on <code>claude-sonnet-5</code>; and the switch-after-turn codeword test still PASSes (<code>ZEBRA-42</code> recalled). Files: <code>SessionStreamService.ts</code>, <code>ClaudeProcessService.ts</code>.</p>
+      </article>
     </section>
   </main>
 </body>

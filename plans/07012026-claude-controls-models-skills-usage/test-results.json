@@ -92,6 +92,22 @@
       "waiver": ""
     },
     {
+      "id": "T10-model-fresh",
+      "title": "Switching model before any turn does not error (regression)",
+      "surface": "ui",
+      "precondition": "A brand-new session with no turns sent.",
+      "steps": [
+        "1. Open a session.",
+        "2. Switch the model before typing anything.",
+        "3. Send a first turn."
+      ],
+      "expected": "No SESSION ERROR; the session starts fresh on the new model and the first turn works.",
+      "status": "pass",
+      "evidence": "Bug reproduced (CLI: --resume of an unused id → 'No conversation found' + is_error result). After fix, drove the real WS: switch-before-turn restarted with resume:false, no error, first turn replied on claude-sonnet-5.",
+      "notes": "Fix: resume only when runtime.hasConversation; else fresh session id (Rev 3).",
+      "waiver": ""
+    },
+    {
       "id": "T10-skills",
       "title": "Skill autocomplete source and /-prefixed send",
       "surface": "ui",
