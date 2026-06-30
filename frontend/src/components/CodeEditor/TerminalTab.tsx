@@ -196,7 +196,7 @@ export function TerminalTab({ projectId }: Props) {
           return (
             <div
               key={tab.id}
-              className={`group flex items-center gap-2 border-r border-line px-3 py-2 text-xs ${
+              className={`group flex h-9 items-center gap-2 border-r border-line px-3 text-xs ${
                 active ? "bg-surface-2 text-ink" : "text-muted hover:bg-surface-2/60"
               }`}
             >
@@ -211,7 +211,10 @@ export function TerminalTab({ projectId }: Props) {
                     if (e.key === "Enter") commitRename();
                     if (e.key === "Escape") setEditingId(null);
                   }}
-                  className="w-28 rounded border border-line-strong bg-bg px-1 py-0.5 font-mono text-xs text-ink outline-none"
+                  // Sized in ch (monospace) + no border so swapping in the input
+                  // matches the label box and doesn't shift the layout.
+                  style={{ width: `${Math.max(draftName.length + 1, 6)}ch` }}
+                  className="h-6 rounded bg-surface-3 px-1 font-mono text-xs text-ink outline-none ring-1 ring-accent-line"
                 />
               ) : (
                 <button
@@ -240,7 +243,7 @@ export function TerminalTab({ projectId }: Props) {
           type="button"
           onClick={addTab}
           disabled={createTerminal.isPending}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted hover:bg-surface-2/60 hover:text-ink"
+          className="flex h-9 items-center gap-1.5 px-3 text-xs text-muted hover:bg-surface-2/60 hover:text-ink"
           title="New terminal"
         >
           <Icon name="add" size={14} />
