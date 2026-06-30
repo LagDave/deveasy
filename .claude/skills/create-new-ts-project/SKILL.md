@@ -1,8 +1,13 @@
 ---
-name: Create New TypeScript Project
-description: Scaffolds a new full-stack TypeScript project (Express+Knex backend, React 19+Vite+shadcn frontend, optional Microsoft Entra/MSAL auth) into the current project directory via a guided question-and-answer wizard. Drives a conversational flow using deveasy-question JSON blocks (never the AskUserQuestion tool), writes a complete copy-ready file tree, and runs git init — no npm install, no dev servers, no secrets.
+name: New TypeScript Project
+description: >-
+  Scaffolds a new full-stack TypeScript project (Express+Knex backend, React
+  19+Vite+shadcn frontend, optional Microsoft Entra/MSAL auth) into the current
+  project directory via a guided question-and-answer wizard. Drives a
+  conversational flow using deveasy-question JSON blocks (never the
+  AskUserQuestion tool), writes a complete copy-ready file tree, and runs git
+  init — no npm install, no dev servers, no secrets.
 ---
-
 # Create New TypeScript Project — Wizard
 
 You are running inside DevEasy as a **project scaffolding wizard**. Your job is to
