@@ -1,0 +1,77 @@
+{
+  "plan": "plans/07012026-repo-git-desktop",
+  "generatedAt": "2026-07-01",
+  "status": "In Progress",
+  "items": [
+    {
+      "id": "T1",
+      "title": "Stage + commit produces a real commit",
+      "surface": "api",
+      "precondition": "A git repo with a configured user.name/email.",
+      "steps": ["1. POST /api/git/stage { projectId, paths }", "2. POST /api/git/commit { projectId, message }", "3. git log"],
+      "expected": "A commit appears with the message; nothing-staged → GIT_NOTHING_TO_COMMIT; empty message → GIT_COMMIT_EMPTY_MESSAGE.",
+      "status": "pass",
+      "evidence": "GitService.test.ts: 'stages a new file and commits it', 'rejects committing with nothing staged', 'rejects an empty commit message' (vitest, 11 passed)."
+    },
+    {
+      "id": "T2",
+      "title": "Create + switch branches; injection rejected",
+      "surface": "api",
+      "precondition": "A git repo.",
+      "steps": ["1. POST /api/git/branch { projectId, name }", "2. POST /api/git/checkout { projectId, branch }"],
+      "expected": "Valid name creates+switches; invalid name → GIT_BRANCH_INVALID; duplicate → GIT_BRANCH_EXISTS.",
+      "status": "pass",
+      "evidence": "GitService.test.ts: 'creates and switches to a valid branch', 'rejects an invalid branch name', 'rejects a duplicate branch name'."
+    },
+    {
+      "id": "T3",
+      "title": "Push sets upstream on first push, never forces",
+      "surface": "api",
+      "precondition": "A repo with an origin remote.",
+      "steps": ["1. Create a branch + commit.", "2. POST /api/git/push { projectId }"],
+      "expected": "New branch is pushed with upstream set; remote shows the branch.",
+      "status": "pass",
+      "evidence": "GitService.test.ts: 'pushes a new branch by setting upstream' (against a bare origin)."
+    },
+    {
+      "id": "T4",
+      "title": "Merge to main merges + pushes; conflict aborts cleanly",
+      "surface": "api",
+      "precondition": "A repo with main + a feature branch.",
+      "steps": ["1. POST /api/git/merge-main { projectId } on a clean branch.", "2. Repeat with a conflicting branch."],
+      "expected": "Clean branch merges into main and pushes; conflict → GIT_MERGE_CONFLICT and the tree is left clean on the source branch (not half-merged).",
+      "status": "pass",
+      "evidence": "GitService.test.ts: 'merges a clean branch into main and pushes', 'aborts and stays clean on a merge conflict', 'refuses to merge when already on main'."
+    },
+    {
+      "id": "T5",
+      "title": "Clicking a changed file shows its HEAD-vs-working diff",
+      "surface": "ui",
+      "precondition": "App running; a project with working-tree changes; on the REPO tab.",
+      "steps": ["1. Open REPO.", "2. Click a changed file in the left rail."],
+      "expected": "A side-by-side Monaco diff (HEAD vs working) renders; new files show empty left, deleted files empty right.",
+      "status": "pending",
+      "evidence": "DiffViewer typechecks + builds; visual diff needs the running app."
+    },
+    {
+      "id": "T6",
+      "title": "REPO commit/branch/push/merge flow from the UI",
+      "surface": "ui",
+      "precondition": "App running on REPO; an origin remote configured for credential reuse.",
+      "steps": ["1. Toggle stage checkboxes.", "2. Enter a message and Commit.", "3. Create/switch a branch.", "4. Push (confirm).", "5. Merge to main (confirm)."],
+      "expected": "Each action succeeds with a toast; push/merge prompt a confirm dialog first; errors surface via toast.",
+      "status": "pending",
+      "evidence": "Backend ops proven by T1–T4; UI wiring typechecks + builds; end-to-end click-through needs the running app + a remote."
+    },
+    {
+      "id": "T7",
+      "title": "Build + typecheck pass",
+      "surface": "cli",
+      "precondition": "Dependencies installed.",
+      "steps": ["1. npx tsc -p tsconfig.json --noEmit", "2. cd frontend && npx tsc --noEmit", "3. npm run frontend:build", "4. npm test"],
+      "expected": "All exit 0.",
+      "status": "pass",
+      "evidence": "Backend + frontend tsc EXIT=0; frontend build OK; full suite 63 passed."
+    }
+  ]
+}

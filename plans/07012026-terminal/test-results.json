@@ -1,0 +1,77 @@
+{
+  "plan": "plans/07012026-terminal",
+  "generatedAt": "2026-07-01",
+  "status": "In Progress",
+  "items": [
+    {
+      "id": "T1",
+      "title": "node-pty installs and the PTY binding loads + spawns",
+      "surface": "cli",
+      "precondition": "macOS (darwin) host.",
+      "steps": ["1. npm install (runs the postinstall spawn-helper chmod fix).", "2. Spawn a PTY and run a command."],
+      "expected": "node-pty loads; a shell spawns and echoes output (real TTY).",
+      "status": "pass",
+      "evidence": "node-pty@1.1.0 installed; postinstall scripts/fix-node-pty.mjs restores the spawn-helper execute bit; manual spawn printed PTY_RUNS."
+    },
+    {
+      "id": "T2",
+      "title": "Create / list / kill terminals via the service",
+      "surface": "api",
+      "precondition": "A project exists.",
+      "steps": ["1. TerminalProcessService.create(projectId)", "2. list(projectId)", "3. kill(id)"],
+      "expected": "create returns {id, projectId, createdAt}; list includes it; kill removes it; missing project → TERMINAL_PROJECT_NOT_FOUND.",
+      "status": "pass",
+      "evidence": "TerminalProcessService.test.ts (5 passed): create+list, kill removes, project-not-found."
+    },
+    {
+      "id": "T3",
+      "title": "PTY output streams to a WS client and input reaches the shell",
+      "surface": "api",
+      "precondition": "HTTP server with the terminal WS relay attached.",
+      "steps": ["1. Connect ws to /ws/terminal?terminalId=", "2. Send {type:input,data:'echo WSPTY_OK\\r'}", "3. Read data frames."],
+      "expected": "Client receives the command output; a connection without terminalId is rejected.",
+      "status": "pass",
+      "evidence": "terminalWebSocket.test.ts (2 passed): streams output + accepts input; rejects missing terminalId."
+    },
+    {
+      "id": "T4",
+      "title": "Scrollback is replayed to a late subscriber",
+      "surface": "api",
+      "precondition": "A terminal with prior output.",
+      "steps": ["1. Run a command.", "2. Attach a new subscriber.", "3. Read its first frames."],
+      "expected": "The new subscriber immediately receives the buffered scrollback.",
+      "status": "pass",
+      "evidence": "TerminalProcessService.test.ts: 'replays scrollback to a late subscriber'."
+    },
+    {
+      "id": "T5",
+      "title": "Multiple terminals + reload persistence in the UI",
+      "surface": "ui",
+      "precondition": "App running; on the TERMINAL tab of a project.",
+      "steps": ["1. Open 2+ terminals with '+'.", "2. Run a long-lived command in one.", "3. Reload the browser.", "4. Observe the terminals."],
+      "expected": "After reload, the same terminals are listed and reconnect with their recent scrollback restored; the long command is still running.",
+      "status": "pending",
+      "evidence": "Backend persistence + scrollback proven by T2–T4; full reload behavior needs the running app + browser."
+    },
+    {
+      "id": "T6",
+      "title": "Resize reflows the terminal (fit addon)",
+      "surface": "ui",
+      "precondition": "App running on a terminal.",
+      "steps": ["1. Resize the window.", "2. Run `tput cols` or observe wrapping."],
+      "expected": "The terminal reflows; the PTY receives the new cols/rows.",
+      "status": "pending",
+      "evidence": "Resize wired via FitAddon + onResize → ws resize; needs the running app."
+    },
+    {
+      "id": "T7",
+      "title": "Server shutdown kills PTYs; no orphans; no PTY output logged",
+      "surface": "cli",
+      "precondition": "App running with live terminals.",
+      "steps": ["1. Note PTY child PIDs.", "2. Stop the server (SIGINT).", "3. ps for the shells.", "4. Inspect logs."],
+      "expected": "PTYs are reaped on shutdown (bindSignals); no shell processes remain; logs contain no PTY input/output.",
+      "status": "pending",
+      "evidence": "bindSignals reaps on SIGINT/SIGTERM (mirrors ClaudeProcessService); onData never logs payloads. Manual ps check needs the running app."
+    }
+  ]
+}

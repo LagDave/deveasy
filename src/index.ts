@@ -10,6 +10,7 @@ import { destroyDb } from "./database/connection";
 import { logger } from "./lib/logger";
 import { registerRoutes } from "./routes";
 import { attachSessionWebSocket } from "./ws/sessionWebSocket";
+import { attachTerminalWebSocket } from "./ws/terminalWebSocket";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -73,8 +74,10 @@ async function main(): Promise<void> {
   const app = createApiApp();
   const server = http.createServer(app);
 
-  // Session WebSocket relay shares the HTTP server (coexists with Vite's HMR ws).
+  // WebSocket relays share the HTTP server (each claims its own path; coexists
+  // with Vite's HMR ws).
   attachSessionWebSocket(server);
+  attachTerminalWebSocket(server);
 
   // Frontend is mounted AFTER the API routes so /api always wins.
   if (isProduction) mountBuiltFrontend(app);

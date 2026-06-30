@@ -11,6 +11,10 @@ const log = childLogger({ module: "GitService" });
 
 /** Default number of commits returned by history. */
 const DEFAULT_HISTORY_LIMIT = 50;
+/** The integration branch that "merge to main" targets. */
+const MAIN_BRANCH = "main";
+/** Allow-list for branch names passed to git — blocks option/argv injection (§5.2). */
+const BRANCH_NAME_RE = /^[A-Za-z0-9._/-]+$/;
 /** Field separator for the parseable git log format (unlikely in commit metadata). */
 const LOG_FIELD_SEP = "";
 /** Record separator for git log entries. */
@@ -134,6 +138,181 @@ export class GitService {
     const cwd = await GitService.resolveProjectPath(projectId);
     await GitService.runGit(cwd, ["checkout", branch]);
     return GitService.getStatus(projectId);
+  }
+
+  /** Stage paths (git add). Paths are validated and passed after `--` so they can
+   *  never be read as git options (§5.2). Returns fresh status. */
+  static async stage(projectId: number, paths: string[]): Promise<GitStatus> {
+    const cwd = await GitService.resolveProjectPath(projectId);
+    const safe = GitService.validatePaths(paths);
+    if (safe.length === 0) throw new GitError("GIT_NO_PATHS", "No valid paths to stage.");
+    await GitService.runGit(cwd, ["add", "--", ...safe]);
+    return GitService.getStatus(projectId);
+  }
+
+  /** Unstage paths (git restore --staged). Returns fresh status. */
+  static async unstage(projectId: number, paths: string[]): Promise<GitStatus> {
+    const cwd = await GitService.resolveProjectPath(projectId);
+    const safe = GitService.validatePaths(paths);
+    if (safe.length === 0) throw new GitError("GIT_NO_PATHS", "No valid paths to unstage.");
+    await GitService.runGit(cwd, ["restore", "--staged", "--", ...safe]);
+    return GitService.getStatus(projectId);
+  }
+
+  /** Commit currently-staged changes using the repo's own configured identity —
+   *  we never force an author (§ spec decision). Returns fresh status. */
+  static async commit(projectId: number, message: string): Promise<GitStatus> {
+    const cwd = await GitService.resolveProjectPath(projectId);
+    const msg = message.trim();
+    if (!msg) throw new GitError("GIT_COMMIT_EMPTY_MESSAGE", "A commit message is required.");
+    const result = await GitService.runGitRaw(cwd, ["commit", "-m", msg]);
+    if (result.code !== 0) {
+      const combined = `${result.stdout}\n${result.stderr}`;
+      if (/nothing to commit|no changes added/i.test(combined)) {
+        throw new GitError("GIT_NOTHING_TO_COMMIT", "Nothing staged to commit.");
+      }
+      if (/please tell me who you are|user\.email/i.test(combined)) {
+        throw new GitError("GIT_NO_IDENTITY", "Set your git user.name and user.email before committing.");
+      }
+      log.error({ cwd, stderr: result.stderr }, "git commit failed");
+      throw new GitError("GIT_COMMIT_FAILED", "Failed to create the commit.");
+    }
+    return GitService.getStatus(projectId);
+  }
+
+  /** Create and switch to a new branch. Name is allow-list validated (§5.2). */
+  static async createBranch(projectId: number, name: string): Promise<GitStatus> {
+    const branch = name.trim();
+    if (!GitService.isValidBranchName(branch)) {
+      throw new GitError("GIT_BRANCH_INVALID", "Invalid branch name.", { branch });
+    }
+    const cwd = await GitService.resolveProjectPath(projectId);
+    const result = await GitService.runGitRaw(cwd, ["checkout", "-b", branch]);
+    if (result.code !== 0) {
+      if (/already exists/i.test(result.stderr)) {
+        throw new GitError("GIT_BRANCH_EXISTS", "A branch with that name already exists.", { branch });
+      }
+      log.error({ cwd, branch, stderr: result.stderr }, "git branch create failed");
+      throw new GitError("GIT_BRANCH_FAILED", "Failed to create the branch.");
+    }
+    return GitService.getStatus(projectId);
+  }
+
+  /** Push the current branch, setting upstream on the first push. Never force. */
+  static async push(projectId: number): Promise<GitStatus> {
+    const cwd = await GitService.resolveProjectPath(projectId);
+    const branch = await GitService.getCurrentBranch(cwd);
+    const args = (await GitService.hasUpstream(cwd))
+      ? ["push"]
+      : ["push", "--set-upstream", "origin", branch];
+    const result = await GitService.runGitRaw(cwd, args);
+    if (result.code !== 0) {
+      log.error({ cwd, branch, stderr: result.stderr }, "git push failed");
+      if (/no configured push destination|could not read from remote|does not appear to be a git repository/i.test(result.stderr)) {
+        throw new GitError("GIT_NO_REMOTE", "No remote is configured to push to.");
+      }
+      throw new GitError("GIT_PUSH_FAILED", "Push failed. Check your remote and credentials.");
+    }
+    return GitService.getStatus(projectId);
+  }
+
+  /** Merge the current branch into main and push. Aborts cleanly on conflict so
+   *  the working tree is never left half-merged (§ spec risk). Returns fresh status. */
+  static async mergeToMain(projectId: number): Promise<GitStatus> {
+    const cwd = await GitService.resolveProjectPath(projectId);
+    const source = await GitService.getCurrentBranch(cwd);
+    if (source === MAIN_BRANCH) {
+      throw new GitError("GIT_ALREADY_ON_MAIN", "You are already on main; nothing to merge.");
+    }
+    const { branches } = await GitService.getBranches(projectId);
+    if (!branches.includes(MAIN_BRANCH)) {
+      throw new GitError("GIT_NO_MAIN", "This repository has no main branch.");
+    }
+
+    await GitService.runGit(cwd, ["checkout", MAIN_BRANCH]);
+    const merge = await GitService.runGitRaw(cwd, ["merge", "--no-edit", source]);
+    if (merge.code !== 0) {
+      // Roll back rather than leaving a conflicted tree on main.
+      await GitService.runGitRaw(cwd, ["merge", "--abort"]);
+      await GitService.runGitRaw(cwd, ["checkout", source]);
+      throw new GitError(
+        "GIT_MERGE_CONFLICT",
+        `Merging ${source} into ${MAIN_BRANCH} hit conflicts; the merge was aborted.`,
+        { source },
+      );
+    }
+
+    const pushArgs = (await GitService.hasUpstream(cwd))
+      ? ["push"]
+      : ["push", "--set-upstream", "origin", MAIN_BRANCH];
+    const push = await GitService.runGitRaw(cwd, pushArgs);
+    if (push.code !== 0) {
+      log.error({ cwd, stderr: push.stderr }, "git push after merge failed");
+      throw new GitError(
+        "GIT_PUSH_FAILED",
+        "Merged into main locally, but the push failed. Check your remote and credentials.",
+      );
+    }
+    return GitService.getStatus(projectId);
+  }
+
+  /** Validate working-tree paths: reject absolute, parent-escaping, or option-like. */
+  private static validatePaths(paths: unknown): string[] {
+    if (!Array.isArray(paths)) return [];
+    return (paths as unknown[])
+      .map((p) => (typeof p === "string" ? p.trim() : ""))
+      .filter(
+        (p) =>
+          p.length > 0 &&
+          !p.startsWith("-") &&
+          !path.isAbsolute(p) &&
+          !p.split("/").includes(".."),
+      );
+  }
+
+  private static isValidBranchName(name: string): boolean {
+    return (
+      BRANCH_NAME_RE.test(name) &&
+      !name.startsWith("-") &&
+      !name.includes("..") &&
+      name.length <= 200
+    );
+  }
+
+  /** True when the current branch has a configured upstream (so a plain push works). */
+  private static async hasUpstream(cwd: string): Promise<boolean> {
+    const res = await GitService.runGitRaw(cwd, [
+      "rev-parse",
+      "--abbrev-ref",
+      "--symbolic-full-name",
+      "@{u}",
+    ]);
+    return res.code === 0;
+  }
+
+  /**
+   * Like runGit but returns the result instead of throwing on a non-zero exit —
+   * for commands whose non-zero exit is a meaningful state (merge conflict,
+   * nothing to commit) rather than a hard failure.
+   */
+  private static async runGitRaw(
+    cwd: string,
+    args: string[],
+  ): Promise<{ stdout: string; stderr: string; code: number }> {
+    try {
+      const { stdout, stderr } = await execFileAsync("git", args, {
+        cwd,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      return { stdout, stderr, code: 0 };
+    } catch (err) {
+      const e = err as { stdout?: string; stderr?: string; code?: number };
+      return {
+        stdout: e.stdout ?? "",
+        stderr: e.stderr ?? "",
+        code: typeof e.code === "number" ? e.code : 1,
+      };
+    }
   }
 
   private static async getCurrentBranch(cwd: string): Promise<string> {

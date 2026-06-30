@@ -47,3 +47,27 @@ export async function getGitBranches(projectId: number): Promise<GitBranches> {
 export async function checkoutGitBranch(projectId: number, branch: string): Promise<GitStatus> {
   return apiPost<GitStatus>("/api/git/checkout", { projectId, branch });
 }
+
+export async function stageGitPaths(projectId: number, paths: string[]): Promise<GitStatus> {
+  return apiPost<GitStatus>("/api/git/stage", { projectId, paths });
+}
+
+export async function unstageGitPaths(projectId: number, paths: string[]): Promise<GitStatus> {
+  return apiPost<GitStatus>("/api/git/unstage", { projectId, paths });
+}
+
+export async function commitGit(projectId: number, message: string): Promise<GitStatus> {
+  return apiPost<GitStatus>("/api/git/commit", { projectId, message });
+}
+
+export async function createGitBranch(projectId: number, name: string): Promise<GitStatus> {
+  return apiPost<GitStatus>("/api/git/branch", { projectId, name });
+}
+
+export async function pushGit(projectId: number): Promise<GitStatus> {
+  return apiPost<GitStatus>("/api/git/push", { projectId });
+}
+
+export async function mergeGitToMain(projectId: number): Promise<GitStatus> {
+  return apiPost<GitStatus>("/api/git/merge-main", { projectId });
+}

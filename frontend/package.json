@@ -17,6 +17,8 @@
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^5.62.7",
     "@types/diff": "^5.2.3",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "diff": "^5.2.2",
     "emmet-monaco-es": "^5.7.0",
     "framer-motion": "^12.42.0",
