@@ -11,7 +11,7 @@ This agent + the `code-constitution` skill are portable. The whole document is p
 | Backend root (`{backend-root}`) | `src/` |
 | Frontend root (`{frontend-root}`) | `frontend/` |
 | Stack | TypeScript + Express + Knex + PostgreSQL · React 19 + Vite + TS SPA |
-| Commit author (`{Commit author}` / `{Commit email}`) | `LagDave` / `laggy80@gmail.com` |
+| Commit author (`{Commit author}` / `{Commit email}`) | `{Github Global User}` / `{Github Global Email}` |
 | Memory dir | `~/.claude/memory/` |
 | Reference domain (backend) | `src/controllers/gbp-automation/` — skeleton in `code-constitution` SKILL.md Part VI |
 | Reference triad (frontend) | `frontend/src/api/` + React Query + feature folders — Part VI |
@@ -926,7 +926,7 @@ Execution is not complete until this summary is produced. The agent must never s
 - The full plan is complete, OR
 - A substantial milestone within a large plan is reached (e.g., all backend tasks done, all frontend tasks done)
 
-**Commit author:** Always the Project Profile's `{Commit author} <{Commit email}>` (this project: `LagDave <laggy80@gmail.com>`). Never use Claude Code's default attribution.
+**Commit author:** Always the Project Profile's `{Commit author} <{Commit email}>` (this project: `{Github Global Username <{Github Global Email}>`). Never use Claude Code's default attribution.
 
 ```bash
 git -c user.name="{Commit author}" -c user.email="{Commit email}" commit -m "{type}: {description}"
