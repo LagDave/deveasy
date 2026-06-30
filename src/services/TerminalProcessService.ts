@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { access } from "node:fs/promises";
 import { spawn as ptySpawn, type IPty } from "node-pty";
 import { childLogger } from "../lib/logger";
 import { ProjectModel } from "../models/ProjectModel";
@@ -16,7 +17,8 @@ const DEFAULT_ROWS = 24;
 /** The shell to run; the operator's own shell, falling back per platform. */
 function defaultShell(): string {
   if (process.env.SHELL) return process.env.SHELL;
-  return process.platform === "win32" ? "powershell.exe" : "/bin/bash";
+  if (process.platform === "win32") return process.env.ComSpec || "powershell.exe";
+  return "/bin/bash";
 }
 
 /** Typed error for the terminal layer (mirrors the domain-error pattern, §8.3). */
@@ -83,6 +85,13 @@ export class TerminalProcessService {
     }
 
     const cwd = await this.resolveProjectPath(projectId);
+    try {
+      await access(cwd);
+    } catch {
+      throw new TerminalError("TERMINAL_CWD_MISSING", "The project folder no longer exists on disk.", {
+        cwd,
+      });
+    }
     const id = randomUUID();
     const createdAt = new Date().toISOString();
 
@@ -250,5 +259,6 @@ export class TerminalProcessService {
     };
     process.on("SIGINT", () => onSignal("SIGINT"));
     process.on("SIGTERM", () => onSignal("SIGTERM"));
+    process.on("SIGBREAK", () => onSignal("SIGBREAK")); // Windows Ctrl+Break
   }
 }

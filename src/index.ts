@@ -95,6 +95,7 @@ async function main(): Promise<void> {
   };
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGBREAK", () => void shutdown("SIGBREAK")); // Windows Ctrl+Break
 }
 
 void main();

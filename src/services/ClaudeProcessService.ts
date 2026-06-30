@@ -1,5 +1,6 @@
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { childLogger } from "../lib/logger";
+import { resolveExecutable } from "../utils/platform";
 
 const log = childLogger({ module: "ClaudeProcessService" });
 
@@ -79,7 +80,7 @@ export class ClaudeProcessService {
   static assertReady(): void {
     let probe: ReturnType<typeof spawnSync>;
     try {
-      probe = spawnSync(CLI_COMMAND, ["--version"], {
+      probe = spawnSync(resolveExecutable(CLI_COMMAND), ["--version"], {
         timeout: PROBE_TIMEOUT_MS,
         encoding: "utf8",
         env: this.buildChildEnv(),
@@ -122,7 +123,7 @@ export class ClaudeProcessService {
 
     let child: ChildProcessWithoutNullStreams;
     try {
-      child = spawn(CLI_COMMAND, [...CLI_ARGS], {
+      child = spawn(resolveExecutable(CLI_COMMAND), [...CLI_ARGS], {
         cwd: projectPath,
         env: this.buildChildEnv(),
         stdio: ["pipe", "pipe", "pipe"],
@@ -194,7 +195,7 @@ export class ClaudeProcessService {
    */
   static runHeadless(prompt: string, timeoutMs = 20_000): Promise<string> {
     return new Promise((resolve, reject) => {
-      const child = spawn(CLI_COMMAND, ["-p", prompt], {
+      const child = spawn(resolveExecutable(CLI_COMMAND), ["-p", prompt], {
         env: this.buildChildEnv(),
         stdio: ["ignore", "pipe", "pipe"],
         timeout: timeoutMs,
@@ -301,5 +302,6 @@ export class ClaudeProcessService {
     };
     process.on("SIGINT", () => onSignal("SIGINT"));
     process.on("SIGTERM", () => onSignal("SIGTERM"));
+    process.on("SIGBREAK", () => onSignal("SIGBREAK")); // Windows Ctrl+Break
   }
 }

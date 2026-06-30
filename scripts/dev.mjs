@@ -8,10 +8,19 @@ import { spawn, spawnSync } from "node:child_process";
 
 const APP_URL = "http://localhost:1234";
 
+// On Windows, `npm` is `npm.cmd` and cannot be found by spawn with shell:false;
+// docker/npm resolve correctly only through the shell. POSIX keeps shell:false.
+const NEEDS_SHELL = process.platform === "win32";
+
 function run(label, cmd, args) {
   process.stdout.write(`\n[dev:all] ${label}…\n`);
-  const res = spawnSync(cmd, args, { stdio: "inherit", shell: false });
+  const res = spawnSync(cmd, args, { stdio: "inherit", shell: NEEDS_SHELL });
   return res.status === 0;
+}
+
+/** Block the current thread for `ms` without a shell — cross-platform (no `sh`). */
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 // 1. Postgres (best-effort — if Docker is unavailable, keep going; the backend
@@ -28,7 +37,7 @@ if (pgUp) {
   for (let attempt = 1; attempt <= 3 && !migrated; attempt++) {
     migrated = run(`applying migrations (attempt ${attempt}/3)`, "npm", ["run", "db:migrate"]);
     if (!migrated && attempt < 3) {
-      spawnSync("sh", ["-c", "sleep 2"]); // give Postgres a moment to come up
+      sleepSync(2000); // give Postgres a moment to come up
     }
   }
   if (!migrated) {

@@ -34,6 +34,76 @@ Then open **http://localhost:1234**. Editing a file hot-reloads instantly.
 
 ---
 
+## Windows (native)
+
+DevEasy runs natively on Windows in PowerShell or `cmd` — **no WSL2 required, and no
+admin rights or Developer Mode.**
+
+### 1. Install the prerequisites (one time)
+
+The quickest path uses [winget](https://learn.microsoft.com/windows/package-manager/winget/)
+(built into Windows 10/11). Run in PowerShell:
+
+```powershell
+winget install OpenJS.NodeJS.LTS      # Node 20+ and npm
+winget install Git.Git                 # git
+winget install Docker.DockerDesktop    # local Postgres host
+```
+
+Then install the **Claude Code CLI** (puts `claude` on your `PATH`):
+
+```powershell
+npm install -g @anthropic-ai/claude-code
+```
+
+Close and reopen PowerShell so the new `PATH` is picked up, then confirm each tool:
+
+```powershell
+node -v        # v20+
+git --version
+claude --version
+docker --version
+```
+
+### 2. Log in to Claude (one time)
+
+```powershell
+claude          # follow the prompt to sign in to your subscription
+```
+
+Do **not** set `ANTHROPIC_API_KEY` — that would switch sessions to paid API billing.
+Make sure **Docker Desktop is running** before the next step.
+
+### 3. Run DevEasy
+
+```powershell
+git clone <your-deveasy-repo> deveasy
+cd deveasy
+npm install
+npm --prefix frontend install
+copy .env.example .env   # adjust if needed
+npm run dev:all
+```
+
+Then open **http://localhost:1234**. `Ctrl+C` stops it.
+
+**How config injection works on Windows.** DevEasy shares one `CLAUDE.md` +
+`.claude/skills` + `.claude/agents` across your projects. On Windows it links these in
+with **directory junctions** (the two folders) and a **hardlink** (`CLAUDE.md`) — both
+work without elevated privileges, and edits you make in the Agent Manager show up live
+in open projects.
+
+> **Keep `PROJECTS_ROOT` on the same drive as the DevEasy repo.** Hardlinks can't span
+> volumes; if your projects live on a different drive, `CLAUDE.md` is **copied** instead
+> of linked, and changes to the shared file won't appear in a project until you re-open
+> it. (Junctions for the two folders still work across drives.)
+
+> **Closing the console window** (the `X` button) can't be trapped cleanly on Windows, so
+> it may leave a `claude` or terminal child process behind. Stop the server with `Ctrl+C`
+> (or `Ctrl+Break`) instead — both reap child processes.
+
+---
+
 ## Track an existing project
 
 DevEasy works on the git repos inside its **`projects/`** folder (gitignored, so your

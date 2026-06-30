@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Native Windows Support Spec</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #ffffff;
+      --ink: #080808;
+      --muted: #5f5f5f;
+      --line: #d8d8d8;
+      --soft: #f5f5f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    .spec-shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0; }
+    .spec-hero, .spec-card, .task-card { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .spec-hero { border-color: var(--ink); padding: 32px; margin-bottom: 20px; }
+    .hero-topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .spec-card { padding: 28px; margin-top: 16px; }
+    .task-card { padding: 20px; background: var(--soft); margin-top: 14px; }
+    .eyebrow, dt { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
+    .eyebrow { margin: 0; }
+    .status-pill { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 0.78rem; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+    .status-card { border-color: var(--ink); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 840px; margin-bottom: 24px; font-size: clamp(2.25rem, 6vw, 5rem); line-height: 0.95; letter-spacing: 0; }
+    h2 { font-size: 1.35rem; letter-spacing: 0; }
+    h3 { font-size: 1rem; letter-spacing: 0; }
+    code { padding: 0.1rem 0.3rem; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); font-size: 0.92em; }
+    .meta-grid, .split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .meta-grid { margin: 0; }
+    .meta-grid div, .split-grid > div { border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    dd { margin: 4px 0 0; font-weight: 700; }
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+    .task-card dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .task-card dl > div { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: var(--paper); }
+    @media (max-width: 640px) {
+      .spec-shell { width: min(100% - 20px, 1120px); padding: 24px 0; }
+      .spec-hero, .spec-card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec</p>
+        <span class="status-pill status-pending">In Progress</span>
+      </div>
+      <h1>Native Windows Support</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>In Progress — code complete, Windows acceptance pending</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/07012026-windows-native-support</dd></div>
+        <div><dt>Size</dt><dd>Large</dd></div>
+        <div><dt>Risk</dt><dd>Level 3</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>DevEasy only runs cleanly on macOS/Linux today. A Windows teammate cannot start it: <code>npm run dev:all</code> dies immediately, and even past that, the core feature that makes DevEasy itself work — injecting the shared agent config into each project — relies on POSIX symlinks that a default non-admin Windows user cannot create. The goal is end-to-end <strong>native</strong> Windows support (PowerShell/cmd, no WSL2 required) without changing any macOS/Linux behavior.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>On a clean native Windows box (Node 20+, Docker Desktop, Claude CLI on PATH, git), a user can clone the repo, <code>npm install</code>, copy <code>.env</code>, and run <code>npm run dev:all</code> to reach the app on <code>http://localhost:1234</code> — start a Claude session, open a terminal, and have the shared <code>CLAUDE.md</code> + <code>.claude/skills</code> + <code>.claude/agents</code> injected into projects <strong>without admin rights or Developer Mode</strong>. Config edits in the Agent Manager still propagate live into open projects. macOS/Linux behavior is unchanged.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files</h3>
+      <ul>
+        <li><code>scripts/dev.mjs</code> — one-command dev launcher. Two Windows breaks: <code>spawnSync("sh", ["-c", "sleep 2"])</code> (no <code>sh</code> on Windows) and <code>run()</code> spawning <code>npm</code> with <code>shell:false</code> (npm is <code>npm.cmd</code> — ENOENT without a shell on Windows).</li>
+        <li><code>src/services/ConfigInjectionService.ts</code> — injects shared config via <code>fs.symlink</code> (line 119). Symlinks need admin/Developer Mode on Windows. Idempotency check (line 104) uses <code>isSymbolicLink()</code>, which will not recognize a hardlink.</li>
+        <li><code>src/services/ClaudeProcessService.ts</code> — spawns bare <code>claude</code> (lines 82, 125, 197). On Windows the binary is <code>claude.cmd</code>; <code>spawn</code>/<code>spawnSync</code> with <code>shell:false</code> cannot find it. <code>runHeadless</code> passes an arbitrary prompt as an arg — must not be shell-interpreted (§5.2).</li>
+        <li><code>src/services/TerminalProcessService.ts</code> — PTY shell fallback to <code>powershell.exe</code> (line 19); cwd not validated before spawn; SIGINT/SIGTERM reaping only (line 251).</li>
+        <li><code>src/index.ts</code> — process shutdown on SIGINT/SIGTERM (lines 96–97). Windows console signals differ.</li>
+        <li><code>src/services/AgentConfigService.ts</code> — writes the shared <code>CLAUDE.md</code> <strong>in place</strong> (line 266, <code>fs.writeFile</code> to the same path, no atomic rename). Verified: a hardlink to it survives saves, so live-update is preserved with the hardlink approach.</li>
+        <li><code>.env.example</code>, <code>README.md</code> — setup docs; no Windows section today.</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li>Typed domain errors with a machine code (§8.3) — mirror <code>TerminalError</code> / <code>ProjectError</code> already used in these services.</li>
+        <li>Pino <code>childLogger</code> for all logging in <code>src/</code> (§9.1). <code>scripts/dev.mjs</code> is a build script, not production <code>src/</code>, so its <code>process.stdout.write</code> usage stays.</li>
+        <li>New shared helper lives in <code>src/utils/</code> (§6.2) — currently empty; this is the first util. Single responsibility (§2.1), small (§2.4), no <code>any</code> (§4.5), named constants for PATHEXT defaults (§4.2).</li>
+        <li>Branch on <code>process.platform === "win32"</code>; the POSIX path must stay byte-for-byte identical to today.</li>
+      </ul>
+      <p><strong>Reference file:</strong> <code>src/services/ConfigInjectionService.ts</code> — modified in place; its existing structure (typed errors, idempotent guards, JSDoc rationale) is the analog for the new branches.</p>
+      <p><strong>Constitution note:</strong> this repo does <em>not</em> have <code>check:conventions</code>/<code>check:all</code> wired (the Constitution references them but they are absent here). Verification uses the real scripts: <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run test</code>. Articles are cited manually.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li>Keep macOS/Linux behavior byte-for-byte (POSIX branch unchanged).</li>
+            <li>Inject config on Windows with <strong>no admin / no Developer Mode</strong>: junctions for the two directories, hardlink for <code>CLAUDE.md</code>.</li>
+            <li>Preserve live config propagation (hardlink + in-place write — §verified).</li>
+            <li>Keep <code>shell:false</code> on the Claude spawn paths; resolve the executable instead (§5.2 — no arbitrary prompt through a shell).</li>
+            <li>Typed errors + Pino logging on every new async path (§3.1, §3.2, §3.3, §8.3).</li>
+            <li>New util has a mirroring test file (§20.1).</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No new runtime dependencies — Node stdlib only (§4.4).</li>
+            <li>No <code>shell:true</code> on the <code>claude</code> spawn sites.</li>
+            <li>Do not refactor unrelated code; no drive-by cleanups.</li>
+            <li>Do not change the response/error contract or the config-tree path guard (§5.2).</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>WSL2 instructions (chosen path is native; WSL2 not documented here).</li>
+        <li>Native (non-Docker) PostgreSQL install path — Docker Desktop is assumed.</li>
+        <li>Windows installer / packaging / service registration.</li>
+        <li>Wiring up <code>check:conventions</code> — separate concern.</li>
+        <li>Frontend changes — none needed for Windows.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 — Structural. The config-injection mechanism is the heart of DevEasy's sharing model and is changed across platforms; the change is also cross-cutting (launcher, two process services, shutdown). Mitigation path (junction + hardlink, no privilege) was chosen in planning.</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li><strong>Hardlink needs same volume.</strong> If <code>PROJECTS_ROOT</code> is on a different drive than the repo, <code>fs.link</code> throws <code>EXDEV</code>. <strong>Mitigation:</strong> catch <code>EXDEV</code>, fall back to a file copy, and log a warning that edits won't live-update until re-injection. Document the same-drive recommendation.</li>
+        <li><strong>Hardlink idempotency / false conflict.</strong> A hardlink looks like a plain file to <code>lstat</code>, so the current check would throw <code>CONFIG_INJECTION_CONFLICT</code> on re-inject. <strong>Mitigation:</strong> on Windows, compare <code>fs.stat(linkPath).ino</code> against the shared file's inode — equal means it's our link (skip), different means the project owns a real <code>CLAUDE.md</code> (genuine conflict).</li>
+        <li><strong>Junction detection.</strong> Node reports junctions through <code>lstat().isSymbolicLink()</code> and <code>readlink()</code>, but this needs confirming on a real Windows box. <strong>Mitigation:</strong> acceptance item verifies idempotent re-inject on Windows.</li>
+        <li><strong>Editor atomic-save breaks a hardlink.</strong> If the shared <code>CLAUDE.md</code> is ever replaced by rename (not in-place), the hardlink detaches. <strong>Mitigation:</strong> DevEasy's own writer is in-place (verified, AgentConfigService:266); document the caveat for external editors.</li>
+        <li><strong>Orphaned children on console close.</strong> Windows cannot reliably trap a console-window close (<code>CTRL_CLOSE</code>). <strong>Mitigation:</strong> handle SIGINT (Ctrl+C) and SIGBREAK (Ctrl+Break) to reap children; document the close-button limitation. Full job-object containment is out of scope.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> <code>ConfigInjectionService.inject</code> is called from <code>ProjectCreateService.ts</code> (create-project wizard) and <code>SessionsController.ts</code> (session start) — both high-traffic, both must keep working on macOS. <code>ClaudeProcessService</code> consumers: <code>SessionStreamService.ts</code>, <code>SessionTitleService.ts</code> (runHeadless), <code>sessions/feature-utils/controllerResponses.ts</code>. <code>TerminalProcessService</code> consumers: <code>TerminalController.ts</code>, <code>ws/terminalWebSocket.ts</code> (+ existing tests). <code>src/index.ts</code> shutdown affects the whole process.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li>The copy fallback silently degrades the live-sharing promise on a cross-drive <code>PROJECTS_ROOT</code>. Recommended: keep the fallback but make the warning loud, and state the same-drive recommendation in the README rather than trying to engineer cross-volume live links.</li>
+        <li>I cannot verify any of this from macOS. Acceptance items are concrete Windows steps for you to run; the plan is honest that Layer-2 stays <code>pending</code> until then.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+
+      <article class="task-card">
+        <h3>T1: Cross-platform dev launcher</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Replace <code>spawnSync("sh", ["-c", "sleep 2"])</code> with a dependency-free synchronous sleep (<code>Atomics.wait</code> on a <code>SharedArrayBuffer</code>). In <code>run()</code>, set <code>shell: process.platform === "win32"</code> so <code>npm</code> (npm.cmd) and <code>docker</code> resolve on Windows. POSIX path unchanged.</dd></div>
+          <div><dt>Files</dt><dd><code>scripts/dev.mjs</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd>Manual (Windows): <code>npm run dev:all</code> proceeds past the migration retry loop and prints the start banner. Manual (macOS): unchanged.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T2: Platform executable resolver (new util)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add <code>resolveExecutable(name)</code>: on win32, walk <code>PATH</code> × <code>PATHEXT</code> (<code>.CMD</code>/<code>.EXE</code>/<code>.BAT</code>, named constant per §4.2) and return the first existing absolute path, else the bare name; on POSIX return the name unchanged. Cache results. No <code>any</code> (§4.5), single responsibility (§2.1).</dd></div>
+          <div><dt>Files</dt><dd><code>src/utils/platform.ts</code>, <code>src/utils/__tests__/platform.test.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd><code>npm run test</code> — resolver returns the bare name on POSIX and a PATHEXT match on a simulated win32 lookup.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T3: Windows-safe Claude CLI spawning</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Route the three spawn sites (<code>assertReady</code>, <code>start</code>, <code>runHeadless</code>) through <code>resolveExecutable("claude")</code>. Keep <code>shell:false</code> so the headless prompt is never shell-interpreted (§5.2). Preserve the API-key-scrubbed env and typed errors (§8.3).</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/ClaudeProcessService.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T2</dd></div>
+          <div><dt>Verify</dt><dd>Manual (Windows): starting a session spawns <code>claude.cmd</code> and streams; auto-naming (runHeadless) works. macOS: unchanged.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T4: Cross-platform config injection</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Branch <code>ensureSymlink</code> by platform. Directories (<code>.claude/skills</code>, <code>.claude/agents</code>): <code>fs.symlink(target, link, "junction")</code> on win32, plain symlink on POSIX. <code>CLAUDE.md</code>: <code>fs.link</code> (hardlink) on win32, symlink on POSIX. Idempotency on win32 hardlink: compare <code>fs.stat(linkPath).ino</code> to the shared file's inode (equal → skip; differ → <code>CONFIG_INJECTION_CONFLICT</code>). Catch <code>EXDEV</code> on hardlink → copy fallback + <code>log.warn</code> that live-update is off until re-inject. POSIX path unchanged.</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/ConfigInjectionService.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd>Manual (Windows, non-admin): open a project → <code>.claude/skills</code> &amp; <code>.claude/agents</code> are junctions, <code>CLAUDE.md</code> is a hardlink; edit shared CLAUDE.md in Agent Manager → change shows in the project; re-open project → no conflict thrown. macOS: symlinks as before.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T5: Terminal shell + signal/shutdown hardening</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Terminal: validate the resolved cwd exists before <code>ptySpawn</code> (typed <code>TerminalError</code> if not); prefer <code>process.env.ComSpec</code> then <code>powershell.exe</code> for the Windows shell fallback. Signals: add a <code>SIGBREAK</code> handler alongside SIGINT/SIGTERM in <code>src/index.ts</code> and both services' <code>bindSignals</code>, so Ctrl+Break also reaps children.</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/TerminalProcessService.ts</code>, <code>src/index.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd>Manual (Windows): open a terminal → PowerShell starts in the project dir; Ctrl+C in the server console stops it without leaving orphaned <code>claude</code>/pty processes. macOS: unchanged.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T6: Windows setup documentation</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add a "Windows (native)" section to <code>README.md</code>: prerequisites (Node 20+, Docker Desktop, Claude CLI on PATH as <code>claude.cmd</code>, git), the <code>npm install</code> + copy <code>.env</code> + <code>npm run dev:all</code> flow, an explicit note that admin/Developer Mode is <strong>not</strong> required, and the same-drive <code>PROJECTS_ROOT</code> recommendation (else copy fallback, no live config). Add a one-line Windows note to <code>.env.example</code> if useful.</dd></div>
+          <div><dt>Files</dt><dd><code>README.md</code>, <code>.env.example</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1–T5 (doc reflects final behavior)</dd></div>
+          <div><dt>Verify</dt><dd>Manual: a Windows user following only the README reaches the running app.</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>npm run typecheck</code> — zero errors from these changes</li>
+        <li><input type="checkbox" disabled> <code>npm run lint</code> — no new violations</li>
+        <li><input type="checkbox" disabled> <code>npm run test</code> — existing suite green + new <code>platform.test.ts</code> passes</li>
+        <li><input type="checkbox" disabled> macOS regression: project open still injects via symlink; session + terminal still start (no behavior change)</li>
+        <li><input type="checkbox" disabled> Windows: <code>npm run dev:all</code> reaches <code>http://localhost:1234</code></li>
+        <li><input type="checkbox" disabled> Windows (non-admin): config injected via junction + hardlink; Agent Manager edit propagates live; re-inject throws no false conflict</li>
+        <li><input type="checkbox" disabled> Windows: Claude session streams; terminal opens in project dir; Ctrl+C reaps children</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

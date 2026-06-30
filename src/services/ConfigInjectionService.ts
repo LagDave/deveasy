@@ -25,9 +25,16 @@ interface InjectionTarget {
 
 /**
  * Injects the shared, version-controlled config (CLAUDE.md + .claude/skills +
- * .claude/agents) into a selected project via symlink, because Claude's config
- * walk stops at the project's own repo root and will not reach the DevEasy root.
- * Symlinks are gitignored in the project so they never enter its history.
+ * .claude/agents) into a selected project, because Claude's config walk stops at
+ * the project's own repo root and will not reach the DevEasy root. The links are
+ * gitignored in the project so they never enter its history.
+ *
+ * Linking is platform-aware: POSIX uses symlinks throughout; native Windows uses
+ * directory junctions for the two folders and a hardlink for CLAUDE.md, so no
+ * admin rights or Developer Mode are needed. A hardlink reflects in-place edits to
+ * the shared CLAUDE.md (AgentConfigService writes in place), preserving live
+ * propagation. On a cross-volume PROJECTS_ROOT the hardlink degrades to a copy
+ * (logged), which does not live-update until the project is re-opened.
  *
  * Pre-existing real config is never overwritten — the service aborts with a
  * typed conflict instead (Spec 1 Risk; Constitution §5.2 path guarding applies
@@ -48,7 +55,7 @@ export class ConfigInjectionService {
     await fs.mkdir(path.join(projectPath, ".claude"), { recursive: true });
 
     for (const t of targets) {
-      await ConfigInjectionService.ensureSymlink(t.linkPath, t.target);
+      await ConfigInjectionService.ensureLink(t.linkPath, t.target);
     }
 
     await ConfigInjectionService.ensureGitignoreBlock(projectPath);
@@ -91,15 +98,24 @@ export class ConfigInjectionService {
     }
   }
 
-  /** Create the symlink, or verify an existing one already points at our target. */
-  private static async ensureSymlink(linkPath: string, target: string): Promise<void> {
-    let stat: import("node:fs").Stats | null = null;
-    try {
-      stat = await fs.lstat(linkPath);
-    } catch {
-      stat = null;
+  /**
+   * Link `target` into `linkPath`, idempotently. Dispatches by platform and by
+   * whether the target is a directory: POSIX → symlink; Windows dir → junction;
+   * Windows file → hardlink (with a cross-volume copy fallback).
+   */
+  private static async ensureLink(linkPath: string, target: string): Promise<void> {
+    if (process.platform !== "win32") {
+      return ConfigInjectionService.ensurePosixSymlink(linkPath, target);
     }
+    const targetStat = await fs.stat(target); // shared config exists by now (ensureSharedConfigExists)
+    return targetStat.isDirectory()
+      ? ConfigInjectionService.ensureWindowsJunction(linkPath, target)
+      : ConfigInjectionService.ensureWindowsHardlink(linkPath, target);
+  }
 
+  /** POSIX: create the symlink, or verify an existing one already points at our target. */
+  private static async ensurePosixSymlink(linkPath: string, target: string): Promise<void> {
+    const stat = await ConfigInjectionService.lstatOrNull(linkPath);
     if (stat) {
       if (stat.isSymbolicLink()) {
         const current = await fs.readlink(linkPath);
@@ -107,16 +123,103 @@ export class ConfigInjectionService {
         if (resolved === path.resolve(target)) return; // idempotent: already ours
         await fs.unlink(linkPath); // replace a stale link we previously made
       } else {
-        // A real file/dir the project owns — never clobber it.
-        throw new ProjectError(
-          "CONFIG_INJECTION_CONFLICT",
-          `Project already has its own ${path.basename(linkPath)}. Resolve it before opening here.`,
-          { linkPath },
-        );
+        throw ConfigInjectionService.conflict(linkPath);
       }
     }
-
     await fs.symlink(target, linkPath);
+  }
+
+  /**
+   * Windows directory link via junction (no privilege required). Node reports a
+   * junction through readlink, so a re-inject that already points at our target is
+   * idempotent; a stale junction is replaced; a real folder the project owns is a
+   * conflict.
+   */
+  private static async ensureWindowsJunction(linkPath: string, target: string): Promise<void> {
+    const existing = await ConfigInjectionService.readlinkOrNull(linkPath);
+    if (existing !== null) {
+      if (ConfigInjectionService.samePath(existing, target)) return; // already ours
+      // Remove the stale link entry only (rmdir on a junction never touches its target).
+      await fs.rmdir(linkPath).catch(() => fs.unlink(linkPath));
+    } else if (await ConfigInjectionService.lstatOrNull(linkPath)) {
+      throw ConfigInjectionService.conflict(linkPath); // a real file/dir the project owns
+    }
+    await fs.symlink(target, linkPath, "junction");
+  }
+
+  /**
+   * Windows file link via hardlink (no privilege required); the hardlink shares the
+   * shared CLAUDE.md's inode, so in-place edits propagate. An existing entry is ours
+   * iff it is the same inode (same volume) or — in the cross-volume copy case — has
+   * identical content; otherwise it is the project's own file and a conflict.
+   */
+  private static async ensureWindowsHardlink(linkPath: string, target: string): Promise<void> {
+    const stat = await ConfigInjectionService.lstatOrNull(linkPath);
+    if (stat) {
+      if (stat.isSymbolicLink()) {
+        await fs.unlink(linkPath); // stale symlink left by a previous (POSIX) inject
+      } else if (stat.isFile()) {
+        if (await ConfigInjectionService.isSameFile(linkPath, target)) return; // ours — idempotent
+        throw ConfigInjectionService.conflict(linkPath);
+      } else {
+        throw ConfigInjectionService.conflict(linkPath);
+      }
+    }
+    try {
+      await fs.link(target, linkPath);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "EXDEV") {
+        // PROJECTS_ROOT is on a different volume than the repo — hardlinks can't span
+        // volumes. Copy instead; edits won't propagate until the project is re-opened.
+        await fs.copyFile(target, linkPath);
+        log.warn(
+          { linkPath, target },
+          "Shared CLAUDE.md is on a different volume; copied instead of hardlinked — edits will not propagate until the project is re-opened",
+        );
+        return;
+      }
+      throw err;
+    }
+  }
+
+  /** True if the link and target are the same inode (hardlink) or identical copies. */
+  private static async isSameFile(linkPath: string, target: string): Promise<boolean> {
+    const [a, b] = await Promise.all([fs.stat(linkPath), fs.stat(target)]);
+    if (a.ino !== 0 && a.ino === b.ino && a.dev === b.dev) return true; // same inode = our hardlink
+    // Cross-volume copy fallback: matching content means it is our copy (safe to keep).
+    const [ca, cb] = await Promise.all([fs.readFile(linkPath), fs.readFile(target)]);
+    return ca.equals(cb);
+  }
+
+  private static async lstatOrNull(p: string): Promise<import("node:fs").Stats | null> {
+    try {
+      return await fs.lstat(p);
+    } catch {
+      return null;
+    }
+  }
+
+  private static async readlinkOrNull(p: string): Promise<string | null> {
+    try {
+      return await fs.readlink(p);
+    } catch {
+      return null; // not a link (EINVAL) or missing (ENOENT)
+    }
+  }
+
+  /** Case-insensitive, prefix-tolerant path equality (Windows junction targets). */
+  private static samePath(a: string, b: string): boolean {
+    const norm = (p: string) => path.resolve(p.replace(/^\\\\\?\\/, "")).toLowerCase();
+    return norm(a) === norm(b);
+  }
+
+  /** A real file/dir the project owns must never be clobbered (§5.2). */
+  private static conflict(linkPath: string): ProjectError {
+    return new ProjectError(
+      "CONFIG_INJECTION_CONFLICT",
+      `Project already has its own ${path.basename(linkPath)}. Resolve it before opening here.`,
+      { linkPath },
+    );
   }
 
   /** Append (once) a managed sentinel block to the project's .gitignore. */

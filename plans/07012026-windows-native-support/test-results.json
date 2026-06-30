@@ -1,0 +1,90 @@
+{
+  "plan": "plans/07012026-windows-native-support",
+  "generatedAt": "2026-07-01",
+  "status": "Not Run",
+  "items": [
+    {
+      "id": "T1",
+      "title": "npm run dev:all starts the app on native Windows",
+      "surface": "cli",
+      "precondition": "Native Windows (PowerShell/cmd), Node 20+, Docker Desktop running, deps installed, .env present.",
+      "steps": [
+        "1. Open PowerShell in the repo root.",
+        "2. Run `npm run dev:all`.",
+        "3. Watch the output through the Postgres + migration steps."
+      ],
+      "expected": "No 'sh' error and no npm ENOENT; the launcher prints the 'DevEasy is starting' banner and the app is reachable at http://localhost:1234.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T3",
+      "title": "Claude session spawns and streams on Windows",
+      "surface": "ui",
+      "precondition": "App running (T1); Claude CLI on PATH (claude.cmd) and logged in; at least one project tracked.",
+      "steps": [
+        "1. Open the app, pick a project, start a session.",
+        "2. Send a message (any '-a' question).",
+        "3. Observe the streamed reply; let a session auto-name occur."
+      ],
+      "expected": "claude.cmd is found and spawned (no ENOENT); the reply streams; session auto-naming (runHeadless) works.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T4",
+      "title": "Config injected via junction + hardlink with no admin, propagates live, idempotent",
+      "surface": "ui",
+      "precondition": "App running on a NON-admin Windows account, Developer Mode OFF. PROJECTS_ROOT on the same drive as the repo. A project tracked.",
+      "steps": [
+        "1. Open a project (this triggers injection).",
+        "2. In the project folder, run `dir` / check: `.claude\\skills` and `.claude\\agents` are junctions (`<JUNCTION>` in `dir`), `CLAUDE.md` exists.",
+        "3. Confirm `fsutil hardlink list <project>\\CLAUDE.md` lists the shared repo CLAUDE.md.",
+        "4. Edit the shared CLAUDE.md in the Agent Manager and save.",
+        "5. Re-read the project's CLAUDE.md.",
+        "6. Close and re-open the project in DevEasy."
+      ],
+      "expected": "Injection succeeds without elevation; folders are junctions and CLAUDE.md is a hardlink; the Agent Manager edit appears in the project's CLAUDE.md; re-opening throws no CONFIG_INJECTION_CONFLICT.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Core sharing mechanism — the highest-value check.",
+      "waiver": ""
+    },
+    {
+      "id": "T5",
+      "title": "Terminal opens in the project dir and Ctrl+C reaps children",
+      "surface": "ui",
+      "precondition": "App running (T1); a project tracked.",
+      "steps": [
+        "1. Open a terminal tab for a project.",
+        "2. Confirm the shell starts in the project directory (run `cd` / `pwd`).",
+        "3. Start a session and/or terminal, then press Ctrl+C in the server console where dev:all runs.",
+        "4. Check Task Manager / `tasklist` for leftover claude or shell child processes."
+      ],
+      "expected": "Terminal starts in the project folder; Ctrl+C (and Ctrl+Break) stop the server and leave no orphaned claude/PTY processes.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Console-window close (X) is a known, documented exception.",
+      "waiver": ""
+    },
+    {
+      "id": "R1",
+      "title": "macOS/Linux behavior unchanged (regression)",
+      "surface": "ui",
+      "precondition": "macOS or Linux, app running.",
+      "steps": [
+        "1. Open a project; confirm `.claude/skills`, `.claude/agents`, and `CLAUDE.md` are symlinks (`ls -l`).",
+        "2. Start a session and open a terminal."
+      ],
+      "expected": "Injection still uses POSIX symlinks; session and terminal start exactly as before. (Unit suite: 70/70 green, typecheck clean.)",
+      "status": "pending",
+      "evidence": "",
+      "notes": "",
+      "waiver": ""
+    }
+  ]
+}
