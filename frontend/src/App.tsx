@@ -92,13 +92,6 @@ export default function App() {
 
       {/* ── Main panel ── */}
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-baseline justify-between border-b border-line px-8 py-5">
-          <div>
-            <p className="eyebrow">{current.blurb}</p>
-            <h1 className="m-0 font-mono text-2xl font-semibold tracking-tight">{current.label}</h1>
-          </div>
-        </header>
-
         <div className="min-h-0 flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.section

@@ -1,0 +1,53 @@
+{
+  "plan": "plans/07012026-collapsible-project-lists",
+  "generatedAt": "2026-07-01",
+  "status": "Passed",
+  "items": [
+    {
+      "id": "T1",
+      "title": "Project header collapses and expands its session list",
+      "surface": "ui",
+      "precondition": "DevEasy running; Sessions panel open; at least one project with sessions visible in the left rail.",
+      "steps": [
+        "1. Open the Sessions panel.",
+        "2. Click a project header row (chevron + name).",
+        "3. Observe the project's git line and session list.",
+        "4. Click the same header row again."
+      ],
+      "expected": "First click hides the git line and session list, leaving only the header (chevron points right). Second click restores them (chevron points down).",
+      "status": "pass",
+      "evidence": "Manually verified by user (dave) on 2026-07-01.",
+      "notes": ""
+    },
+    {
+      "id": "T2",
+      "title": "Collapse state survives a page reload",
+      "surface": "ui",
+      "precondition": "At least one project collapsed via T1.",
+      "steps": [
+        "1. Collapse one or more projects.",
+        "2. Reload the page (full browser refresh).",
+        "3. Look at the previously collapsed projects."
+      ],
+      "expected": "The same projects remain collapsed after reload; non-collapsed projects remain expanded. localStorage key 'deveasy:sidebar-collapsed-projects' holds the collapsed ids.",
+      "status": "pass",
+      "evidence": "Manually verified by user (dave) on 2026-07-01.",
+      "notes": ""
+    },
+    {
+      "id": "T3",
+      "title": "Folder and new-session buttons still work and do not toggle collapse",
+      "surface": "ui",
+      "precondition": "A project visible in the rail, expanded.",
+      "steps": [
+        "1. Click the folder (code editor) button on a project header.",
+        "2. Return to the Sessions panel.",
+        "3. Click the + (new session) button on a project header."
+      ],
+      "expected": "Folder button opens the code editor; + creates a new session. Neither click collapses or expands the project group.",
+      "status": "pass",
+      "evidence": "Manually verified by user (dave) on 2026-07-01.",
+      "notes": ""
+    }
+  ]
+}

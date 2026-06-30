@@ -9,9 +9,34 @@ import { Icon } from "../ui/Icon";
 import { fadeUp, staggerContainer } from "../ui/motion";
 import { BranchPicker } from "./BranchPicker";
 
+/** localStorage key holding the ids of projects whose session lists are collapsed. */
+const COLLAPSED_PROJECTS_KEY = "deveasy:sidebar-collapsed-projects";
+
+/** Read the collapsed-project id set from localStorage; tolerant of missing/corrupt data. */
+function loadCollapsedProjects(): Set<number> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_PROJECTS_KEY);
+    if (!raw) return new Set();
+    const ids = JSON.parse(raw) as unknown;
+    return new Set(Array.isArray(ids) ? ids.filter((id): id is number => typeof id === "number") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Persist the collapsed-project id set; storage failures (private mode) are non-fatal. */
+function saveCollapsedProjects(ids: Set<number>): void {
+  try {
+    localStorage.setItem(COLLAPSED_PROJECTS_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Storage unavailable (e.g. private mode) — the toggle still works in-memory for this session.
+  }
+}
+
 /**
  * Left rail of the Sessions panel: every project is a group, its sessions listed
  * beneath with a running indicator. Sessions can be renamed inline or deleted.
+ * Each project group can be collapsed; the choice is remembered in localStorage.
  */
 interface Props {
   projects: Project[];
@@ -29,6 +54,18 @@ export function SessionSidebar(props: Props) {
   const { projects, sessions, creatingProjectId, onNewSession, onOpenEditor } = props;
   const byProject = (projectId: number) => sessions.filter((s) => s.project_id === projectId);
 
+  const [collapsed, setCollapsed] = useState<Set<number>>(loadCollapsedProjects);
+
+  const toggleCollapsed = (projectId: number) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      saveCollapsedProjects(next);
+      return next;
+    });
+  };
+
   return (
     <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-r border-line">
       <div className="border-b border-line px-4 py-3">
@@ -42,11 +79,24 @@ export function SessionSidebar(props: Props) {
       <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-1 p-2">
         {projects.map((project) => {
           const list = byProject(project.id);
+          const isCollapsed = collapsed.has(project.id);
           return (
             <motion.div key={project.id} variants={fadeUp} className="mb-1">
               <div className="px-2 py-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-mono text-xs font-semibold text-muted">{project.name}</span>
+                  <button
+                    onClick={() => toggleCollapsed(project.id)}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                    title={isCollapsed ? `Expand ${project.name}` : `Collapse ${project.name}`}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <Icon
+                      name={isCollapsed ? "chevronRight" : "chevronDown"}
+                      size={14}
+                      className="shrink-0 text-faint"
+                    />
+                    <span className="truncate font-mono text-xs font-semibold text-muted">{project.name}</span>
+                  </button>
                   <div className="flex shrink-0 items-center gap-0.5">
                     <button
                       onClick={() => onOpenEditor(project.id)}
@@ -65,18 +115,19 @@ export function SessionSidebar(props: Props) {
                     </button>
                   </div>
                 </div>
-                <ProjectGitInfo projectId={project.id} />
+                {!isCollapsed && <ProjectGitInfo projectId={project.id} />}
               </div>
 
-              {list.length === 0 ? (
-                <p className="px-2 pb-1 text-xs text-faint">No sessions yet</p>
-              ) : (
-                <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-                  {list.map((s) => (
-                    <SessionRow key={s.id} session={s} active={s.id === props.activeSessionId} {...props} />
-                  ))}
-                </ul>
-              )}
+              {!isCollapsed &&
+                (list.length === 0 ? (
+                  <p className="px-2 pb-1 text-xs text-faint">No sessions yet</p>
+                ) : (
+                  <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+                    {list.map((s) => (
+                      <SessionRow key={s.id} session={s} active={s.id === props.activeSessionId} {...props} />
+                    ))}
+                  </ul>
+                ))}
             </motion.div>
           );
         })}
