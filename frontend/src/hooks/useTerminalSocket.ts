@@ -26,7 +26,7 @@ export function useTerminalSocket(terminalId: string) {
       fontSize: 13,
       // Comic Code has generous sidebearings, so claw spacing back hard. This is
       // CSS pixels of inter-cell spacing; negative tightens. Tune here if needed.
-      letterSpacing: -1.5,
+      letterSpacing: -2.5,
       cursorBlink: true,
       theme: { background: "#0b0b0b" },
     });
