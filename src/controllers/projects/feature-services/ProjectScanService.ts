@@ -28,10 +28,30 @@ export class ProjectScanService {
     for (const entry of entries) {
       if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
       const abs = path.join(root, entry.name);
-      const isRepo = await ProjectScanService.isGitRepo(abs);
-      if (isRepo) found.push({ name: entry.name, path: abs });
+      if (await ProjectScanService.isProjectDir(abs)) found.push({ name: entry.name, path: abs });
     }
     return found;
+  }
+
+  /**
+   * A directory is a project if it is itself a git repo, OR it contains git repos
+   * one level down — e.g. a project folder holding separate `*-backend`/`*-frontend`
+   * repos with no umbrella repo at the top. The session still runs at the parent so
+   * Claude sees the whole project.
+   */
+  private static async isProjectDir(dir: string): Promise<boolean> {
+    if (await ProjectScanService.isGitRepo(dir)) return true;
+    let children: import("node:fs").Dirent[];
+    try {
+      children = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return false;
+    }
+    for (const child of children) {
+      if (!child.isDirectory() || child.name.startsWith(".")) continue;
+      if (await ProjectScanService.isGitRepo(path.join(dir, child.name))) return true;
+    }
+    return false;
   }
 
   private static async isGitRepo(dir: string): Promise<boolean> {
