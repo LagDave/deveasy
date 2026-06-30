@@ -22,5 +22,9 @@ export function useGitStatus(projectId: number | null) {
     queryKey: GIT_KEYS.status(projectId),
     queryFn: () => getGitStatus(projectId as number),
     enabled: Boolean(projectId),
+    // Keep the branch + change counts "live": poll the working tree and also
+    // refresh when the window regains focus (e.g. after editing files elsewhere).
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
   });
 }

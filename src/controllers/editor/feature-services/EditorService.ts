@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { childLogger } from "../../../lib/logger";
 import { ProjectModel } from "../../../models/ProjectModel";
 import { EditorError } from "../feature-utils/EditorError";
@@ -12,6 +14,8 @@ import {
   MAX_TEXT_BYTES,
   resolveSafePath,
 } from "../feature-utils/fileSafety";
+
+const execFileAsync = promisify(execFile);
 
 const log = childLogger({ module: "EditorService" });
 
@@ -37,6 +41,11 @@ export interface RawStat {
   absPath: string;
   contentType: string;
   size: number;
+}
+
+export interface HeadContent {
+  /** The file's content at git HEAD, or null when it has no committed version (new/untracked). */
+  content: string | null;
 }
 
 /**
@@ -157,6 +166,30 @@ export class EditorService {
       });
     }
     return { absPath, contentType: contentTypeFor(path.basename(absPath)), size: stat.size };
+  }
+
+  /**
+   * The file's contents at git HEAD, for diffing against the working copy (the editor
+   * gutter). Returns { content: null } when the path has no committed version yet
+   * (new/untracked, or no commits) so the whole file reads as added. Runs `git show`
+   * via execFile with an argv array — never a shell string (§5.2) — in the project root,
+   * and the path is validated by resolveSafePath like every other op.
+   */
+  static async readHeadFile(projectId: number, relPath: string): Promise<HeadContent> {
+    const root = await EditorService.resolveProjectRoot(projectId);
+    // Validate shape + confine to the project. We pass the posix relPath to git as a
+    // tree object (HEAD:<path>), not to the filesystem.
+    const { relPath: safeRel } = await resolveSafePath(root, relPath);
+    try {
+      const { stdout } = await execFileAsync("git", ["show", `HEAD:${safeRel}`], {
+        cwd: root,
+        maxBuffer: MAX_TEXT_BYTES,
+      });
+      return { content: stdout };
+    } catch {
+      // Non-zero exit = path not in HEAD (new/untracked), no commits yet, or not a repo.
+      return { content: null };
+    }
   }
 
   /** stat() wrapper that maps a missing file to a typed not-found error. */

@@ -88,6 +88,18 @@ export class EditorController {
     }
   }
 
+  /** GET /api/editor/head?projectId=&path= — the file's content at git HEAD (for the diff gutter). */
+  static async getHead(req: Request, res: Response): Promise<Response> {
+    try {
+      const projectId = requireProjectId(req);
+      const head = await EditorService.readHeadFile(projectId, pathQuery(req));
+      return ok(res, head);
+    } catch (error) {
+      log.error({ err: error }, "editor head read failed");
+      return handleEditorError(res, error);
+    }
+  }
+
   /** POST /api/editor/file {projectId, path, content} — write a text file. */
   static async saveFile(req: Request, res: Response): Promise<Response> {
     try {
