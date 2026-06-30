@@ -5,15 +5,18 @@ description: >-
   19+Vite+shadcn frontend, optional Microsoft Entra/MSAL auth) into the current
   project directory via a guided question-and-answer wizard. Drives a
   conversational flow using deveasy-question JSON blocks (never the
-  AskUserQuestion tool), writes a complete copy-ready file tree, and runs git
-  init — no npm install, no dev servers, no secrets.
+  AskUserQuestion tool), writes a complete copy-ready file tree, commits it on
+  main, and installs dependencies — never starts a dev server, never writes
+  secrets.
 ---
 # Create New TypeScript Project — Wizard
 
 You are running inside DevEasy as a **project scaffolding wizard**. Your job is to
 ask a short set of questions, then write a complete, on-standard full-stack
 TypeScript project into the **current working directory** (this session's cwd is
-the new, empty `projects/<slug>/` folder), and finish with `git init`.
+the new, empty `projects/<slug>/` folder), commit it on `main`, and install
+dependencies — so the user can run `npm run dev` from the project root. Never
+start a dev server yourself.
 
 This skill is the **single source of truth** for the boilerplate. Everything you
 need is embedded below — do not look for or copy from any other project folder.
@@ -43,17 +46,20 @@ For the duration of this wizard flow:
    typically `Label [id=value]` (e.g. `Yes — scaffold MSAL auth [auth=msal]`).
    Read the value in brackets; fall back to the natural-language label if needed.
 
-5. **NO DEPENDENCY INSTALL, NO DEV SERVERS.** Write files and run `git init` only.
-   Never run `npm install`, `npm ci`, `yarn`, `pnpm`, or start any dev server.
-   The generated READMEs tell the user to do that themselves.
+5. **INSTALL DEPS, BUT NEVER RUN A DEV SERVER.** After writing files and the
+   initial commit, run `npm install` at the root and in each package so the project
+   is ready to run (each install exits). **Never** run `npm run dev`, `vite`,
+   `nodemon`, `tsx watch`, or any dev/build server — those never exit and would
+   hang the session. The user runs `npm run dev` from their own terminal (the root
+   `package.json` starts both packages via `concurrently`).
 
 6. **NO SECRETS.** Never write real tenant IDs, client IDs, client secrets, or
    keys. Use `.env.example` files with placeholders only. This is mandatory
    (Constitution §5.1, §17.3).
 
-7. **FINISH WITH A SIGNAL.** When the tree is written and `git init` has run, emit
-   **exactly one** fenced ` ```deveasy-done ` block (schema below) summarizing what
-   you did. That is the last thing you emit.
+7. **FINISH WITH A SIGNAL.** When the tree is written, committed, and deps are
+   installed, emit **exactly one** fenced ` ```deveasy-done ` block (schema below)
+   summarizing what you did. That is the last thing you emit.
 
 If at any point you are tempted to call `AskUserQuestion` or to demand a command
 prefix — don't. Use a `deveasy-question` block instead.
@@ -206,22 +212,42 @@ Full-stack TypeScript monorepo scaffolded by DevEasy (team Vision stack).
 
 ## Getting started
 
-Dependencies are **not** installed by the scaffolder. In each package:
+Dependencies are installed by the scaffolder. From the **project root**, one
+command runs both apps together:
 
 ```bash
-cd <slug>-backend
-cp .env.example .env   # then fill in real values
-npm install
-npm run dev            # http://localhost:4000
+npm run dev            # backend on :4000 and frontend on :5173, together
+```
 
-cd ../<slug>-frontend
-cp .env.example .env   # then fill in real values
-npm install
-npm run dev            # http://localhost:5173
+Copy `.env.example` to `.env` in each package and fill in real values first. To
+run a package on its own:
+
+```bash
+npm --prefix <slug>-backend run dev    # http://localhost:4000
+npm --prefix <slug>-frontend run dev   # http://localhost:5173
 ```
 
 The frontend expects the backend at `VITE_API_BASE_URL` (defaults to
 `http://localhost:4000`).
+````
+
+**`package.json`** (root — the single entry point; `npm run dev` runs both
+packages via `concurrently`)
+
+````json
+{
+  "name": "<slug>",
+  "version": "0.1.0",
+  "private": true,
+  "description": "<Display Name> — full-stack TypeScript monorepo (DevEasy)",
+  "scripts": {
+    "dev": "concurrently -k -n backend,frontend -c blue,green \"npm --prefix <slug>-backend run dev\" \"npm --prefix <slug>-frontend run dev\"",
+    "install:all": "npm install && npm --prefix <slug>-backend install && npm --prefix <slug>-frontend install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
 ````
 
 **`.gitignore`**
@@ -1263,9 +1289,9 @@ export default function App() {
 
 After every file is written (and only the MSAL files if `auth=msal`):
 
-1. Run `git init` in the current directory (the project root). Do **not** run
-   `npm install` and do **not** start any dev server.
-2. Make the initial commit so the project has a real `main` branch (a freshly
+1. Run `git init` in the current directory (the project root).
+2. Make the initial commit (clean source — node_modules is gitignored, so do this
+   **before** installing) so the project has a real `main` branch (a freshly
    `git init`'d repo with no commits shows no branch in DevEasy's cockpit). Run,
    in order, from the project root:
    - `git add -A`
@@ -1273,11 +1299,20 @@ After every file is written (and only the MSAL files if `auth=msal`):
      (the inline `-c` author makes the commit succeed even when no global git
      identity is configured)
    - `git branch -M main` (name the branch `main`)
-3. Emit exactly one completion block as your final output:
+3. Install dependencies so `npm run dev` works immediately. Run, from the project
+   root (each `npm install` exits — do **not** run any dev server):
+   - `npm install` (root — installs `concurrently`)
+   - `npm --prefix <slug>-backend install`
+   - `npm --prefix <slug>-frontend install`
+   If any install fails (e.g. network/registry), do not retry forever — note it in
+   the done summary and tell the user to run `npm install` manually. **Never** run
+   `npm run dev` or any dev server yourself: it never exits and would hang the
+   session. The user starts it from their own terminal.
+4. Emit exactly one completion block as your final output:
 
 ````
 ```deveasy-done
-{ "project": "<slug>", "summary": "<Display Name> scaffolded: <slug>-backend (Express+Knex+TS) and <slug>-frontend (React 19+Vite+Tailwind+shadcn). Microsoft auth: <yes (MSAL, env placeholders) | no>. Defaults: npm, backend PORT 4000, frontend 5173, PostgreSQL via DATABASE_URL. git initialized. Next: run npm install in each package, then npm run dev." }
+{ "project": "<slug>", "summary": "<Display Name> scaffolded: <slug>-backend (Express+Knex+TS) and <slug>-frontend (React 19+Vite+Tailwind+shadcn). Microsoft auth: <yes (MSAL, env placeholders) | no>. Defaults: npm, backend PORT 4000, frontend 5173, PostgreSQL via DATABASE_URL. Committed on main; dependencies installed. To run it: open a terminal, cd into the project, and run `npm run dev` — it starts the backend and frontend together." }
 ```
 ````
 
@@ -1292,10 +1327,11 @@ answer, and confirm in the summary that **no secrets were written** — only
 - [ ] Asked Q1 (name) and Q2 (auth) one per turn via `deveasy-question`, waited for each answer.
 - [ ] Never called `AskUserQuestion`; never demanded a command prefix.
 - [ ] Slug is `[a-z0-9-]` only; folders are `<slug>-backend/` and `<slug>-frontend/`.
-- [ ] Root `README.md` + `.gitignore` written.
+- [ ] Root `README.md` + `.gitignore` + root `package.json` (with the `concurrently` `dev` script) written.
 - [ ] Backend: package.json, tsconfig, eslint, `.env.example`, knexfile, `src/server.ts` (health route + configurable PORT), model + service + controller + routes.
 - [ ] Frontend: package.json, vite/tsconfig/eslint/postcss/tailwind config, `index.html`, `src/main.tsx`, `src/App.tsx`, UI primitives, `.env.example`.
 - [ ] If `auth=msal`: backend `@azure/msal-node` config + JWT verify + protected route; frontend `@azure/msal-browser` config + provider + login button; both READMEs mention auth; `.env.example` has `AZURE_*` / `VITE_AZURE_*` placeholders. If `auth=none`: none of these written and no MSAL deps in package.json.
 - [ ] No real secrets/tenant/client IDs anywhere — placeholders only.
-- [ ] `git init` + initial commit on `main` (via `git add -A` then a `-c`-authored commit); no `npm install`, no dev server.
+- [ ] `git init` + initial commit on `main` (clean source, before install) via `git add -A` then a `-c`-authored commit.
+- [ ] `npm install` run at root + both packages (each exits); **never** ran `npm run dev` or any dev server.
 - [ ] Emitted exactly one `deveasy-done` block last.
