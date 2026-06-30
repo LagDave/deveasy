@@ -124,3 +124,28 @@
   .card-hover { transition: border-color .15s ease, background .15s ease; }
   .card-hover:hover { border-color: var(--color-line-strong); background: var(--color-surface-2); }
 }
+
+/*
+ * Monaco git-gutter decorations (added/modified bars + deletion triangle). Monaco
+ * renders into the light DOM, so these are plain global classes, not Tailwind utilities.
+ * The classes are attached via `linesDecorationsClassName` in gitGutter.ts.
+ */
+.gitgutter-added,
+.gitgutter-modified {
+  width: 3px !important;
+  margin-left: 3px;
+}
+.gitgutter-added { background: var(--color-success); }
+.gitgutter-modified { background: var(--color-accent); }
+.gitgutter-deleted { position: relative; }
+.gitgutter-deleted::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  bottom: -4px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--color-danger);
+}

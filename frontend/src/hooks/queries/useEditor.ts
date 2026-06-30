@@ -18,6 +18,8 @@ const EDITOR_KEYS = {
     ["editor", "tree", projectId, path] as const,
   file: (projectId: number | null, path: string | null) =>
     ["editor", "file", projectId, path] as const,
+  head: (projectId: number | null, path: string | null) =>
+    ["editor", "head", projectId, path] as const,
   state: (projectId: number | null) => ["editor", "state", projectId] as const,
 };
 
@@ -33,6 +35,14 @@ export function useFileContent(projectId: number | null, path: string | null) {
   return useQuery({
     queryKey: EDITOR_KEYS.file(projectId, path),
     queryFn: () => getFileContent(projectId as number, path as string),
+    enabled: Boolean(projectId) && Boolean(path),
+  });
+}
+
+export function useHeadContent(projectId: number | null, path: string | null) {
+  return useQuery({
+    queryKey: EDITOR_KEYS.head(projectId, path),
+    queryFn: () => getHeadContent(projectId as number, path as string),
     enabled: Boolean(projectId) && Boolean(path),
   });
 }

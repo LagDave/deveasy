@@ -1,21 +1,24 @@
+import type { ChangeKind } from "../../types";
 import { Icon } from "../ui/Icon";
 import { basename } from "./editorPaths";
+import { changeColorClass } from "./gitChanges";
 
 /**
  * The VS Code–style tab strip. Each tab shows the filename, a dirty dot when the
  * buffer has unsaved edits, and a close (×) button. Active tab is underlined with
- * the accent. The dirty-close confirmation lives in the container — `onClose`
- * here just notifies it.
+ * the accent. Git-changed files take the same color as the file tree. The
+ * dirty-close confirmation lives in the container — `onClose` here just notifies it.
  */
 interface Props {
   tabs: string[];
   activePath: string | null;
   dirtyPaths: Set<string> | string[];
+  changedFiles?: Map<string, ChangeKind>;
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
 }
 
-export function EditorTabs({ tabs, activePath, dirtyPaths, onSelect, onClose }: Props) {
+export function EditorTabs({ tabs, activePath, dirtyPaths, changedFiles, onSelect, onClose }: Props) {
   const isDirty = (path: string) =>
     dirtyPaths instanceof Set ? dirtyPaths.has(path) : dirtyPaths.includes(path);
 
@@ -40,7 +43,9 @@ export function EditorTabs({ tabs, activePath, dirtyPaths, onSelect, onClose }: 
               title={path}
             >
               {dirty && <span className="text-accent" aria-label="unsaved changes">●</span>}
-              <span className="max-w-[12rem] truncate">{basename(path)}</span>
+              <span className={`max-w-[12rem] truncate ${changeColorClass(changedFiles?.get(path))}`}>
+                {basename(path)}
+              </span>
             </button>
             <button
               type="button"

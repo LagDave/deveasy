@@ -29,3 +29,11 @@ export interface EditorState {
   openPaths: string[];
   activePath: string | null;
 }
+
+/** The file's content at git HEAD (null = new/untracked), for the editor diff gutter. */
+export interface HeadContent {
+  content: string | null;
+}
+
+/** How a path differs from HEAD, shared by the file-tree highlight and the gutter. */
+export type ChangeKind = "added" | "modified" | "deleted";

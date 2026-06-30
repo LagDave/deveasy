@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorState, useSaveEditorState } from "../../hooks/queries/useEditor";
+import { useGitStatus } from "../../hooks/queries/useGit";
 import { Icon } from "../ui/Icon";
 import { useConfirm } from "../ui/confirm";
 import { EditorPane } from "./EditorPane";
 import { EditorTabs } from "./EditorTabs";
 import { FileTree } from "./FileTree";
+import { buildChangeMap } from "./gitChanges";
 import { kindForPath } from "./editorLanguages";
 import { ImageViewer } from "./viewers/ImageViewer";
 import { PdfViewer } from "./viewers/PdfViewer";
@@ -26,6 +28,8 @@ export function CodeEditorView({ projectId, projectName, onBack }: Props) {
   const confirm = useConfirm();
   const { data: persisted } = useEditorState(projectId);
   const saveState = useSaveEditorState();
+  const { data: gitStatus } = useGitStatus(projectId);
+  const changes = useMemo(() => buildChangeMap(gitStatus?.files), [gitStatus]);
 
   const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -114,7 +118,7 @@ export function CodeEditorView({ projectId, projectName, onBack }: Props) {
           </div>
           <p className="eyebrow mt-2">Files</p>
         </div>
-        <FileTree projectId={projectId} activePath={activePath} onOpenFile={openFile} />
+        <FileTree projectId={projectId} activePath={activePath} changes={changes} onOpenFile={openFile} />
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">
@@ -122,6 +126,7 @@ export function CodeEditorView({ projectId, projectName, onBack }: Props) {
           tabs={openPaths}
           activePath={activePath}
           dirtyPaths={dirtyPaths}
+          changedFiles={changes.files}
           onSelect={setActivePath}
           onClose={(p) => void closeTab(p)}
         />
