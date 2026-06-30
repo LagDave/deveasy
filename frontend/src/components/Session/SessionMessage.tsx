@@ -70,15 +70,23 @@ function UserMessage({ text, scrollRef }: { text: string; scrollRef?: ScrollRef 
     const root = scrollRef?.current;
     const el = wrapperRef.current;
     if (!root || !el) return;
-    // Canonical "is it pinned?" detection: with a -1px top margin, a pinned
-    // element gets clipped (ratio < 1); fully in flow it's ratio 1.
-    const io = new IntersectionObserver(([entry]) => setStuck(entry.intersectionRatio < 1), {
-      root,
-      threshold: [1],
-      rootMargin: "-1px 0px 0px 0px",
-    });
-    io.observe(el);
-    return () => io.disconnect();
+    // Stuck only when actually pinned: the turn's top has reached the scroll
+    // container's top. In its natural position its top sits below that.
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const offset = el.getBoundingClientRect().top - root.getBoundingClientRect().top;
+      setStuck(offset <= 1);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    root.addEventListener("scroll", onScroll, { passive: true });
+    check();
+    return () => {
+      root.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [scrollRef]);
 
   return (
