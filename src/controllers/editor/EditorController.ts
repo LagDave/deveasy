@@ -61,6 +61,13 @@ export class EditorController {
       res.setHeader("Content-Type", stat.contentType);
       res.setHeader("Content-Disposition", "inline");
       res.setHeader("Content-Length", String(stat.size));
+      // Stored-XSS hardening (§5.2, §5.4): files are user/Claude-authored and served
+      // same-origin. `sandbox` makes any HTML/SVG navigated to here run with an opaque
+      // origin and NO scripts, so it cannot reach app cookies/APIs; nosniff stops the
+      // browser from re-interpreting a declared type. Images (<img>) and PDF (browser
+      // viewer) still render — the directive only constrains document execution.
+      res.setHeader("Content-Security-Policy", "sandbox");
+      res.setHeader("X-Content-Type-Options", "nosniff");
       const stream = createReadStream(stat.absPath);
       stream.on("error", (err) => {
         log.error({ err, relPath }, "editor raw stream failed");

@@ -69,6 +69,35 @@ describe("resolveSafePath", () => {
       resolveSafePath(root, ".git/config", { forWrite: true }),
     ).rejects.toMatchObject({ code: "EDITOR_PATH_FORBIDDEN" });
   });
+
+  it("rejects a WRITE to an existing file that is a symlink pointing outside the root", async () => {
+    const linkPath = path.join(root, "link-out.txt");
+    try {
+      await fs.symlink(path.join(outside, "secret.txt"), linkPath, "file");
+    } catch {
+      return; // symlinks unavailable — skip
+    }
+    // The write target itself is a symlink to outside: must be rejected (not just the parent).
+    await expect(
+      resolveSafePath(root, "link-out.txt", { forWrite: true }),
+    ).rejects.toMatchObject({ code: "EDITOR_PATH_OUTSIDE_ROOT" });
+    await fs.rm(linkPath, { force: true });
+  });
+
+  it("refuses to write THROUGH a final-component symlink even when it resolves inside the root", async () => {
+    const linkPath = path.join(root, "link-in.txt");
+    try {
+      await fs.symlink(path.join(root, "src", "index.ts"), linkPath, "file");
+    } catch {
+      return; // symlinks unavailable — skip
+    }
+    await expect(
+      resolveSafePath(root, "link-in.txt", { forWrite: true }),
+    ).rejects.toMatchObject({ code: "EDITOR_PATH_FORBIDDEN" });
+    // The same in-root symlink is fine to READ through.
+    await expect(resolveSafePath(root, "link-in.txt")).resolves.toBeTruthy();
+    await fs.rm(linkPath, { force: true });
+  });
 });
 
 describe("assertRelativePathShape", () => {

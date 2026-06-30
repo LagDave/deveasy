@@ -114,6 +114,15 @@ async function realpathIfExists(target: string): Promise<string | null> {
   }
 }
 
+/** lstat a path that may not exist; returns null if absent. Does NOT follow symlinks. */
+async function lstatIfExists(target: string) {
+  try {
+    return await fs.lstat(target);
+  } catch {
+    return null;
+  }
+}
+
 export interface SafePath {
   /** Absolute, validated on-disk path. */
   absPath: string;
@@ -126,11 +135,12 @@ export interface SafePath {
  * it cannot escape (Constitution §5.2, §5.4):
  *   1. reject absolute paths and any `..` segment;
  *   2. resolve against root and assert the result is inside root;
- *   3. fs.realpath the resolved path (or its parent, for writes to a new file) and
- *      assert the realpath is STILL inside root — defeats symlink escape;
- *   4. for writes, block any path under a `.git/` segment.
- *
- * `forWrite` realpath-checks the PARENT dir when the file itself may not exist yet.
+ *   3. fs.realpath the resolved TARGET (when it exists) and assert it is STILL
+ *      inside root — this rejects an existing file that is a symlink pointing out,
+ *      for both reads and writes; for a not-yet-existing write target, fall back to
+ *      proving the PARENT dir resolves inside root;
+ *   4. for writes, additionally refuse to write THROUGH a final-component symlink
+ *      (even one resolving inside root) and block any path under a `.git/` segment.
  */
 export async function resolveSafePath(
   root: string,
@@ -159,12 +169,28 @@ export async function resolveSafePath(
   const resolved = path.resolve(normalizedRoot, raw);
   assertInsideRoot(normalizedRoot, resolved);
 
-  // Symlink defense: the realpath of the target (or its parent for new-file writes)
-  // must still be inside the root.
-  const realTargetCheck = options.forWrite ? path.dirname(resolved) : resolved;
-  const real = await realpathIfExists(realTargetCheck);
-  if (real !== null) {
-    assertInsideRoot(normalizedRoot, real);
+  // Symlink defense (§5.2, §5.4): if the target exists, its realpath must be inside
+  // the root — this rejects an EXISTING file that is a symlink pointing outside, for
+  // BOTH reads and writes (a write would otherwise follow the link and clobber a file
+  // outside the project). For a not-yet-existing write target, fall back to proving
+  // the parent dir resolves inside the root.
+  const realTarget = await realpathIfExists(resolved);
+  if (realTarget !== null) {
+    assertInsideRoot(normalizedRoot, realTarget);
+    // Never write THROUGH a final-component symlink, even one resolving inside root:
+    // we write to `resolved` directly, so a symlink there could redirect the write
+    // (incl. a swap between this check and the write). Refuse it outright.
+    if (options.forWrite) {
+      const linkStat = await lstatIfExists(resolved);
+      if (linkStat?.isSymbolicLink()) {
+        throw new EditorError("EDITOR_PATH_FORBIDDEN", "Refusing to write through a symlink.", { relPath });
+      }
+    }
+  } else if (options.forWrite) {
+    const realParent = await realpathIfExists(path.dirname(resolved));
+    if (realParent !== null) {
+      assertInsideRoot(normalizedRoot, realParent);
+    }
   }
 
   const rel = path.relative(normalizedRoot, resolved);
