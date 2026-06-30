@@ -244,6 +244,12 @@
         <p><strong>Reason:</strong> User QA: wanted Comic Code as the default with Meslo only filling in icons, and the inter-letter spacing cut down hard.</p>
         <p><strong>Note:</strong> Comic Code is commercial; committed for this private app. <code>letterSpacing</code> lives in <code>useTerminalSocket.ts</code> and is easy to tune.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 5 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Terminal grouping + renaming. A tab now holds a split tree of PTYs: each pane has corner icons to <em>split right</em> / <em>split down</em> / close, so terminals can sit side by side or stacked in one tab. Tab names are editable (double-click). The layout + names persist to <code>localStorage</code> per project and are reconciled once against the live PTY list on mount (prune dead panes, adopt orphans), so groups and names survive a reload while the PTYs persist on the server. Cursor also set to a bar (Rev 4.5) and letter-spacing tuned to <code>-3.5</code>.</p>
+        <p><strong>Reason:</strong> User QA: wanted nameable terminals and the ability to group/split terminals within a tab.</p>
+        <p><strong>New files:</strong> <code>terminal/terminalLayout.ts</code> (pure split-tree helpers), <code>terminal/TerminalPane.tsx</code> (recursive renderer + corner controls); <code>TerminalTab.tsx</code> rewritten to manage tabs/layout/persistence.</p>
+      </article>
     </section>
   </main>
 </body>

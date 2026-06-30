@@ -21,6 +21,8 @@ import {
   GitPullRequestIcon,
   HelpCircleIcon,
   InformationCircleIcon,
+  LayoutBottomIcon,
+  LayoutRightIcon,
   MagicWand01Icon,
   Message01Icon,
   PencilEdit02Icon,
@@ -59,6 +61,8 @@ export const ICONS = {
   commit: GitCommitIcon,
   branch: GitBranchIcon,
   terminal: ComputerTerminal01Icon,
+  splitRight: LayoutRightIcon,
+  splitDown: LayoutBottomIcon,
   file: File01Icon,
   // code-editor glyphs (file tree + viewers)
   folder: Folder01Icon,
