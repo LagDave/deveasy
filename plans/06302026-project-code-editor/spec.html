@@ -300,6 +300,16 @@
         </ul>
         <p><strong>Verification:</strong> backend <code>tsc</code> clean; 33/33 vitest pass; frontend <code>tsc</code> clean; <code>vite build</code> succeeds with Monaco workers bundled offline; migration applied; all six API endpoints + the path-traversal/absolute/symlink guards verified live against the running app. Repo-wide ESLint is broken pre-existing (no <code>eslint.config.js</code> for ESLint v9) — unrelated to this work. Layer-2 UI click-through (UI1–UI5 in <code>test-results.json</code>) left <code>pending</code> for manual run.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 2 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Post-merge security-review fixes (merged to main).</p>
+        <p><strong>Reason — Security review:</strong></p>
+        <ul class="tight">
+          <li><strong>HIGH — symlink write-escape closed.</strong> <code>resolveSafePath</code> for writes only realpath-checked the parent dir, so saving to an existing path that is itself a symlink-out (e.g. injected <code>CLAUDE.md</code>) followed the link and clobbered a file outside the root. Now realpaths the resolved target itself (rejects symlink-out on read &amp; write), falls back to the parent only for new files, and refuses to write THROUGH any final-component symlink (<code>fs.lstat</code>). Verified live: the exploit returns <code>EDITOR_PATH_OUTSIDE_ROOT</code> and the shared file is left intact.</li>
+          <li><strong>MEDIUM — raw endpoint XSS hardening.</strong> <code>/api/editor/raw</code> serves HTML/SVG inline same-origin; added <code>Content-Security-Policy: sandbox</code> + <code>X-Content-Type-Options: nosniff</code> so direct navigation can't run scripts or reach app cookies/APIs. Images (<code>&lt;img&gt;</code>) and PDF still render.</li>
+        </ul>
+        <p><strong>Updated Done criteria:</strong> write-through-symlink and existing-symlink-out writes are rejected (2 new vitest, 45 total pass); raw responses carry the sandbox CSP + nosniff.</p>
+      </article>
     </section>
   </main>
 </body>
