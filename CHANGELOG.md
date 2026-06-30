@@ -2,6 +2,30 @@
 
 All notable changes to DevEasy are documented here.
 
+## [0.1.4] - July 2026
+
+### Native Windows support
+
+DevEasy now runs natively on Windows (PowerShell/cmd) — no WSL2, and no admin rights or Developer Mode. The load-bearing change is config injection: the shared `CLAUDE.md` + `.claude/skills` + `.claude/agents` are linked into each project with **directory junctions and a hardlink** instead of POSIX symlinks, so injection works for a normal user account and Agent Manager edits still propagate live. The dev launcher, Claude CLI spawning, terminal, and shutdown handling were also made cross-platform. POSIX behavior is unchanged.
+
+> **Verification note:** the Windows behavioral acceptance checklist (`plans/07012026-windows-native-support/`) is **deferred** — it cannot be run from the macOS dev environment. The code typechecks and the unit suite passes 70/70; the five Windows checks are waived pending a run on Windows hardware.
+
+**Key Changes:**
+- Config injection is platform-aware: junctions for the two folders, hardlink for `CLAUDE.md`, with inode/content idempotency and a cross-volume copy fallback (logged).
+- One-command launcher works on Windows: shell-free sleep (no `sh`) and shell-aware spawning so `npm.cmd`/`docker` resolve.
+- A new `PATH`×`PATHEXT` executable resolver finds `claude.cmd`, keeping `shell:false` at the spawn sites (no arbitrary prompt through a shell).
+- Terminal validates its working directory, falls back to `ComSpec`/PowerShell, and reaps children on `Ctrl+Break` (`SIGBREAK`) as well as `Ctrl+C`.
+- README gains a full Windows install + setup guide (winget steps, same-drive `PROJECTS_ROOT` note, console-close caveat).
+
+**Commits:**
+- `src/services/ConfigInjectionService.ts` — junction + hardlink injection on Windows; POSIX symlink path unchanged.
+- `src/utils/platform.ts` (+ test) — `resolveExecutable` / `resolveViaPathext` PATH×PATHEXT lookup.
+- `src/services/ClaudeProcessService.ts` — resolve `claude` at all three spawn sites; `SIGBREAK` reaping.
+- `src/services/TerminalProcessService.ts` — `ComSpec`/PowerShell shell, cwd validation, `SIGBREAK`.
+- `src/index.ts` — `SIGBREAK` shutdown.
+- `scripts/dev.mjs` — `sleepSync` (no `sh`) and shell-aware `spawnSync`.
+- `README.md`, `.env.example` — Windows install/setup docs and same-drive note.
+
 ## [0.1.3] - July 2026
 
 ### One-click workspace tab shortcuts on project headers

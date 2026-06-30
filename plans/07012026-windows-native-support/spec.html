@@ -55,11 +55,11 @@
     <header class="spec-hero">
       <div class="hero-topline">
         <p class="eyebrow">DevEasy Plan Spec</p>
-        <span class="status-pill status-pending">In Progress</span>
+        <span class="status-pill status-pending">Completed</span>
       </div>
       <h1>Native Windows Support</h1>
       <dl class="meta-grid">
-        <div class="status-card"><dt>Status</dt><dd>In Progress — code complete, Windows acceptance pending</dd></div>
+        <div class="status-card"><dt>Status</dt><dd>Completed — finalized with Windows acceptance waived (deferred to hardware run)</dd></div>
         <div><dt>Plan Folder</dt><dd>plans/07012026-windows-native-support</dd></div>
         <div><dt>Size</dt><dd>Large</dd></div>
         <div><dt>Risk</dt><dd>Level 3</dd></div>
@@ -227,6 +227,16 @@
         <li><input type="checkbox" disabled> Windows (non-admin): config injected via junction + hardlink; Agent Manager edit propagates live; re-inject throws no false conflict</li>
         <li><input type="checkbox" disabled> Windows: Claude session streams; terminal opens in project dir; Ctrl+C reaps children</li>
       </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Finalized (<code>-d</code>) with the five Windows acceptance items waived rather than passed.</p>
+        <p><strong>Reason:</strong> User QA: behavioral checks cannot run from the macOS dev environment. Code is complete, typechecks clean, and the unit suite passes 70/70; the Windows checks are deferred to a hardware run and waived per §20.5. See <code>test-results.json</code> waivers and CHANGELOG [0.1.4].</p>
+        <p><strong>Updated Done criteria:</strong> Windows behavioral items remain to be confirmed on a Windows machine; no code criteria changed.</p>
+      </article>
     </section>
   </main>
 </body>

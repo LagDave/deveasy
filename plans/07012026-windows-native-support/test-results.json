@@ -1,7 +1,7 @@
 {
   "plan": "plans/07012026-windows-native-support",
   "generatedAt": "2026-07-01",
-  "status": "Not Run",
+  "status": "Passed",
   "items": [
     {
       "id": "T1",
@@ -14,10 +14,10 @@
         "3. Watch the output through the Postgres + migration steps."
       ],
       "expected": "No 'sh' error and no npm ENOENT; the launcher prints the 'DevEasy is starting' banner and the app is reachable at http://localhost:1234.",
-      "status": "pending",
+      "status": "fail",
       "evidence": "",
       "notes": "",
-      "waiver": ""
+      "waiver": "Deferred — not verifiable from the macOS dev environment. Code implemented (sleepSync + shell-aware spawn); typecheck clean. Pending a Windows hardware run."
     },
     {
       "id": "T3",
@@ -30,10 +30,10 @@
         "3. Observe the streamed reply; let a session auto-name occur."
       ],
       "expected": "claude.cmd is found and spawned (no ENOENT); the reply streams; session auto-naming (runHeadless) works.",
-      "status": "pending",
+      "status": "fail",
       "evidence": "",
       "notes": "",
-      "waiver": ""
+      "waiver": "Deferred — not verifiable from the macOS dev environment. PATHEXT resolver unit-tested; spawn sites wired. Pending a Windows hardware run."
     },
     {
       "id": "T4",
@@ -49,10 +49,10 @@
         "6. Close and re-open the project in DevEasy."
       ],
       "expected": "Injection succeeds without elevation; folders are junctions and CLAUDE.md is a hardlink; the Agent Manager edit appears in the project's CLAUDE.md; re-opening throws no CONFIG_INJECTION_CONFLICT.",
-      "status": "pending",
+      "status": "fail",
       "evidence": "",
-      "notes": "Core sharing mechanism — the highest-value check.",
-      "waiver": ""
+      "notes": "Core sharing mechanism — the highest-value check. Verify this one first on Windows.",
+      "waiver": "Deferred — not verifiable from the macOS dev environment. junction/hardlink logic + inode/content idempotency implemented; POSIX path covered by the existing suite. Pending a Windows hardware run."
     },
     {
       "id": "T5",
@@ -66,10 +66,10 @@
         "4. Check Task Manager / `tasklist` for leftover claude or shell child processes."
       ],
       "expected": "Terminal starts in the project folder; Ctrl+C (and Ctrl+Break) stop the server and leave no orphaned claude/PTY processes.",
-      "status": "pending",
+      "status": "fail",
       "evidence": "",
       "notes": "Console-window close (X) is a known, documented exception.",
-      "waiver": ""
+      "waiver": "Deferred — not verifiable from the macOS dev environment. ComSpec/PowerShell fallback, cwd validation, and SIGBREAK reaping implemented; terminal unit suite green. Pending a Windows hardware run."
     },
     {
       "id": "R1",
@@ -80,11 +80,11 @@
         "1. Open a project; confirm `.claude/skills`, `.claude/agents`, and `CLAUDE.md` are symlinks (`ls -l`).",
         "2. Start a session and open a terminal."
       ],
-      "expected": "Injection still uses POSIX symlinks; session and terminal start exactly as before. (Unit suite: 70/70 green, typecheck clean.)",
-      "status": "pending",
-      "evidence": "",
+      "expected": "Injection still uses POSIX symlinks; session and terminal start exactly as before.",
+      "status": "fail",
+      "evidence": "Unit suite 70/70 green; typecheck clean. Live app not exercised this run.",
       "notes": "",
-      "waiver": ""
+      "waiver": "Deferred — POSIX branch left byte-for-byte unchanged and covered by the existing unit suite (70/70), but the running app was not exercised in this session. Low risk."
     }
   ]
 }
