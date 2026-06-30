@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
-import { parseCommand } from "./chatCommands";
+import { Icon } from "../ui/Icon";
+import { COMMAND_PRESETS, parseCommand } from "./chatCommands";
 
 /**
- * Message input. Auto-growing textarea; Enter sends, Shift+Enter inserts a newline.
- * A message is only sendable when it begins with a recognized workflow command
- * (the CLAUDE.md command gate) — we block bare prompts in code rather than relying
- * on Claude to bounce them back. Lifts the text to the parent (Constitution §13.3).
+ * Message input. A message is only sendable when it begins with a recognized
+ * workflow command — type one or pick a preset. The input takes the active
+ * command's color + icon. Enter sends, Shift+Enter inserts a newline.
  */
 interface SessionComposerProps {
   onSend: (text: string) => void;
@@ -14,22 +14,35 @@ interface SessionComposerProps {
 }
 
 const MAX_ROWS_PX = 200;
-const COMMAND_LEGEND = "-s plan · -i instant · -x execute · -a ask · -c continue · -q quickfix · -b explore · -r review · -st status";
 
 export function SessionComposer({ onSend, disabled, hint }: SessionComposerProps) {
   const [text, setText] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const ref = useRef<HTMLTextAreaElement | null>(null);
 
   const trimmed = text.trim();
-  const hasCommand = parseCommand(trimmed).command !== null;
-  const missingCommand = trimmed.length > 0 && !hasCommand;
-  const canSend = !disabled && trimmed.length > 0 && hasCommand;
+  const active = parseCommand(trimmed).command;
+  const missingCommand = trimmed.length > 0 && !active;
+  const canSend = !disabled && trimmed.length > 0 && Boolean(active);
 
   const grow = () => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, MAX_ROWS_PX)}px`;
+  };
+
+  const setText2 = (next: string) => {
+    setText(next);
+    requestAnimationFrame(grow);
+  };
+
+  /** Set or replace the leading command flag, keeping the message body. */
+  const applyPreset = (flag: string) => {
+    const { body } = parseCommand(text);
+    setText2(`${flag} ${body}`.trimEnd() + (body ? "" : " "));
+    setMenuOpen(false);
+    ref.current?.focus();
   };
 
   const submit = () => {
@@ -48,24 +61,58 @@ export function SessionComposer({ onSend, disabled, hint }: SessionComposerProps
     }
   };
 
+  const borderClass = active
+    ? active.border
+    : missingCommand
+      ? "border-danger/50"
+      : "focus-within:border-accent-line";
+
   return (
     <div className="border-t border-line px-6 py-4">
       <div className="mx-auto max-w-3xl">
-        <div
-          className={`surface flex items-end gap-2 p-2 ${
-            missingCommand ? "!border-danger/50" : "focus-within:border-accent-line"
-          }`}
-        >
+        <div className={`surface flex items-end gap-2 p-2 ${borderClass}`}>
+          {/* Command picker / active-command indicator */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              disabled={disabled}
+              className={`btn !px-2.5 !py-1.5 ${active ? `${active.text} ${active.border} ${active.bg}` : "btn-ghost"}`}
+              title="Pick a command"
+            >
+              <Icon name={active?.icon ?? "add"} size={15} />
+              <span className="font-mono text-xs">{active ? active.label : "Command"}</span>
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="surface absolute bottom-full left-0 z-20 mb-2 max-h-72 w-52 overflow-y-auto p-1">
+                  {COMMAND_PRESETS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => applyPreset(c.flag)}
+                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left hover:bg-surface-2"
+                    >
+                      <span className={c.text}>
+                        <Icon name={c.icon} size={15} />
+                      </span>
+                      <span className="flex-1 text-sm">{c.label}</span>
+                      <span className="font-mono text-xs text-faint">{c.flag}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           <textarea
             ref={ref}
             value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              grow();
-            }}
+            onChange={(e) => setText2(e.target.value)}
             onKeyDown={onKeyDown}
             disabled={disabled}
-            placeholder={disabled ? "Waiting for the session…" : "Start with a command, e.g. -a what does this repo do?"}
+            placeholder={disabled ? "Waiting for the session…" : "Message Claude…"}
             rows={1}
             className="max-h-[200px] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed text-ink outline-none placeholder:text-faint disabled:opacity-60"
           />
@@ -77,7 +124,7 @@ export function SessionComposer({ onSend, disabled, hint }: SessionComposerProps
           {disabled
             ? (hint ?? "Waiting for the session…")
             : missingCommand
-              ? `A command is required — ${COMMAND_LEGEND}`
+              ? "Start with a valid command or select from a preset"
               : (hint ?? "Enter to send · Shift+Enter for a new line")}
         </p>
       </div>
