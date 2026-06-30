@@ -1,18 +1,23 @@
-# Bundled terminal font — Comic Code (Ligatures)
+# Bundled terminal font — MesloLGL Nerd Font
 
-The terminal (TERMINAL tab) uses **Comic Code Ligatures** via the `--font-terminal`
-token (`src/index.css`). Comic Code is a commercial font, so its files are not
-checked in. Drop your licensed `.woff2` files here with these exact names:
+The terminal (TERMINAL tab) uses **MesloLGL Nerd Font** via the `--font-terminal`
+token (`src/index.css`). The font files are bundled here and served from
+`/fonts/...` at runtime:
 
 ```
-frontend/public/fonts/ComicCodeLigatures-Regular.woff2
-frontend/public/fonts/ComicCodeLigatures-Bold.woff2
+MesloLGLNerdFont-Regular.ttf
+MesloLGLNerdFont-Bold.ttf
+MesloLGLNerdFont-Italic.ttf
+MesloLGLNerdFont-BoldItalic.ttf
 ```
 
-That's it — no rebuild config needed. These are served from `/fonts/...` at
-runtime, and the `@font-face` rules in `src/index.css` already point at them.
-Until the files are present, the terminal falls back to JetBrains Mono.
+It's a Nerd Font, so it includes the powerline / git glyphs that prompts (p10k,
+starship, etc.) render — no more missing-glyph boxes.
 
-If you only have `.ttf`/`.otf`, convert to `woff2` (e.g. `npx ttf2woff2` or
-fontsquirrel) for smaller payloads, or add the original format to the `src:`
-list in the `@font-face` blocks.
+## Swapping the terminal font
+
+1. Drop the new `.ttf`/`.woff2` files in this folder.
+2. Update the `@font-face` blocks + `--font-terminal` token in `src/index.css`.
+
+Files here live in `public/` on purpose: the URLs resolve at runtime, so a
+missing file falls back to the mono stack instead of breaking the build.

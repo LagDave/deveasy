@@ -233,6 +233,11 @@
         <p><strong>Reason:</strong> User QA: the JetBrains Mono terminal looked off with loose spacing; switch to bundled Comic Code with tight tracking.</p>
         <p><strong>Note:</strong> Comic Code is a commercial font, so its files are not committed — drop <code>ComicCodeLigatures-Regular.woff2</code> / <code>-Bold.woff2</code> into <code>frontend/public/fonts/</code> (see that folder's README). Until then the terminal falls back to JetBrains Mono.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 3 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Switched the terminal font from Comic Code to <strong>MesloLGL Nerd Font</strong> (bundled, free). Replaced the Comic Code <code>@font-face</code> with Meslo (regular/bold/italic/bold-italic <code>.ttf</code> committed under <code>frontend/public/fonts/</code>) and repointed <code>--font-terminal</code>.</p>
+        <p><strong>Reason:</strong> User QA: the terminal still read with wide letter spacing (the Comic Code <code>.otf</code> files had landed in <code>src/fonts/</code>, so the <code>@font-face</code> never loaded and it fell back to the wide JetBrains Mono). Meslo LG is a narrower face and a Nerd Font, so it also fixes the missing powerline/git glyphs (the □ boxes in the prompt).</p>
+      </article>
     </section>
   </main>
 </body>
