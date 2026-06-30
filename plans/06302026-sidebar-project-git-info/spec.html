@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sidebar Project Git Info Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#fff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); }
+    .eyebrow,dt { color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,5rem); line-height:.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:.1rem .3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:.92em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid > div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    @media (max-width:640px){ .spec-shell{width:min(100% - 20px,1120px);padding:24px 0;} .spec-hero,.spec-card{padding:20px;} }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec</p>
+        <span class="status-pill">Completed</span>
+      </div>
+      <h1>Sidebar Project Git Info</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Completed</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/06302026-sidebar-project-git-info</dd></div>
+        <div><dt>Size</dt><dd>Small</dd></div>
+        <div><dt>Risk</dt><dd>Level 1</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>The "Sessions by project" sidebar shows only the project name. Each project is a git repo and DevEasy already exposes working-tree status, but it is unused here. Surfacing the branch and change counts lets the operator see at a glance where each repo stands before opening a session.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>Under each project name in the sidebar, show a compact line: the current branch (truncated) and counts of new, modified, and deleted files. Done when each project group renders its branch plus accurate change counts (or "clean"), driven by the existing git-status query.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files</h3>
+      <ul>
+        <li><code>frontend/src/components/Session/SessionSidebar.tsx</code> — renders the project header row (only file changed)</li>
+        <li><code>frontend/src/hooks/queries/useGit.ts</code> — <code>useGitStatus(projectId)</code>, reused as-is</li>
+        <li><code>frontend/src/api/git.ts</code> — <code>GitStatus</code> / <code>GitStatusFile</code> types (porcelain <code>state</code> codes)</li>
+        <li><code>src/controllers/git/feature-services/GitService.ts</code> — backend source of the status data (unchanged)</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li>Data-fetching stays in the hook, not the component body (§14.3 / §15.1) — call <code>useGitStatus</code> from a per-project child component.</li>
+        <li>Icons via the shared <code>Icon</code> set (<code>name="branch"</code>); colors via theme tokens (<code>text-success</code>/<code>text-accent</code>/<code>text-danger</code>/<code>text-faint</code>).</li>
+      </ul>
+      <p><strong>Reference file:</strong> <code>SessionSidebar.tsx</code> — the existing <code>RuntimeDot</code> sub-component is the analog for a small presentational child.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li>Reuse the existing <code>useGitStatus</code> hook and <code>GitStatus</code> contract.</li>
+            <li>Truncate both the project name and the branch so the row never overflows the 18rem rail.</li>
+            <li>Bucket each file once: new (<code>??</code>/<code>A</code>) → deleted (<code>D</code>) → modified (else).</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No new dependencies, API endpoints, or backend changes.</li>
+            <li>No polling added — the status query fetches once and caches.</li>
+            <li>Do not refactor unrelated parts of the sidebar.</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul><li>Ahead/behind indicators, per-file lists, click-through to a diff view.</li></ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 1</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li>One git-status query per project = one git subprocess each. <strong>Mitigation:</strong> queries are cached with no refetch interval, so cost is one call per project per load; fine at the local single-operator scale.</li>
+        <li>Non-repo or errored projects. <strong>Mitigation:</strong> component renders nothing until <code>data</code> resolves, so a failed/absent status simply shows no git line.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> <code>SessionSidebar.tsx</code> only; no consumers of the changed component signature (props unchanged).</p>
+      <h3>Pushback</h3>
+      <ul><li>If the project count grows large, prefer a single batched status endpoint over N per-project queries. Not worth it now.</li></ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <article class="task-card">
+        <h3>T1: Render branch + change counts under each project</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add <code>summarizeStatus</code> helper and a <code>ProjectGitInfo</code> child that calls <code>useGitStatus(projectId)</code>; render it below the project name with a branch icon, truncated branch, and <code>+new ~modified -deleted</code> counts (or "clean").</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/Session/SessionSidebar.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd><code>npx tsc --noEmit</code>; Manual: open app, confirm each project shows branch + correct counts.</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" checked disabled> <code>npx tsc --noEmit</code> — zero errors</li>
+        <li><input type="checkbox" disabled> Manual: each project group shows truncated branch name</li>
+        <li><input type="checkbox" disabled> Manual: new / modified / deleted counts match real <code>git status</code></li>
+        <li><input type="checkbox" disabled> Manual: a clean repo shows "clean"; long branch names truncate without breaking layout</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,49 @@
+{
+  "plan": "plans/06302026-sidebar-project-git-info",
+  "generatedAt": "2026-06-30",
+  "status": "Not Run",
+  "items": [
+    {
+      "id": "T1",
+      "title": "Project group shows truncated branch name",
+      "surface": "ui",
+      "precondition": "App running; at least one git-repo project in the sidebar.",
+      "steps": [
+        "1. Open DevEasy and look at the 'Sessions by project' sidebar.",
+        "2. Find a project whose repo is on a branch (e.g. 'main')."
+      ],
+      "expected": "A line under the project name shows a branch icon and the branch name; an overly long branch is truncated with an ellipsis, not wrapped.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T2",
+      "title": "New / modified / deleted counts match git status",
+      "surface": "ui",
+      "precondition": "A project repo with at least one untracked, one modified, and one deleted file.",
+      "steps": [
+        "1. In a terminal, run `git status --porcelain=v1` in that repo and tally untracked/added, modified, deleted.",
+        "2. Compare to the sidebar's +N (green) ~N (amber) -N (red) counts."
+      ],
+      "expected": "Green +N equals new/untracked files, amber ~N equals modified, red -N equals deleted; each file counted once.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T3",
+      "title": "Clean repo shows 'clean'",
+      "surface": "ui",
+      "precondition": "A project repo with a clean working tree.",
+      "steps": [
+        "1. Ensure the repo has no changes (`git status` shows clean).",
+        "2. View that project in the sidebar."
+      ],
+      "expected": "The git line shows the branch and the word 'clean', with no count badges.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    }
+  ]
+}

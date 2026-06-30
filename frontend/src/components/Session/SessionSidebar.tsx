@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
+import type { GitStatusFile } from "../../api/git";
 import type { Session, SessionRuntime } from "../../api/sessions";
+import { useGitStatus } from "../../hooks/queries/useGit";
 import type { Project } from "../../types";
 import { useConfirm } from "../ui/confirm";
 import { Icon } from "../ui/Icon";
@@ -40,16 +42,19 @@ export function SessionSidebar(props: Props) {
           const list = byProject(project.id);
           return (
             <motion.div key={project.id} variants={fadeUp} className="mb-1">
-              <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-                <span className="truncate font-mono text-xs font-semibold text-muted">{project.name}</span>
-                <button
-                  onClick={() => onNewSession(project.id)}
-                  disabled={creatingProjectId === project.id}
-                  className="btn btn-ghost !px-2 !py-1.5"
-                  title={`New session in ${project.name}`}
-                >
-                  <Icon name="add" size={16} />
-                </button>
+              <div className="px-2 py-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-mono text-xs font-semibold text-muted">{project.name}</span>
+                  <button
+                    onClick={() => onNewSession(project.id)}
+                    disabled={creatingProjectId === project.id}
+                    className="btn btn-ghost !px-2 !py-1.5"
+                    title={`New session in ${project.name}`}
+                  >
+                    <Icon name="add" size={16} />
+                  </button>
+                </div>
+                <ProjectGitInfo projectId={project.id} />
               </div>
 
               {list.length === 0 ? (
@@ -66,6 +71,45 @@ export function SessionSidebar(props: Props) {
         })}
       </motion.div>
     </aside>
+  );
+}
+
+/**
+ * Bucket porcelain status codes into the three counts shown in the sidebar.
+ * Each file appears on one status line, so it lands in exactly one bucket
+ * (priority: new → deleted → modified). `??` is untracked, "A" is a staged add.
+ */
+function summarizeStatus(files: GitStatusFile[]) {
+  let added = 0;
+  let modified = 0;
+  let deleted = 0;
+  for (const { state } of files) {
+    if (state === "??" || state.includes("A")) added += 1;
+    else if (state.includes("D")) deleted += 1;
+    else modified += 1;
+  }
+  return { added, modified, deleted };
+}
+
+/** Compact git line under a project name: truncated branch + new/modified/deleted counts. */
+function ProjectGitInfo({ projectId }: { projectId: number }) {
+  const { data } = useGitStatus(projectId);
+  if (!data) return null;
+  const { added, modified, deleted } = summarizeStatus(data.files);
+
+  return (
+    <div className="mt-1 flex items-center gap-2 pl-0.5 text-[10px] text-faint">
+      <span className="flex min-w-0 flex-1 items-center gap-1" title={data.branch}>
+        <Icon name="branch" size={11} className="shrink-0" />
+        <span className="truncate font-mono">{data.branch}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5 font-mono">
+        {added > 0 && <span className="text-success" title={`${added} new`}>+{added}</span>}
+        {modified > 0 && <span className="text-accent" title={`${modified} modified`}>~{modified}</span>}
+        {deleted > 0 && <span className="text-danger" title={`${deleted} deleted`}>-{deleted}</span>}
+        {data.isClean && <span>clean</span>}
+      </span>
+    </div>
   );
 }
 

@@ -64,30 +64,37 @@ function UserMessage({ text, scrollRef }: { text: string; scrollRef?: ScrollRef 
   const content = body || text;
 
   const [stuck, setStuck] = useState(false);
+  // Only pin (and morph to a bar) when the turn is tall enough to scroll the
+  // question out of view — short threads just stay a bubble in flow.
+  const [pinnable, setPinnable] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const root = scrollRef?.current;
     const el = wrapperRef.current;
     if (!root || !el) return;
-    // Stuck only when actually pinned: the turn's top has reached the scroll
-    // container's top. In its natural position its top sits below that.
-    // A sticky turn pins at the scroll container's content top — i.e. below its
-    // top padding — so the threshold is the padding, not 0.
     const padTop = parseFloat(getComputedStyle(root).paddingTop) || 0;
     let raf = 0;
     const check = () => {
       raf = 0;
+      // The turn is its parent group div: only worth pinning if it's clearly
+      // taller than the viewport (otherwise the whole turn fits on screen).
+      const group = el.parentElement;
+      const tall = group ? group.offsetHeight > root.clientHeight * 1.25 : false;
+      setPinnable(tall);
       const offset = el.getBoundingClientRect().top - root.getBoundingClientRect().top;
-      setStuck(offset <= padTop + 1);
+      setStuck(tall && offset <= padTop + 1);
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(check);
     };
     root.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(() => check());
+    if (el.parentElement) ro.observe(el.parentElement);
     check();
     return () => {
       root.removeEventListener("scroll", onScroll);
+      ro.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
   }, [scrollRef]);
@@ -96,7 +103,7 @@ function UserMessage({ text, scrollRef }: { text: string; scrollRef?: ScrollRef 
     <motion.div
       {...enter}
       ref={wrapperRef}
-      className={`sticky top-0 z-20 flex ${stuck ? "justify-stretch" : "justify-end"}`}
+      className={`flex ${pinnable ? "sticky top-0 z-20" : ""} ${stuck ? "justify-stretch" : "justify-end"}`}
     >
       <motion.div
         layout
