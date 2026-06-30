@@ -288,6 +288,12 @@
         <p><strong>Reason (User QA):</strong> "this is too much for an initial chat — should be minimized like 'Using skill'." <code>WizardChat</code> now collapses any skill-load text item to a compact <em>"Using create-new-ts-project skill"</em> chip, and excludes it from question detection so the example <code>deveasy-question</code> blocks embedded in the skill body can't trigger a bogus question.</p>
         <p><strong>Files:</strong> <code>frontend/src/components/CreateProject/WizardChat.tsx</code>. Frontend <code>tsc</code> clean.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 3 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Surface scaffolding progress. <code>WizardChat</code> now walks the full event stream in order and renders each file-writing tool call (<code>Write</code>/<code>Edit</code>/<code>MultiEdit</code>/<code>NotebookEdit</code>) as a compact file line (path shown relative to the project root) and each <code>Bash</code> command (e.g. <code>git init</code>) as a command line. Read-only tools and tool results stay hidden.</p>
+        <p><strong>Reason (User QA):</strong> "better if it can show the files it's creating." Previously the wizard rendered only text, so the scaffolding phase looked idle behind the "Claude is working" spinner.</p>
+        <p><strong>Files:</strong> <code>frontend/src/components/CreateProject/WizardChat.tsx</code>. Frontend <code>tsc</code> clean.</p>
+      </article>
     </section>
   </main>
 </body>

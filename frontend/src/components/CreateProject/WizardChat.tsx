@@ -67,13 +67,25 @@ export function WizardChat({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 py-1">
-      {textItems.map((it) =>
-        isSkillLoad(it) ? (
-          <SkillChip key={it.key} />
-        ) : (
-          <ChatBubble key={it.key} role={it.role} text={visibleText(it.text)} />
-        ),
-      )}
+      {items.map((it) => {
+        if (it.kind === "text") {
+          if (isSeedTurn(it)) return null;
+          if (isSkillLoad(it)) return <SkillChip key={it.key} />;
+          return <ChatBubble key={it.key} role={it.role} text={visibleText(it.text)} />;
+        }
+        if (it.kind === "tool_use") {
+          if (FILE_TOOLS.has(it.name)) {
+            const path = toolFilePath(it.input);
+            return path ? <FileLine key={it.key} path={relProjectPath(path)} /> : null;
+          }
+          if (it.name === "Bash") {
+            const command = toolCommand(it.input);
+            return command ? <CommandLine key={it.key} command={command} /> : null;
+          }
+        }
+        // tool_result / result / system / read-only tools → hidden noise.
+        return null;
+      })}
 
       {partialText && <ChatBubble role="assistant" text={visibleText(partialText)} />}
 
@@ -119,6 +131,53 @@ function isSeedTurn(item: TextItem): boolean {
 
 function isSkillLoad(item: TextItem): boolean {
   return item.text.trimStart().startsWith(SKILL_LOAD_PREFIX);
+}
+
+// Tools whose invocation means "a file is being created/edited" — surfaced as a
+// compact file line so the user can watch the scaffold take shape. Everything
+// else (Read, Glob, Grep, LS, tool results) stays hidden.
+const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
+
+function toolFilePath(input: unknown): string | null {
+  if (input && typeof input === "object" && "file_path" in input) {
+    const value = (input as { file_path?: unknown }).file_path;
+    return typeof value === "string" ? value : null;
+  }
+  return null;
+}
+
+function toolCommand(input: unknown): string | null {
+  if (input && typeof input === "object" && "command" in input) {
+    const value = (input as { command?: unknown }).command;
+    return typeof value === "string" ? value : null;
+  }
+  return null;
+}
+
+/** Show a created file relative to the project root, not its absolute path. */
+function relProjectPath(absolute: string): string {
+  const match = absolute.match(/\/projects\/[^/]+\/(.+)$/);
+  return match ? match[1] : absolute.split("/").slice(-2).join("/");
+}
+
+/** One compact line per file the agent writes. */
+function FileLine({ path }: { path: string }) {
+  return (
+    <div className="flex items-center gap-2 px-1 font-mono text-xs text-faint">
+      <Icon name="file" size={13} />
+      <span className="break-all text-muted">{path}</span>
+    </div>
+  );
+}
+
+/** One compact line per shell command (e.g. git init). */
+function CommandLine({ command }: { command: string }) {
+  return (
+    <div className="flex items-center gap-2 px-1 font-mono text-xs text-faint">
+      <Icon name="code" size={13} />
+      <span className="break-all text-muted">{command.split("\n")[0]}</span>
+    </div>
+  );
 }
 
 /** Compact stand-in for the skill-load dump. */
