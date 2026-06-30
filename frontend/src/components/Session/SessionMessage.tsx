@@ -80,7 +80,7 @@ function UserMessage({ text, scrollRef }: { text: string; scrollRef?: ScrollRef 
       // The turn is its parent group div: only worth pinning if it's clearly
       // taller than the viewport (otherwise the whole turn fits on screen).
       const group = el.parentElement;
-      const tall = group ? group.offsetHeight > root.clientHeight * 1.25 : false;
+      const tall = group ? group.offsetHeight > root.clientHeight * 1.0 : false;
       setPinnable(tall);
       const offset = el.getBoundingClientRect().top - root.getBoundingClientRect().top;
       setStuck(tall && offset <= padTop + 1);
