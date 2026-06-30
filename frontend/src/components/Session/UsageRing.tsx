@@ -10,10 +10,10 @@ import { useUsageLimits } from "../../hooks/queries/useUsageQueries";
  * unavailable, so an upstream outage never breaks the rail (§3.1).
  */
 
-const SIZE = 40;
-const STROKE = 4;
+const SIZE = 20;
+const STROKE = 2;
 const OUTER_R = (SIZE - STROKE) / 2;
-const INNER_R = OUTER_R - STROKE - 1.5;
+const INNER_R = OUTER_R - STROKE - 0.75;
 
 /** Tailwind text token for a utilization level (higher = closer to the limit). */
 function levelClass(util: number): string {
