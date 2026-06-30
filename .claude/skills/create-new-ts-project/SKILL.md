@@ -1057,44 +1057,29 @@ export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDi
 
 When `auth=msal`, use the variant in §3.5 instead of this one.
 
+This is the project's **welcome / landing page** — a clean Tailwind hero. Use only
+default Tailwind palette classes (`zinc`, `indigo`, …) so it renders without any
+shadcn theme tokens. Replace `<Display Name>` with the real project name.
+
 ````typescript
-import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface Health {
-  status: string;
-  db: string;
-  time: string;
-}
-
 export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    apiGet<Health>("/health")
-      .then(setHealth)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to reach API"));
-  }, []);
-
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-8">
-      <h1 className="text-3xl font-bold"><Display Name></h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Backend health</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {health && (
-            <pre className="rounded-md bg-muted p-3 text-sm">{JSON.stringify(health, null, 2)}</pre>
-          )}
-          {!health && !error && <p className="text-sm text-muted-foreground">Checking…</p>}
-          <Button onClick={() => window.location.reload()}>Refresh</Button>
-        </CardContent>
-      </Card>
+    <main className="grid min-h-screen place-items-center bg-white px-6 text-zinc-900">
+      <div className="w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-10 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+          Welcome to DevEasy
+        </p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+          Your TypeScript project bootstrap for{" "}
+          <span className="text-indigo-600"><Display Name></span>
+        </h1>
+        <p className="mt-5 text-base leading-relaxed text-zinc-600">
+          Open DevEasy and start your Clauding session, or set your environment
+          variables from the code editor.
+        </p>
+        <p className="mt-10 text-lg font-semibold text-zinc-900">Keep Coding!</p>
+        <p className="text-sm text-zinc-500">~ Rustine Dave</p>
+      </div>
     </main>
   );
 }
@@ -1141,7 +1126,7 @@ npm run dev            # http://localhost:5173
 
 - `src/components/ui/` — shadcn-style primitives (`button`, `card`).
 - `src/lib/` — `api.ts` typed fetch wrapper, `utils.ts` `cn()` helper.
-- `src/App.tsx` — sample page calling the backend `/api/health`.
+- `src/App.tsx` — welcome / landing page (Tailwind). With MSAL, a pill nav for the Home / Dashboard / Sign In views.
 - `src/auth/` — MSAL config + provider + login button. *(present only if Microsoft auth was scaffolded)*
 ````
 
@@ -1236,49 +1221,106 @@ msalInstance.initialize().then(() => {
 
 **`<slug>-frontend/src/App.tsx`** **[MSAL variant — replaces the §3.4 one]**
 
+Same welcome hero, plus a **pill nav for the views the MSAL scaffold created**
+(Home, Dashboard, Sign In). Views are switched in-page (no router dep). The
+"Sign In" pill is labelled so the user knows it needs the MSAL keys in `.env`.
+Replace `<Display Name>` with the real project name.
+
 ````typescript
-import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from "@azure/msal-react";
 import { LoginButton } from "@/auth/LoginButton";
 
-interface Health {
-  status: string;
-  db: string;
-  time: string;
-}
+type Page = "home" | "dashboard" | "signin";
 
 export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { instance, accounts } = useMsal();
+  const [page, setPage] = useState<Page>("home");
+  const account = accounts[0];
 
-  useEffect(() => {
-    apiGet<Health>("/health")
-      .then(setHealth)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to reach API"));
-  }, []);
+  const pill = (active: boolean) =>
+    `rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+      active ? "bg-indigo-600 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+    }`;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-8">
-      <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold"><Display Name></h1>
-        <LoginButton />
-      </header>
-      <Card>
-        <CardHeader>
-          <CardTitle>Backend health</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {health && (
-            <pre className="rounded-md bg-muted p-3 text-sm">{JSON.stringify(health, null, 2)}</pre>
-          )}
-          {!health && !error && <p className="text-sm text-muted-foreground">Checking…</p>}
-          <Button onClick={() => window.location.reload()}>Refresh</Button>
-        </CardContent>
-      </Card>
+    <main className="grid min-h-screen place-items-center bg-white px-6 text-zinc-900">
+      <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-10 shadow-sm">
+        <nav className="mb-8 flex flex-wrap items-center gap-2">
+          <button className={pill(page === "home")} onClick={() => setPage("home")}>Home</button>
+          <button className={pill(page === "dashboard")} onClick={() => setPage("dashboard")}>Dashboard</button>
+          <button className={pill(page === "signin")} onClick={() => setPage("signin")}>
+            Sign In (requires MSAL keys)
+          </button>
+          <AuthenticatedTemplate>
+            <button
+              className="ml-auto rounded-full border border-zinc-200 px-4 py-1.5 text-sm text-zinc-500 hover:bg-zinc-50"
+              onClick={() => instance.logoutRedirect()}
+            >
+              Sign out{account?.name ? ` · ${account.name}` : ""}
+            </button>
+          </AuthenticatedTemplate>
+        </nav>
+
+        {page === "home" && <Home />}
+        {page === "dashboard" && <Dashboard />}
+        {page === "signin" && <SignIn />}
+      </div>
     </main>
+  );
+}
+
+function Home() {
+  return (
+    <section>
+      <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Welcome to DevEasy</p>
+      <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+        Your TypeScript project bootstrap for{" "}
+        <span className="text-indigo-600"><Display Name></span>
+      </h1>
+      <p className="mt-5 text-base leading-relaxed text-zinc-600">
+        Open DevEasy and start your Clauding session, or set your environment
+        variables from the code editor.
+      </p>
+      <p className="mt-10 text-lg font-semibold text-zinc-900">Keep Coding!</p>
+      <p className="text-sm text-zinc-500">~ Rustine Dave</p>
+    </section>
+  );
+}
+
+function Dashboard() {
+  return (
+    <section>
+      <h2 className="text-2xl font-bold">Dashboard</h2>
+      <AuthenticatedTemplate>
+        <p className="mt-3 text-zinc-600">You're signed in — protected content goes here.</p>
+      </AuthenticatedTemplate>
+      <UnauthenticatedTemplate>
+        <p className="mt-3 text-zinc-600">Sign in with Microsoft to view the dashboard.</p>
+      </UnauthenticatedTemplate>
+    </section>
+  );
+}
+
+function SignIn() {
+  return (
+    <section>
+      <h2 className="text-2xl font-bold">Sign In</h2>
+      <p className="mt-3 text-zinc-600">
+        Microsoft Entra sign-in. Set{" "}
+        <code className="rounded bg-zinc-100 px-1">VITE_AZURE_CLIENT_ID</code> and{" "}
+        <code className="rounded bg-zinc-100 px-1">VITE_AZURE_TENANT_ID</code> in{" "}
+        <code className="rounded bg-zinc-100 px-1">.env</code> first.
+      </p>
+      <UnauthenticatedTemplate>
+        <div className="mt-5">
+          <LoginButton />
+        </div>
+      </UnauthenticatedTemplate>
+      <AuthenticatedTemplate>
+        <p className="mt-5 text-green-600">You're already signed in.</p>
+      </AuthenticatedTemplate>
+    </section>
   );
 }
 ````
