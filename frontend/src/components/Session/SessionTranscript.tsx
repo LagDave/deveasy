@@ -183,17 +183,18 @@ export function SessionTranscript({
       <AnimatePresence>
         {!atBottom && (
           <motion.button
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.9 }}
             onClick={() => {
               setAtBottom(true);
               scrollToBottom("smooth");
             }}
-            className="btn btn-primary absolute bottom-4 left-1/2 -translate-x-1/2 shadow-lg"
+            title="Show latest"
+            aria-label="Show latest"
+            className="absolute bottom-4 left-1/2 grid h-9 w-9 -translate-x-1/2 place-items-center rounded-full border border-line-strong bg-surface/60 text-muted backdrop-blur-md transition-colors hover:bg-surface-2/80 hover:text-ink"
           >
-            <Icon name="continue" size={14} className="rotate-90" />
-            Show latest
+            <Icon name="continue" size={16} className="rotate-90" />
           </motion.button>
         )}
       </AnimatePresence>
