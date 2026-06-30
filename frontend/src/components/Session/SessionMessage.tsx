@@ -58,6 +58,17 @@ export function SessionMessage({ item, scrollRef }: { item: RenderItem; scrollRe
     );
   }
 
+  if (item.kind === "notice") {
+    return (
+      <motion.div {...enter} className="flex justify-center py-1">
+        <span className="surface-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[0.7rem] text-faint">
+          <Icon name="instant" size={12} />
+          {item.text}
+        </span>
+      </motion.div>
+    );
+  }
+
   return null; // system items are rendered in aggregate by SessionTranscript
 }
 

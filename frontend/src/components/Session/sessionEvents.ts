@@ -12,6 +12,7 @@ export type RenderItem =
   | { kind: "tool_use"; name: string; input: unknown; key: string }
   | { kind: "tool_result"; content: string; isError: boolean; key: string }
   | { kind: "result"; text: string; isError: boolean; key: string }
+  | { kind: "notice"; text: string; key: string }
   | { kind: "system"; subtype: string; raw: SessionEvent; key: string };
 
 interface ContentBlock {
@@ -69,6 +70,12 @@ export function flattenEvents(events: SessionEvent[]): RenderItem[] {
     if (type === "result") {
       const text = typeof event.result === "string" ? event.result : "";
       items.push({ kind: "result", text, isError: Boolean(event.is_error), key: `${i}-r` });
+      return;
+    }
+
+    // Client-injected notice (e.g. a model switch) — shown inline, not as noise.
+    if (type === "notice") {
+      items.push({ kind: "notice", text: typeof event.text === "string" ? event.text : "", key: `${i}-n` });
       return;
     }
 

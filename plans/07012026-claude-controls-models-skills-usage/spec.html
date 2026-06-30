@@ -327,6 +327,13 @@
         <p><strong>Reason:</strong> User QA: switching model on a brand-new session showed SESSION ERROR. Root cause: <code>--resume &lt;id&gt;</code> on a session the CLI never wrote returns "No conversation found with session ID" + an <code>is_error</code> result. The original verification only switched <em>after</em> a turn, so it missed this.</p>
         <p><strong>Verification:</strong> reproduced the CLI error directly, then drove the fixed server (port 1235): switch-before-turn → <code>resume: false</code>, no error, session usable on <code>claude-sonnet-5</code>; and the switch-after-turn codeword test still PASSes (<code>ZEBRA-42</code> recalled). Files: <code>SessionStreamService.ts</code>, <code>ClaudeProcessService.ts</code>.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 4 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Model picker now reflects the switch and keeps the version. Split <em>selection</em> (the chosen alias, known instantly) from <em>resolved version</em> (the CLI init string, known after the model next runs). The picker checkmark + pill update immediately on click; the pill shows the versioned name (<code>Opus 4.8</code>, <code>Sonnet 5</code>, <code>Haiku 4.5</code>) once resolved; and an in-chat notice "Switched to {versioned model}" is shown when the new model engages.</p>
+        <p><strong>Reason:</strong> User QA: after switching, the dropdown still checked "Default", there was no in-chat confirmation, and only the bare family name (not the version) was shown.</p>
+        <p><strong>Files:</strong> new <code>frontend/src/utils/modelLabels.ts</code>; <code>useSession.ts</code> (selectedModel/resolvedModel + switch notice), <code>SessionComposer.tsx</code>, <code>SessionPanel.tsx</code>, <code>sessionEvents.ts</code> + <code>SessionMessage.tsx</code> (notice render). <code>prettyModel</code> formatting checked against the real model strings.</p>
+        <p><strong>Note:</strong> Each switch restarts the CLI, which re-runs SessionStart hooks — so repeated switching accumulates collapsed <code>hook_*</code> system events in the transcript. Harmless (they stay collapsed); flagged in case it warrants filtering later.</p>
+      </article>
     </section>
   </main>
 </body>

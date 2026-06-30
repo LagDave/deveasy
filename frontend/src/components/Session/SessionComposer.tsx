@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { MODEL_ALIASES, modelPillLabel } from "../../utils/modelLabels";
 import { Icon } from "../ui/Icon";
 import { COMMAND_PRESETS, parseCommand } from "./chatCommands";
 import { ContextRing } from "./ContextRing";
@@ -15,8 +16,10 @@ interface SessionComposerProps {
   onSend: (text: string) => void;
   disabled: boolean;
   hint?: string;
-  /** Resolved model in use (from the CLI init event). */
-  model: string | null;
+  /** Selected model alias (opus/sonnet/… or null=Default) — drives the picker check. */
+  selectedModel: string | null;
+  /** Resolved versioned model from the CLI init event (e.g. claude-opus-4-8). */
+  resolvedModel: string | null;
   /** Available slash commands / skills for autocomplete. */
   slashCommands: string[];
   /** Context-window usage, or null until known. */
@@ -27,28 +30,12 @@ interface SessionComposerProps {
 
 const MAX_ROWS_PX = 200;
 
-/** Curated model aliases — stable handles that always resolve to the latest tier. */
-const MODEL_ALIASES: { id: string | null; label: string }[] = [
-  { id: null, label: "Default" },
-  { id: "opus", label: "Opus" },
-  { id: "sonnet", label: "Sonnet" },
-  { id: "haiku", label: "Haiku" },
-  { id: "fable", label: "Fable" },
-];
-
-/** Short label for the resolved model string (e.g. "claude-opus-4-8[1m]" -> "Opus"). */
-function modelShortLabel(model: string | null): string {
-  if (!model) return "Model";
-  const m = model.toLowerCase();
-  const hit = MODEL_ALIASES.find((a) => a.id && m.includes(a.id));
-  return hit ? hit.label : "Model";
-}
-
 export function SessionComposer({
   onSend,
   disabled,
   hint,
-  model,
+  selectedModel,
+  resolvedModel,
   slashCommands,
   context,
   onSetModel,
@@ -141,14 +128,14 @@ export function SessionComposer({
               title={disabled ? "Switch model when idle" : "Switch model (keeps context)"}
             >
               <Icon name="instant" size={13} />
-              <span className="font-mono text-xs">{modelShortLabel(model)}</span>
+              <span className="font-mono text-xs">{modelPillLabel(selectedModel, resolvedModel)}</span>
             </button>
             {modelOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setModelOpen(false)} />
                 <div className="surface absolute bottom-full left-0 z-20 mb-2 w-44 p-1">
                   {MODEL_ALIASES.map((a) => {
-                    const isCurrent = a.label === modelShortLabel(model) || (a.id === null && !model);
+                    const isCurrent = a.id === selectedModel;
                     return (
                       <button
                         key={a.label}

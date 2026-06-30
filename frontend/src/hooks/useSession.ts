@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionMessage } from "../api/sessions";
 import { getSessionMessages } from "../api/sessions";
+import { prettyModel } from "../utils/modelLabels";
 
 /**
  * Owns the live WebSocket connection for a session (Constitution §14.3): connects,
@@ -27,8 +28,10 @@ interface UseSessionResult {
   streaming: boolean;
   /** Live, not-yet-committed assistant text streaming in token-by-token. */
   partialText: string;
-  /** Resolved model in use for this session (from the CLI init event); null until known. */
-  model: string | null;
+  /** The selected model alias (opus/sonnet/… or null=Default) — known instantly on switch. */
+  selectedModel: string | null;
+  /** The resolved versioned model from the CLI init event (e.g. claude-opus-4-8); null until the model next runs. */
+  resolvedModel: string | null;
   /** Slash commands / skills available this session (autocomplete source). */
   slashCommands: string[];
   /** Context-window usage for the current session, or null until a result arrives. */
@@ -75,10 +78,13 @@ export function useSession(sessionId: number | null): UseSessionResult {
   const [isReady, setIsReady] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [partialText, setPartialText] = useState("");
-  const [model, setModelState] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [resolvedModel, setResolvedModel] = useState<string | null>(null);
   const [slashCommands, setSlashCommands] = useState<string[]>([]);
   const [context, setContext] = useState<{ used: number; window: number } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  /** True between a model switch and the next resolved init — gates the switch notice. */
+  const pendingSwitchRef = useRef(false);
 
   // Load persisted history once per session, then open the live stream.
   useEffect(() => {
@@ -89,9 +95,11 @@ export function useSession(sessionId: number | null): UseSessionResult {
     setIsReady(false);
     setStreaming(false);
     setPartialText("");
-    setModelState(null);
+    setSelectedModel(null);
+    setResolvedModel(null);
     setSlashCommands([]);
     setContext(null);
+    pendingSwitchRef.current = false;
     setStatus("connecting");
 
     getSessionMessages(sessionId)
@@ -113,6 +121,16 @@ export function useSession(sessionId: number | null): UseSessionResult {
       setIsReady(false);
       setStreaming(false);
     };
+    // Record the resolved versioned model; if it lands right after a switch, drop a
+    // one-line in-chat notice ("Switched to Opus 4.8") with the version.
+    const this_resolveModel = (resolved: string) => {
+      setResolvedModel(resolved);
+      if (pendingSwitchRef.current) {
+        pendingSwitchRef.current = false;
+        const label = prettyModel(resolved) ?? resolved;
+        setEvents((prev) => [...prev, { type: "notice", text: `Switched to ${label}` }]);
+      }
+    };
     ws.onmessage = (ev) => {
       let parsed: SessionEvent;
       try {
@@ -124,19 +142,22 @@ export function useSession(sessionId: number | null): UseSessionResult {
         setIsReady(true);
         // Reattaching to a session that's mid-turn should show "responding".
         setStreaming(parsed.state === "working");
-        if (typeof parsed.model === "string") setModelState(parsed.model);
+        // ready carries the stored selection (alias or null), not a resolved version.
+        if (typeof parsed.model === "string" || parsed.model === null) {
+          setSelectedModel(typeof parsed.model === "string" ? parsed.model : null);
+        }
         return;
       }
       // Control events (model/skills/context) are live state, not transcript.
       if (parsed.type === "capabilities") {
-        if (typeof parsed.model === "string") setModelState(parsed.model);
+        if (typeof parsed.model === "string") this_resolveModel(parsed.model);
         if (Array.isArray(parsed.slashCommands)) {
           setSlashCommands(parsed.slashCommands.filter((c): c is string => typeof c === "string"));
         }
         return;
       }
       if (parsed.type === "model_updated") {
-        setModelState(typeof parsed.model === "string" ? parsed.model : null);
+        if (typeof parsed.model === "string") this_resolveModel(parsed.model);
         return;
       }
       if (parsed.type === "context") {
@@ -197,7 +218,23 @@ export function useSession(sessionId: number | null): UseSessionResult {
     const ws = socketRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: "set_model", model: next }));
+    // Reflect the choice immediately (pill + picker check); the versioned notice
+    // follows once the model actually runs and reports its resolved name.
+    setSelectedModel(next);
+    pendingSwitchRef.current = true;
   }, []);
 
-  return { events, status, send, isReady, streaming, partialText, model, slashCommands, context, setModel };
+  return {
+    events,
+    status,
+    send,
+    isReady,
+    streaming,
+    partialText,
+    selectedModel,
+    resolvedModel,
+    slashCommands,
+    context,
+    setModel,
+  };
 }

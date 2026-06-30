@@ -91,7 +91,7 @@ export function SessionPanel({
     });
   };
 
-  const { events, status, send, isReady, streaming, partialText, model, slashCommands, context, setModel } =
+  const { events, status, send, isReady, streaming, partialText, selectedModel, resolvedModel, slashCommands, context, setModel } =
     useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
 
@@ -184,7 +184,8 @@ export function SessionPanel({
             <SessionComposer
               onSend={send}
               disabled={status !== "open" || streaming}
-              model={model}
+              selectedModel={selectedModel}
+              resolvedModel={resolvedModel}
               slashCommands={slashCommands}
               context={context}
               onSetModel={setModel}
