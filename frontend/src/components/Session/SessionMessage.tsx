@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
 import { fadeUp } from "../ui/motion";
+import { isSeedTurnText, stripWizardBlocks } from "../CreateProject/wizardProtocol";
 import { parseCommand } from "./chatCommands";
-import type { RenderItem } from "./sessionEvents";
+import { skillLoadName, type RenderItem } from "./sessionEvents";
 
 const enter = { variants: fadeUp, initial: "hidden", animate: "show" } as const;
 
@@ -13,12 +14,20 @@ type ScrollRef = React.RefObject<HTMLDivElement | null>;
 /** Renders one clean conversation item. Tool calls collapse; system noise is tiny. */
 export function SessionMessage({ item, scrollRef }: { item: RenderItem; scrollRef?: ScrollRef }) {
   if (item.kind === "text") {
-    if (item.role === "user") return <UserMessage text={item.text} scrollRef={scrollRef} />;
+    const skill = skillLoadName(item.text);
+    if (skill) return <SkillChip name={skill} />;
+    if (item.role === "user") {
+      if (isSeedTurnText(item.text)) return null; // the technical wizard seed turn
+      return <UserMessage text={item.text} scrollRef={scrollRef} />;
+    }
+    // Hide raw deveasy-question/done JSON — it renders as buttons by the composer.
+    const prose = stripWizardBlocks(item.text);
+    if (!prose) return null;
     return (
       <motion.div {...enter} className="flex justify-start">
         <div className="surface-2 max-w-[85%] break-words rounded-2xl rounded-bl-md px-4 py-2.5">
           <div className="eyebrow mb-1 !text-faint">Claude</div>
-          <Markdown>{item.text}</Markdown>
+          <Markdown>{prose}</Markdown>
         </div>
       </motion.div>
     );
@@ -129,6 +138,18 @@ function UserMessage({ text, scrollRef }: { text: string; scrollRef?: ScrollRef 
           </div>
         </div>
       </motion.div>
+    </motion.div>
+  );
+}
+
+/** One-line stand-in for a skill-load dump (the full SKILL.md is never shown). */
+function SkillChip({ name }: { name: string }) {
+  return (
+    <motion.div {...enter} className="flex justify-start py-0.5">
+      <span className="surface-2 inline-flex items-center gap-2 truncate rounded-full px-3 py-1.5 font-mono text-xs text-faint">
+        <Icon name="skill" size={13} />
+        Using skill: {name}
+      </span>
     </motion.div>
   );
 }

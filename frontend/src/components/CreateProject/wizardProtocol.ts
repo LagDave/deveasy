@@ -118,3 +118,18 @@ export function stripWizardBlocks(text: string): string {
     .replace(/```deveasy-done\s*\n[\s\S]*?```/g, "")
     .trim();
 }
+
+// The opening turn for a create-project session. The leading `-i` passes the
+// injected CLAUDE.md command gate; the rest invokes the skill, which then drives
+// the deveasy-question protocol. SEED_PREFIX lets the transcript recognize and
+// hide this technical turn.
+export const SEED_PREFIX = "-i Scaffold a new TypeScript project named";
+
+export function buildSeedTurn(projectName: string): string {
+  return `${SEED_PREFIX} "${projectName}". Invoke the create-new-ts-project skill and follow its wizard protocol exactly — ask me each question as a deveasy-question JSON block and wait for my answer.`;
+}
+
+/** True if a user turn is the technical create-session seed (hidden from the UI). */
+export function isSeedTurnText(text: string): boolean {
+  return text.startsWith(SEED_PREFIX);
+}

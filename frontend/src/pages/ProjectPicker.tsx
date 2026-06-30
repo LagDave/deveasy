@@ -14,7 +14,12 @@ import { useProjects } from "../hooks/queries/useProjects";
  * against any of them. This view is the inventory of what DevEasy can see, plus the
  * entry point for scaffolding a new project via the create wizard.
  */
-export function ProjectPicker() {
+export function ProjectPicker({
+  onProjectCreated,
+}: {
+  /** Hand the freshly-created session to the parent so it can open it in Sessions. */
+  onProjectCreated?: (sessionId: number, projectName: string) => void;
+}) {
   const { data: projects, isLoading, error } = useProjects();
   const [wizardOpen, setWizardOpen] = useState(false);
 
@@ -84,7 +89,11 @@ export function ProjectPicker() {
         </>
       )}
 
-      <CreateProjectWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
+      <CreateProjectWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onCreated={(sessionId, projectName) => onProjectCreated?.(sessionId, projectName)}
+      />
     </div>
   );
 }

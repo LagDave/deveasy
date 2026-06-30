@@ -84,3 +84,20 @@ export function flattenEvents(events: SessionEvent[]): RenderItem[] {
 export function meaningfulCount(items: RenderItem[]): number {
   return items.filter((it) => it.kind !== "system").length;
 }
+
+/**
+ * The Skill tool returns the entire SKILL.md prefixed with this line. Rendering
+ * it raw floods the transcript, so callers collapse it to a one-line chip.
+ */
+const SKILL_LOAD_PREFIX = "Base directory for this skill:";
+
+/**
+ * If `text` is a skill-load dump, return the skill's folder name (for a compact
+ * "Using skill: <name>" chip); otherwise null. Used by both the normal session
+ * transcript and the create-project wizard.
+ */
+export function skillLoadName(text: string): string | null {
+  if (!text.trimStart().startsWith(SKILL_LOAD_PREFIX)) return null;
+  const match = text.match(/\/skills\/([^/\s]+)/);
+  return match ? match[1] : "skill";
+}

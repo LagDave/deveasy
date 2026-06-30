@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { AgentManagerPanel } from "./components/AgentManager/AgentManagerPanel";
 import { CockpitPanel } from "./components/Cockpit/CockpitPanel";
-import { SessionPanel } from "./components/Session/SessionPanel";
+import { SessionPanel, type OpenSessionRequest } from "./components/Session/SessionPanel";
 import { Icon, type IconName } from "./components/ui/Icon";
 import { panelSwap } from "./components/ui/motion";
 import { ProjectPicker } from "./pages/ProjectPicker";
@@ -14,20 +14,40 @@ interface Section {
   label: string;
   icon: IconName;
   blurb: string;
-  render: () => React.ReactNode;
 }
 
 // Projects is last: projects aren't "opened" — they just appear in the session list.
 const SECTIONS: Section[] = [
-  { id: "sessions", label: "Sessions", icon: "sessions", blurb: "Chat with Claude", render: () => <SessionPanel /> },
-  { id: "cockpit", label: "Cockpit", icon: "cockpit", blurb: "Git & pull requests", render: () => <CockpitPanel /> },
-  { id: "agents", label: "Agents", icon: "agents", blurb: "Shared config", render: () => <AgentManagerPanel /> },
-  { id: "projects", label: "Projects", icon: "projects", blurb: "Workspace", render: () => <ProjectPicker /> },
+  { id: "sessions", label: "Sessions", icon: "sessions", blurb: "Chat with Claude" },
+  { id: "cockpit", label: "Cockpit", icon: "cockpit", blurb: "Git & pull requests" },
+  { id: "agents", label: "Agents", icon: "agents", blurb: "Shared config" },
+  { id: "projects", label: "Projects", icon: "projects", blurb: "Workspace" },
 ];
 
 export default function App() {
   const [section, setSection] = useState<SectionId>("sessions");
+  const [openSession, setOpenSession] = useState<OpenSessionRequest | null>(null);
   const current = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
+
+  // Creating a project lands you in the new session on the Sessions page.
+  const handleProjectCreated = (sessionId: number, projectName: string) => {
+    setOpenSession({ id: sessionId, projectName });
+    setSection("sessions");
+  };
+
+  const renderSection = () => {
+    switch (current.id) {
+      case "cockpit":
+        return <CockpitPanel />;
+      case "agents":
+        return <AgentManagerPanel />;
+      case "projects":
+        return <ProjectPicker onProjectCreated={handleProjectCreated} />;
+      case "sessions":
+      default:
+        return <SessionPanel openSession={openSession} onOpenConsumed={() => setOpenSession(null)} />;
+    }
+  };
 
   return (
     <div className="flex h-full">
@@ -89,7 +109,7 @@ export default function App() {
               exit="exit"
               className="h-full overflow-hidden"
             >
-              {current.render()}
+              {renderSection()}
             </motion.section>
           </AnimatePresence>
         </div>

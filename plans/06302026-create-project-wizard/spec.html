@@ -294,6 +294,13 @@
         <p><strong>Reason (User QA):</strong> "better if it can show the files it's creating." Previously the wizard rendered only text, so the scaffolding phase looked idle behind the "Claude is working" spinner.</p>
         <p><strong>Files:</strong> <code>frontend/src/components/CreateProject/WizardChat.tsx</code>. Frontend <code>tsc</code> clean.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 4 - 2026-06-30</h3>
+        <p><strong>Change (architecture pivot):</strong> Moved the guided experience out of the modal and into the real Sessions page. Creating a project now closes the dialog, switches to the Sessions tab, and opens the new session there; the modal shrank to a name-only prompt. The skill-driven Q&A renders in the normal session view.</p>
+        <p><strong>Reason (User QA):</strong> "close the projects view when the folder is created and proceed to its first session in the sessions page instead" + the skill dump "looks damaged… should be just as simple as 'Using skill:'". The modal duplicated an experience the real session view should own.</p>
+        <p><strong>How:</strong> (1) <code>App</code> lifts an <code>OpenSessionRequest</code> and a <code>handleProjectCreated</code> that switches to Sessions and targets the new session. (2) <code>SessionPanel</code> opens that session, seeds the skill turn exactly once on connect (then clears the request so re-entry never re-seeds), and renders <code>WizardChoice</code> buttons above the composer when the latest assistant turn carries a <code>deveasy-question</code> — <strong>self-gating</strong>, so normal sessions are unaffected. (3) <code>SessionMessage</code> collapses any skill-load dump to a one-line <em>"Using skill: &lt;name&gt;"</em> chip (shared <code>skillLoadName</code> helper, applies to all sessions), hides the technical seed turn, and strips raw <code>deveasy-question/done</code> JSON from assistant prose. (4) The seed-turn builder + protocol parsers moved to the shared <code>wizardProtocol.ts</code>; the now-dead <code>WizardChat.tsx</code> was deleted. (5) <code>useCreateProject</code> also invalidates the session list so the new session appears in the rail.</p>
+        <p><strong>Files:</strong> <code>frontend/src/App.tsx</code>, <code>pages/ProjectPicker.tsx</code>, <code>components/CreateProject/{CreateProjectWizard,WizardChoice,wizardProtocol}.tsx</code> (deleted <code>WizardChat.tsx</code>), <code>components/Session/{SessionPanel,SessionMessage,sessionEvents}.tsx</code>, <code>hooks/queries/useProjects.ts</code>. Both trees <code>tsc</code> clean.</p>
+      </article>
     </section>
   </main>
 </body>
