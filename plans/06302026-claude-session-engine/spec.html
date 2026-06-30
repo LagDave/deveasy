@@ -211,6 +211,11 @@
         <p><strong>Change:</strong> (1) Runtime state is now driven by the event stream, not just the user's send: any assistant/tool-result event marks the session <code>working</code>, a <code>result</code> marks it <code>idle</code> (system/init events don't change it). This keeps the sidebar indicator correct after a reattach mid-turn, where a session was wrongly showing "ready" while still using tools. (2) The client's <code>streaming</code> flag now tracks the same live activity, so the in-chat "Claude is working" indicator reappears on reattach instead of staying hidden. (3) Opening a session now jumps instantly to the latest message (instant scroll on first paint via a per-session remount key), then smooth-scrolls for new messages.</p>
         <p><strong>Reason:</strong> User QA: a reopened session showed "ready" while still working, the in-chat working indicator was gone, and opening landed mid-transcript instead of at the bottom.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 6 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Assistant messages now render real markdown (<code>react-markdown</code> + <code>remark-gfm</code>) via a themed <code>ui/Markdown</code> renderer — headings, bold/italic, lists, links, tables, inline code chips, and fenced code blocks styled to the dark theme. User turns stay verbatim (whitespace-preserved).</p>
+        <p><strong>Reason:</strong> User QA: assistant text was showing raw markdown source (<code>**bold**</code>, <code>###</code>, backticks, list markers).</p>
+      </article>
     </section>
   </main>
 </body>
