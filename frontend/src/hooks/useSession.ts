@@ -27,6 +27,14 @@ interface UseSessionResult {
   streaming: boolean;
   /** Live, not-yet-committed assistant text streaming in token-by-token. */
   partialText: string;
+  /** Resolved model in use for this session (from the CLI init event); null until known. */
+  model: string | null;
+  /** Slash commands / skills available this session (autocomplete source). */
+  slashCommands: string[];
+  /** Context-window usage for the current session, or null until a result arrives. */
+  context: { used: number; window: number } | null;
+  /** Switch the session's model — restarts the CLI resumed, preserving context. */
+  setModel: (model: string | null) => void;
 }
 
 /** Pull a text delta out of a partial `stream_event`, if present. */
@@ -67,6 +75,9 @@ export function useSession(sessionId: number | null): UseSessionResult {
   const [isReady, setIsReady] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [partialText, setPartialText] = useState("");
+  const [model, setModelState] = useState<string | null>(null);
+  const [slashCommands, setSlashCommands] = useState<string[]>([]);
+  const [context, setContext] = useState<{ used: number; window: number } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
   // Load persisted history once per session, then open the live stream.
@@ -78,6 +89,9 @@ export function useSession(sessionId: number | null): UseSessionResult {
     setIsReady(false);
     setStreaming(false);
     setPartialText("");
+    setModelState(null);
+    setSlashCommands([]);
+    setContext(null);
     setStatus("connecting");
 
     getSessionMessages(sessionId)
@@ -110,6 +124,25 @@ export function useSession(sessionId: number | null): UseSessionResult {
         setIsReady(true);
         // Reattaching to a session that's mid-turn should show "responding".
         setStreaming(parsed.state === "working");
+        if (typeof parsed.model === "string") setModelState(parsed.model);
+        return;
+      }
+      // Control events (model/skills/context) are live state, not transcript.
+      if (parsed.type === "capabilities") {
+        if (typeof parsed.model === "string") setModelState(parsed.model);
+        if (Array.isArray(parsed.slashCommands)) {
+          setSlashCommands(parsed.slashCommands.filter((c): c is string => typeof c === "string"));
+        }
+        return;
+      }
+      if (parsed.type === "model_updated") {
+        setModelState(typeof parsed.model === "string" ? parsed.model : null);
+        return;
+      }
+      if (parsed.type === "context") {
+        if (typeof parsed.used === "number" && typeof parsed.window === "number") {
+          setContext({ used: parsed.used, window: parsed.window });
+        }
         return;
       }
       if (parsed.type === "process_closed") {
@@ -160,5 +193,11 @@ export function useSession(sessionId: number | null): UseSessionResult {
     ]);
   }, []);
 
-  return { events, status, send, isReady, streaming, partialText };
+  const setModel = useCallback((next: string | null) => {
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "set_model", model: next }));
+  }, []);
+
+  return { events, status, send, isReady, streaming, partialText, model, slashCommands, context, setModel };
 }

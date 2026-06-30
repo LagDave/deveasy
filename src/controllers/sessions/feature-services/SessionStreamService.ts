@@ -15,9 +15,15 @@ const log = childLogger({ module: "SessionStreamService" });
 /** Runtime status of a live session, surfaced to the sidebar indicator. */
 export type RuntimeState = "working" | "idle";
 
-interface ClientCommand {
-  type: "user_turn";
-  text: string;
+type ClientCommand =
+  | { type: "user_turn"; text: string }
+  | { type: "set_model"; model: string | null };
+
+/** Live capabilities of a session, captured from the CLI `init` event. */
+interface Capabilities {
+  model: string | null;
+  slashCommands: string[];
+  skills: unknown[];
 }
 
 interface Runtime {
@@ -27,6 +33,16 @@ interface Runtime {
   state: RuntimeState;
   /** Whether the first-prompt auto-naming has been kicked off for this runtime. */
   named: boolean;
+  /** Project path — kept so a model switch can restart the process in place. */
+  projectPath: string;
+  /** The CLI's pinned session id, used to --resume on a model switch. */
+  cliSessionId: string;
+  /** Currently selected model (null = CLI default). */
+  model: string | null;
+  /** Latest capabilities from the init event, replayed to late-attaching sockets. */
+  capabilities: Capabilities | null;
+  /** Latest context-window usage, replayed to late-attaching sockets. */
+  context: { used: number; window: number } | null;
 }
 
 /**
@@ -72,16 +88,25 @@ export class SessionStreamService {
     let runtime = this.runtimes.get(sessionId);
     if (!runtime) {
       ClaudeProcessService.assertReady(); // throws SESSION_CLI_NOT_READY if logged out
-      runtime = { subscribers: new Set(), state: "idle", named: false };
+      // Pin our own CLI session id so a later model switch can --resume this exact
+      // conversation; persist it so it survives a process restart.
+      const cliSessionId = ClaudeProcessService.newCliSessionId();
+      runtime = {
+        subscribers: new Set(),
+        state: "idle",
+        named: false,
+        projectPath: project.path,
+        cliSessionId,
+        model: session.model,
+        capabilities: null,
+        context: null,
+      };
       this.runtimes.set(sessionId, runtime);
       await SessionModel.setStatus(sessionId, "active");
-      ClaudeProcessService.start(sessionId, project.path, {
-        onEvent: (event) => void this.onProcessEvent(sessionId, event),
-        onClose: (code) => void this.onProcessClose(sessionId, code),
-        onError: (error) => {
-          log.error({ sessionId, err: error }, "Process error");
-          this.broadcast(sessionId, { type: "error", message: "The Claude process errored." });
-        },
+      await SessionModel.setCliSessionId(sessionId, cliSessionId);
+      ClaudeProcessService.start(sessionId, project.path, this.handlersFor(sessionId), {
+        model: session.model,
+        cliSessionId,
       });
       log.info({ sessionId }, "Session process started");
     }
@@ -98,7 +123,52 @@ export class SessionStreamService {
     });
 
     // Tell the client the current state so a reattach to a busy session shows it.
-    this.safeSend(ws, { type: "ready", sessionId, state: runtime.state });
+    this.safeSend(ws, { type: "ready", sessionId, state: runtime.state, model: runtime.model });
+    // Replay known capabilities/context to a socket that attached after init fired.
+    if (runtime.capabilities) {
+      this.safeSend(ws, { type: "capabilities", sessionId, ...runtime.capabilities });
+    }
+    if (runtime.context) {
+      this.safeSend(ws, { type: "context", sessionId, ...runtime.context });
+    }
+  }
+
+  /** The process handlers for a session — shared by start and model-switch restart. */
+  private static handlersFor(sessionId: number) {
+    return {
+      onEvent: (event: ClaudeStreamEvent) => void this.onProcessEvent(sessionId, event),
+      onClose: (code: number | null) => void this.onProcessClose(sessionId, code),
+      onError: (error: Error) => {
+        log.error({ sessionId, err: error }, "Process error");
+        this.broadcast(sessionId, { type: "error", message: "The Claude process errored." });
+      },
+    };
+  }
+
+  /**
+   * Switch the session's model: persist it, then restart the CLI process resumed so
+   * the conversation context carries over. Only allowed when idle — never mid-turn.
+   */
+  static async setModel(sessionId: number, model: string | null): Promise<void> {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) {
+      throw new SessionError("SESSION_NOT_LIVE", "Session is not live.", { sessionId });
+    }
+    if (runtime.state !== "idle") {
+      throw new SessionError(
+        "SESSION_BUSY",
+        "Finish the current turn before switching models.",
+        { sessionId },
+      );
+    }
+    runtime.model = model;
+    await SessionModel.setModel(sessionId, model);
+    ClaudeProcessService.restart(sessionId, runtime.projectPath, this.handlersFor(sessionId), {
+      model,
+      cliSessionId: runtime.cliSessionId,
+      resume: true,
+    });
+    log.info({ sessionId, model }, "Session model switched (resumed)");
   }
 
   /** Explicitly end a session: kill the process (triggers cleanup) and mark closed. */
@@ -122,6 +192,19 @@ export class SessionStreamService {
       this.safeSend(ws, { type: "error", message: "Malformed command." });
       return;
     }
+
+    if (command.type === "set_model") {
+      try {
+        await this.setModel(sessionId, command.model ?? null);
+      } catch (err) {
+        const message =
+          err instanceof SessionError ? err.message : "Could not switch model.";
+        log.error({ sessionId, err }, "set_model failed");
+        this.safeSend(ws, { type: "error", message });
+      }
+      return;
+    }
+
     if (command.type !== "user_turn" || typeof command.text !== "string") {
       this.safeSend(ws, { type: "error", message: "Unsupported command." });
       return;
@@ -160,6 +243,14 @@ export class SessionStreamService {
       }
     }
 
+    // Derive live controls from the stream and relay them as synthetic events
+    // (not persisted — they are re-derived whenever the session is live).
+    if (event.type === "system" && event.subtype === "init") {
+      this.captureCapabilities(sessionId, event);
+    } else if (event.type === "result") {
+      this.captureContext(sessionId, event);
+    }
+
     // Always relay so the UI streams live. Partial `stream_event` chunks are
     // transient token deltas — relay them but do NOT persist (the final assistant
     // message is persisted below and is what history replays).
@@ -186,6 +277,40 @@ export class SessionStreamService {
     } catch (err) {
       log.error({ sessionId, err }, "Failed to mark session closed on process close");
     }
+  }
+
+  /** Pull capabilities (model, slash commands, skills) out of an init event. */
+  private static captureCapabilities(sessionId: number, event: ClaudeStreamEvent): void {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) return;
+    const model = typeof event.model === "string" ? event.model : null;
+    const slashCommands = Array.isArray(event.slash_commands)
+      ? (event.slash_commands.filter((c) => typeof c === "string") as string[])
+      : [];
+    const skills = Array.isArray(event.skills) ? (event.skills as unknown[]) : [];
+    runtime.capabilities = { model, slashCommands, skills };
+    if (model) runtime.model = model;
+    this.broadcast(sessionId, { type: "capabilities", sessionId, model, slashCommands, skills });
+    this.broadcast(sessionId, { type: "model_updated", sessionId, model });
+  }
+
+  /** Derive context-window usage from a result event's token counts. */
+  private static captureContext(sessionId: number, event: ClaudeStreamEvent): void {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) return;
+    const usage = (event.usage ?? {}) as Record<string, unknown>;
+    const num = (v: unknown): number => (typeof v === "number" ? v : 0);
+    const used =
+      num(usage.input_tokens) +
+      num(usage.cache_read_input_tokens) +
+      num(usage.cache_creation_input_tokens);
+    // contextWindow lives on the per-model usage map; take the first entry's value.
+    const modelUsage = (event.modelUsage ?? {}) as Record<string, { contextWindow?: unknown }>;
+    const first = Object.values(modelUsage)[0];
+    const window = first && typeof first.contextWindow === "number" ? first.contextWindow : 0;
+    if (window <= 0) return;
+    runtime.context = { used, window };
+    this.broadcast(sessionId, { type: "context", sessionId, used, window });
   }
 
   /** Fan an event out to every socket currently watching the session. */

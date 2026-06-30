@@ -1,4 +1,5 @@
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { childLogger } from "../lib/logger";
 import { resolveExecutable } from "../utils/platform";
 
@@ -61,6 +62,17 @@ interface LiveProcess {
 }
 
 /**
+ * Spawn options for a session process. `model` injects `--model`; `cliSessionId`
+ * pins the CLI's session id (so a later model switch can `--resume` it); `resume`
+ * restarts an existing conversation rather than starting a fresh one.
+ */
+export interface StartOpts {
+  model?: string | null;
+  cliSessionId: string;
+  resume?: boolean;
+}
+
+/**
  * Manages the lifecycle of `claude` CLI child processes — one per session.
  *
  * Critically, the child env has ANTHROPIC_API_KEY scrubbed so the cached
@@ -102,11 +114,22 @@ export class ClaudeProcessService {
     }
   }
 
+  /** Generate a fresh CLI session id to pin via `--session-id` on first start. */
+  static newCliSessionId(): string {
+    return randomUUID();
+  }
+
   /**
    * Spawn a CLI process for a session against the given project path. Idempotent:
-   * a second start for a live session returns without spawning a duplicate.
+   * a second start for a live session returns without spawning a duplicate. The
+   * session id is pinned (or resumed) and the model injected via `opts`.
    */
-  static start(sessionId: number, projectPath: string, handlers: SessionHandlers): void {
+  static start(
+    sessionId: number,
+    projectPath: string,
+    handlers: SessionHandlers,
+    opts: StartOpts,
+  ): void {
     this.bindSignals();
 
     if (this.live.has(sessionId)) {
@@ -123,7 +146,7 @@ export class ClaudeProcessService {
 
     let child: ChildProcessWithoutNullStreams;
     try {
-      child = spawn(resolveExecutable(CLI_COMMAND), [...CLI_ARGS], {
+      child = spawn(resolveExecutable(CLI_COMMAND), this.buildArgs(opts), {
         cwd: projectPath,
         env: this.buildChildEnv(),
         stdio: ["pipe", "pipe", "pipe"],
@@ -138,9 +161,48 @@ export class ClaudeProcessService {
 
     const entry: LiveProcess = { child, stdoutBuffer: "", handlers };
     this.live.set(sessionId, entry);
-    log.info({ sessionId, pid: child.pid, projectPath }, "Claude process started");
+    log.info(
+      { sessionId, pid: child.pid, projectPath, model: opts.model ?? null, resume: Boolean(opts.resume) },
+      "Claude process started",
+    );
 
     this.wireProcess(sessionId, entry);
+  }
+
+  /**
+   * Restart a session's process with a (possibly new) model, resuming the same CLI
+   * conversation so context carries over. The old child's listeners are detached
+   * before it is killed, so its asynchronous `close` can never tear down the freshly
+   * started process (§ risk: restart race). Always restarts with `resume: true`.
+   */
+  static restart(
+    sessionId: number,
+    projectPath: string,
+    handlers: SessionHandlers,
+    opts: StartOpts,
+  ): void {
+    const old = this.live.get(sessionId);
+    if (old) {
+      old.child.stdout.removeAllListeners();
+      old.child.stderr.removeAllListeners();
+      old.child.removeAllListeners("close");
+      old.child.removeAllListeners("error");
+      try {
+        old.child.kill("SIGTERM");
+      } catch (err) {
+        log.warn({ sessionId, err }, "Failed to kill child during restart");
+      }
+      this.live.delete(sessionId);
+    }
+    this.start(sessionId, projectPath, handlers, { ...opts, resume: true });
+  }
+
+  /** Build the CLI argv: base streaming args + optional model + session id/resume. */
+  private static buildArgs(opts: StartOpts): string[] {
+    const args: string[] = [...CLI_ARGS];
+    if (opts.model) args.push("--model", opts.model);
+    args.push(opts.resume ? "--resume" : "--session-id", opts.cliSessionId);
+    return args;
   }
 
   /** Write a user turn to the process stdin as a stream-json line. */

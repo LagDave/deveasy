@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Controls — Models, Skills, Usage & Context Spec</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #ffffff;
+      --ink: #080808;
+      --muted: #5f5f5f;
+      --line: #d8d8d8;
+      --soft: #f5f5f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    .spec-shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0; }
+    .spec-hero, .spec-card, .task-card { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .spec-hero { border-color: var(--ink); padding: 32px; margin-bottom: 20px; }
+    .hero-topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .spec-card { padding: 28px; margin-top: 16px; }
+    .task-card { padding: 20px; background: var(--soft); margin-top: 14px; }
+    .eyebrow, dt { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
+    .eyebrow { margin: 0; }
+    .status-pill { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 0.78rem; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+    .status-card { border-color: var(--ink); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 840px; margin-bottom: 24px; font-size: clamp(2.25rem, 6vw, 4rem); line-height: 0.95; letter-spacing: 0; }
+    h2 { font-size: 1.35rem; letter-spacing: 0; }
+    h3 { font-size: 1rem; letter-spacing: 0; }
+    code { padding: 0.1rem 0.3rem; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); font-size: 0.92em; }
+    pre { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow-x: auto; font-size: 0.85em; }
+    .meta-grid, .split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .meta-grid { margin: 0; }
+    .meta-grid div, .split-grid > div { border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    dd { margin: 4px 0 0; font-weight: 700; }
+    .task-card dl { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 0; }
+    .task-card dl > div { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: var(--paper); }
+    .task-card dd { font-weight: 500; }
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+    .tag { display: inline-block; font-size: 0.66rem; font-weight: 800; text-transform: uppercase; border: 1px solid var(--ink); border-radius: 999px; padding: 1px 9px; margin-left: 6px; }
+    @media (max-width: 640px) {
+      .spec-shell { width: min(100% - 20px, 1120px); padding: 24px 0; }
+      .spec-hero, .spec-card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec</p>
+        <span class="status-pill status-progress">In Progress</span>
+      </div>
+      <h1>Claude Controls — Model Switching, Skill Autocomplete, Usage &amp; Context</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>In Progress — code complete, behavioral acceptance pending</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/07012026-claude-controls-models-skills-usage</dd></div>
+        <div><dt>Size</dt><dd>Large (5 capabilities, ~16 files, DB migration)</dd></div>
+        <div><dt>Risk</dt><dd>Level 3 — undocumented endpoint + OAuth token + CLI stdin slash commands</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>DevEasy wraps the Claude CLI but exposes none of its live controls. The operator cannot switch models, discover or invoke skills, compact a long chat, or see how much of their subscription limits or context window a session has consumed. Every input for these already flows through the pipeline (the CLI <code>init</code> and <code>result</code> stream events) or is reachable over a verified endpoint (the OAuth usage API) — it is simply never surfaced. This closes that gap so the wrapper is a real cockpit, not a blind pipe.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>Five capabilities, all driven from existing data sources:</p>
+      <ul>
+        <li><strong>In-chat model switching</strong> — a picker that restarts the session's CLI process with <code>--resume &lt;cli-session-id&gt; --model &lt;alias&gt;</code> so the conversation context carries over; the resolved model (from the <code>init</code> event) is shown and updates live.</li>
+        <li><strong>Skill autocomplete</strong> — typing <code>/</code> in the composer suggests the session's actual skills (from the <code>init</code> event's <code>slash_commands</code>/<code>skills</code>); a <code>/</code>-prefixed message bypasses the workflow-command gate and sends as-is.</li>
+        <li><strong>/compact control</strong> — a button that sends <code>/compact</code> to the session to compress its context.</li>
+        <li><strong>Subscription usage ring</strong> — a circular multi-track ring at the top of the sidebar showing 5-hour and weekly utilization; clicking opens a dropdown with each window as a horizontal bar plus its reset time. Data from <code>GET https://api.anthropic.com/api/oauth/usage</code>.</li>
+        <li><strong>Context-window ring</strong> — a circular ring to the right of the Send button showing percent of the model's context window used by the current session, derived from <code>result</code>/<code>init</code> token counts.</li>
+      </ul>
+      <p><strong>Done when:</strong> the operator can change model mid-chat and keep context, autocomplete and send a skill, compact a chat, and read both usage rings with live values — with the backend never leaking the OAuth token and never crashing if the usage endpoint is unavailable.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Verified facts (this is what the design rests on)</h3>
+      <ul>
+        <li>The CLI <code>system/init</code> stream event carries <code>model</code> (e.g. <code>"claude-opus-4-8[1m]"</code>), <code>session_id</code>, <code>slash_commands</code>, and <code>skills</code>. The <code>result</code> event carries <code>usage</code> (input/output/cache tokens), <code>modelUsage</code> (with <code>contextWindow</code>), and <code>session_id</code>. Both already flow through <code>SessionStreamService.onProcessEvent</code> and are persisted — nothing extracts them yet.</li>
+        <li>The CLI has no <code>models list</code> command. <code>--model</code> accepts stable aliases (<code>opus</code>, <code>sonnet</code>, <code>haiku</code>, <code>fable</code>) or full names. Aliases always resolve to the latest of a tier; the resolved version comes back in <code>init.model</code>. The model picker therefore uses a curated alias list, not a live query.</li>
+        <li>The CLI supports <code>--session-id &lt;uuid&gt;</code> (assign our own id at start) and <code>--resume &lt;id&gt;</code> — together these let a model switch restart the process while preserving conversation context.</li>
+        <li><code>GET https://api.anthropic.com/api/oauth/usage</code> returns <code>{ five_hour: { utilization, resets_at }, seven_day: { utilization, resets_at }, limits: [...] }</code>. Verified live: HTTP 200. Auth = the OAuth access token from the macOS Keychain entry <code>"Claude Code-credentials"</code>, plus header <code>anthropic-beta: oauth-2025-04-20</code>. <strong>Undocumented and rate-limits aggressively</strong> (GitHub anthropics/claude-code #31637) — must cache and poll slowly.</li>
+      </ul>
+
+      <h3>Relevant Files</h3>
+      <ul>
+        <li><code>src/services/ClaudeProcessService.ts</code> — spawns the CLI with a hardcoded arg set; one process per session. Gains a model arg, an own <code>--session-id</code>, and a resume-restart path.</li>
+        <li><code>src/controllers/sessions/feature-services/SessionStreamService.ts</code> — owns session runtime, relays/persists events. Captures <code>init</code> (model, skills, cli session id), handles a set-model command, relays capabilities + context usage.</li>
+        <li><code>src/models/SessionModel.ts</code> — all session DB access (§7.4). Gains <code>model</code> + <code>cli_session_id</code> read/write.</li>
+        <li><code>src/database/migrations/0002_sessions.ts</code> — the table this migration extends (analog for the new migration).</li>
+        <li><code>src/routes/sessions.ts</code>, <code>src/controllers/sessions/SessionsController.ts</code> — thin route + controller pattern to mirror for the usage route/controller.</li>
+        <li><code>frontend/src/components/Session/SessionComposer.tsx</code> — command picker + textarea; gains model picker, skill autocomplete, <code>/</code> gate-bypass, <code>/compact</code> + context ring.</li>
+        <li><code>frontend/src/hooks/useSession.ts</code> — the WS hook; gains model/context/skills state and a <code>setModel</code> action.</li>
+        <li><code>frontend/src/api/sessions.ts</code>, <code>frontend/src/components/Session/SessionSidebar.tsx</code> (or the panel that renders the project-grouped list) — the sidebar host for the usage ring.</li>
+      </ul>
+
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li><strong>Backend domain shape (§6.1, §6.3):</strong> mirror <code>controllers/sessions/</code> — thin controller → <code>feature-services/</code> business logic → <code>models/</code> DB. The new usage read is a system integration, so the keychain+HTTP logic is a top-level shared service (<code>src/services/ClaudeUsageService.ts</code>), like <code>ClaudeProcessService.ts</code>; a thin <code>UsageController</code> + route exposes it.</li>
+        <li><strong>Response contract (§8.1–§8.3):</strong> reuse <code>controllerResponses</code> <code>ok()</code>/<code>handleSessionError()</code> shape and a typed error (mirror <code>ClaudeProcessError</code>/<code>SessionError</code>).</li>
+        <li><strong>Logging (§9.1):</strong> Pino <code>childLogger</code> only — never <code>console.*</code>. Never log the token (§5.3).</li>
+        <li><strong>Frontend triad (§12.1, §14.2, §15.1):</strong> <code>api/usage.ts</code> thin typed functions over <code>api/index.ts</code> → a React Query hook <code>useUsageLimits()</code> → presentational ring components. No raw <code>fetch</code> in components.</li>
+        <li><strong>Migration (§10.3):</strong> mirror <code>0002_sessions.ts</code> — a single TypeScript Knex migration <code>0005_session_model.ts</code> for Postgres. <strong>Deviation from the CLAUDE.md three-dialect migrations template:</strong> DevEasy is Postgres-only with TS migrations, so no <code>mssql.sql</code>. The plan's <code>migrations/</code> folder carries the TS scaffold and a Postgres reference DDL only.</li>
+      </ul>
+      <p><strong>Reference files:</strong> backend — <code>src/services/ClaudeProcessService.ts</code> + <code>src/controllers/sessions/SessionsController.ts</code>; frontend — <code>frontend/src/components/Session/SessionComposer.tsx</code> + <code>frontend/src/hooks/useSession.ts</code> + <code>frontend/src/api/sessions.ts</code>.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li>Keep the OAuth token server-side only — read in <code>ClaudeUsageService</code>, never sent to the frontend, never logged (§5.1, §5.3, §17.3). The frontend receives only computed utilization/reset values.</li>
+            <li>Cache the usage-endpoint response in-memory with a TTL (≥60s) and back off on HTTP 429; degrade gracefully (ring renders "—") if the endpoint fails — the app must never break because Anthropic changed an undocumented endpoint (§3.1, §3.2).</li>
+            <li>Preserve conversation context on model switch via <code>--resume</code> with a stable <code>--session-id</code> set at first start; only allow switching when the session is <code>idle</code>, never mid-turn.</li>
+            <li>All session DB access stays in <code>SessionModel</code> (§7.4); the new column added via a migration (§10.3).</li>
+            <li>Continue scrubbing <code>ANTHROPIC_API_KEY</code> from the child env — subscription auth is load-bearing and unchanged.</li>
+            <li>Keep stream-event handling permissive — unknown event shapes still flow through untouched.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No new runtime dependency for the rings — draw with inline SVG/CSS, not a charting library (§4.4).</li>
+            <li>Do not poll the usage endpoint on render or per-keystroke — it 429s aggressively.</li>
+            <li>Do not store the OAuth token in the DB or any DevEasy file.</li>
+            <li>Do not change the subscription-auth model or the one-process-per-session model.</li>
+            <li>No drive-by refactors of unrelated session code.</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>A full historical usage dashboard / per-project rollup (the chosen scope is the sidebar limit ring + the context ring only).</li>
+        <li>Persisting captured skills lists to the DB — they are per-session and relayed live; no storage needed.</li>
+        <li>Showing real dollar cost as a headline (subscription has no per-token bill; if any $ shown elsewhere later it is labeled "est. API-equivalent").</li>
+        <li>Auth/multi-user — DevEasy stays single-operator local-first.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 — three structural unknowns; all isolated and mitigated below.</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li><strong>(R-A, L3) Undocumented usage endpoint.</strong> <code>/api/oauth/usage</code> is community-discovered and rate-limits hard. <strong>Mitigation:</strong> isolate in one service behind <code>/api/usage/limits</code>; cache ≥60s; backoff on 429; graceful "—" on any failure. If Anthropic removes it, only the ring degrades.</li>
+        <li><strong>(R-B, L3) OAuth token handling.</strong> A real credential is read from the Keychain. <strong>Mitigation:</strong> token never leaves the backend service, never logged, never persisted; only derived numbers cross the API boundary (§5.3).</li>
+        <li><strong>(R-C, L3) CLI slash commands over stream-json stdin.</strong> <code>/compact</code> and <code>/skill-name</code> are interactive-mode constructs; their behavior when written to <code>-p --input-format stream-json</code> stdin is unverified. <strong>Mitigation:</strong> execution must confirm with a live probe before wiring the UI; if stdin slash does not trigger them, fall back (document the limitation, keep the discovery UI, and for compact surface a clear "not supported in this mode" rather than a silent no-op). This is the single biggest execution unknown.</li>
+        <li><strong>(R-D, L3) Model-switch resume correctness.</strong> Kill + <code>--resume --model</code> may drop context or reject. <strong>Mitigation:</strong> assign our own <code>--session-id</code> at first start; verify resume replays context; block switching unless <code>idle</code>; on resume failure, surface an error and leave the old process intact where possible.</li>
+        <li><strong>(R-E, L2) Restart race.</strong> Switching model while streaming. <strong>Mitigation:</strong> disable the picker unless runtime state is <code>idle</code>.</li>
+        <li><strong>(R-F, L2) Schema drift in usage payload.</strong> Field names could change. <strong>Mitigation:</strong> parse defensively, prefer the structured <code>limits[]</code> array with <code>five_hour</code>/<code>seven_day</code> as fallback.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> <code>ClaudeProcessService.start()</code> signature changes → consumers: <code>SessionStreamService.attach()</code> (only caller). <code>SessionModel.create()</code> signature → consumer: <code>SessionsController.create()</code>. <code>useSession()</code> return shape grows → consumers: <code>SessionComposer</code> + the session panel. WS message protocol gains <code>set_model</code> / <code>capabilities</code> / <code>model_updated</code> / <code>context</code> event types → consumer: <code>useSession</code>. New surfaces (usage service/route/api/hook/rings) have no existing consumers.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li><strong>The usage ring depends on an undocumented endpoint — accept it, but quarantine it.</strong> It is the right data and it works today, but it is not a contract. Building it behind one service with hard graceful-degradation is non-negotiable; the rest of the app must be indifferent to its failure. Recommended path taken in T5.</li>
+        <li><strong>Verify R-C before building the composer UI.</strong> If <code>/compact</code> and <code>/</code>-skills do not work over stream-json stdin, the autocomplete is still useful for discovery but the "send" behavior changes. Do the probe first (T2 acceptance) so we are not wiring UI to a dead path.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <p class="eyebrow" style="margin-bottom:8px;">Dependency groups — Group A (backend data/runtime) and the usage service can run in parallel; the frontend group depends on the WS/protocol and API being in place.</p>
+
+      <article class="task-card">
+        <h3>T1: Session schema — model + cli_session_id <span class="tag">migration</span></h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add nullable <code>model</code> and <code>cli_session_id</code> columns to <code>sessions</code> via a new TS Knex migration, mirroring <code>0002_sessions.ts</code>.</dd></div>
+          <div><dt>Files</dt><dd><code>src/database/migrations/0005_session_model.ts</code> (real), <code>plans/.../migrations/knexmigration.ts</code> + <code>pgsql.sql</code> (scaffold/reference)</dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd><code>npm run migrate</code> (or the project's migrate script) applies and rolls back cleanly</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T2: ClaudeProcessService — model arg, own session-id, resume-restart</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Accept an optional <code>model</code> and a generated <code>--session-id</code> uuid in <code>start()</code>; inject <code>--model</code> when set. Add <code>restartWithModel(sessionId, cliSessionId, model, handlers, projectPath)</code> that kills and respawns with <code>--resume &lt;cliSessionId&gt; --model</code>. <strong>Probe first (R-C):</strong> confirm whether a <code>/compact</code> line written to stdin triggers compaction; record the finding.</div></dt></div>
+          <div><dt>Files</dt><dd><code>src/services/ClaudeProcessService.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>none (signature consumed by T4)</dd></div>
+          <div><dt>Verify</dt><dd>Manual: start with <code>--model sonnet</code>, confirm <code>init.model</code> reflects it; resume preserves a prior turn</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T3: SessionModel — model/cli_session_id accessors</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Extend <code>ISession</code>; add <code>setModel()</code>, <code>setCliSessionId()</code>, and include both in <code>create()</code>. All Knex stays here (§7.4).</dd></div>
+          <div><dt>Files</dt><dd><code>src/models/SessionModel.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd><code>npx tsc --noEmit</code></dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T4: SessionStreamService — capture init, set-model command, relay capabilities/context</h3>
+        <dl>
+          <div><dt>Do</dt><dd>In <code>onProcessEvent</code>, when an <code>init</code> arrives: persist <code>cli_session_id</code> via T3, broadcast a <code>capabilities</code> event (model, slash_commands, skills) and a <code>model_updated</code> event. On <code>result</code>, derive context usage (input+cache tokens vs <code>modelUsage.contextWindow</code>) and broadcast a <code>context</code> event. Handle a new client command <code>{type:"set_model", model}</code> → guard on <code>idle</code> → persist model → <code>restartWithModel</code>. Pass the session's stored model into <code>start()</code>.</dd></div>
+          <div><dt>Files</dt><dd><code>src/controllers/sessions/feature-services/SessionStreamService.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T2, T3</dd></div>
+          <div><dt>Verify</dt><dd>Manual: WS receives capabilities + context events; set_model restarts and re-emits model_updated</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T5: ClaudeUsageService — keychain token + usage endpoint + cache/backoff</h3>
+        <dl>
+          <div><dt>Do</dt><dd>New top-level service: read the OAuth token from the macOS Keychain entry <code>"Claude Code-credentials"</code> (via <code>security find-generic-password</code>); GET <code>/api/oauth/usage</code> with the beta header; parse <code>five_hour</code>/<code>seven_day</code> (+ <code>limits[]</code> fallback); cache in-memory ≥60s; backoff on 429; return a typed result or a null/"unavailable" state. Token never logged or returned.</dd></div>
+          <div><dt>Files</dt><dd><code>src/services/ClaudeUsageService.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd>Manual/CLI: service returns live utilization+resets; second call within TTL is cached; logs carry no token</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T6: Usage controller + route</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Thin <code>UsageController.getLimits</code> → <code>ClaudeUsageService</code> → <code>ok()</code> with <code>{ fiveHour:{utilization,resetsAt}, sevenDay:{...}, available }</code>. Mount <code>GET /api/usage/limits</code>. Mirror sessions controller/route + response builders (§7.2, §7.3, §8.x).</dd></div>
+          <div><dt>Files</dt><dd><code>src/controllers/usage/UsageController.ts</code>, <code>src/controllers/usage/feature-utils/controllerResponses.ts</code> (or reuse), <code>src/routes/usage.ts</code>, register in the app router</dd></div>
+          <div><dt>Depends on</dt><dd>T5</dd></div>
+          <div><dt>Verify</dt><dd><code>curl /api/usage/limits</code> returns the <code>{success,data,error}</code> envelope</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T7: Frontend usage API + hook</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>api/usage.ts</code> typed <code>getUsageLimits()</code> over <code>api/index.ts</code>; <code>useUsageLimits()</code> React Query hook with a slow refetch (≥60–90s, <code>refetchOnWindowFocus:false</code>). Types in <code>types/</code>.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/api/usage.ts</code>, <code>frontend/src/hooks/queries/useUsageQueries.ts</code>, <code>frontend/src/types/usage.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T6</dd></div>
+          <div><dt>Verify</dt><dd>Hook returns data; network shows one poll per interval, not per render</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T8: Sidebar usage ring + dropdown</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Inline-SVG concentric multi-track ring (5h + weekly, varying opacity) at the top of the sidebar, above the project-grouped list. Click → dropdown: each window as a horizontal bar with utilization + a reset-time indicator. Graceful "—" when <code>available:false</code>.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/Session/UsageRing.tsx</code>, mounted in the sidebar host component</dd></div>
+          <div><dt>Depends on</dt><dd>T7</dd></div>
+          <div><dt>Verify</dt><dd>Manual: ring reflects live utilization; dropdown shows both windows + reset times</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T9: Context-window ring + useSession context/model/skills state</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Extend <code>useSession</code> to handle <code>capabilities</code>/<code>model_updated</code>/<code>context</code> events and expose <code>model</code>, <code>skills</code>, <code>contextUsed</code>/<code>contextWindow</code>, and a <code>setModel()</code> sender. Add a small inline-SVG <code>ContextRing</code> showing % of context window used.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/hooks/useSession.ts</code>, <code>frontend/src/components/Session/ContextRing.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>T4 (event protocol)</dd></div>
+          <div><dt>Verify</dt><dd>Manual: ring rises as the session fills context; model state updates after a switch</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T10: Composer — model picker, skill autocomplete, / gate-bypass, /compact, context ring</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add a model picker (curated aliases: opus/sonnet/haiku/fable) that calls <code>setModel</code>, disabled unless idle, showing the resolved model. Allow a <code>/</code>-prefixed message to bypass the workflow-command gate. Add skill autocomplete on <code>/</code> from <code>skills</code>. Add a <code>/compact</code> button (behavior per the R-C probe). Render <code>ContextRing</code> to the right of Send.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/Session/SessionComposer.tsx</code>, <code>frontend/src/components/Session/chatCommands.ts</code> (gate logic)</dd></div>
+          <div><dt>Depends on</dt><dd>T9</dd></div>
+          <div><dt>Verify</dt><dd>Manual: switch model keeps context; <code>/deep-research …</code> sends; autocomplete lists real skills; <code>/compact</code> behaves per probe; ring renders by Send</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T11: Wire create-session model + integration pass</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Let <code>POST /api/sessions</code> accept an optional <code>model</code> (default null → CLI default). Verify imports resolve, the WS protocol round-trips, and the conventions checker passes. Update the panel to pass <code>model</code>/idle state to the composer.</dd></div>
+          <div><dt>Files</dt><dd><code>src/controllers/sessions/SessionsController.ts</code>, the session panel component, integration glue</dd></div>
+          <div><dt>Depends on</dt><dd>T3, T4, T10</dd></div>
+          <div><dt>Verify</dt><dd><code>npx tsc --noEmit</code> (both trees) + <code>npm run check:conventions --strict</code></dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> — zero errors (backend + frontend)</li>
+        <li><input type="checkbox" disabled> <code>npm run check:conventions --strict</code> — no new backend violations</li>
+        <li><input type="checkbox" disabled> Migration applies and rolls back; <code>sessions</code> has <code>model</code> + <code>cli_session_id</code></li>
+        <li><input type="checkbox" disabled> Manual: switching model mid-chat preserves prior conversation context and the shown model updates</li>
+        <li><input type="checkbox" disabled> Manual: a <code>/</code>-prefixed skill message sends and autocomplete lists the session's real skills</li>
+        <li><input type="checkbox" disabled> Manual: <code>/compact</code> behaves per the verified probe (works, or clearly reports it is unsupported in this mode)</li>
+        <li><input type="checkbox" disabled> Manual: sidebar ring shows live 5h + weekly utilization and reset times; renders "—" when the endpoint is unavailable</li>
+        <li><input type="checkbox" disabled> Manual: context ring by Send rises as the session fills the context window</li>
+        <li><input type="checkbox" disabled> Security: OAuth token never appears in any response payload or log; not persisted</li>
+        <li><input type="checkbox" disabled> No regression in existing session streaming, persistence, or reconnect</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="task-card">
+        <h3>Rev 1 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Executed all 11 tasks. Backend: migration 0005 (applied), SessionModel model/cli_session_id, ClaudeProcessService model arg + pinned <code>--session-id</code> + race-safe resume restart, SessionStreamService init/result capture + <code>set_model</code> + capabilities/context relay, ClaudeUsageService + <code>/api/usage/limits</code>, create-session model. Frontend: usage api/hook, UsageRing (sidebar) + dropdown, ContextRing, useSession control-event handling + setModel, composer model picker + <code>/</code> gate-bypass + skill autocomplete + <code>/compact</code>.</p>
+        <p><strong>Reason:</strong> Execution deviation: (1) DevEasy is Postgres-only with TS Knex migrations, so the migration is a single <code>0005_session_model.ts</code> — no mssql.sql (template's three-dialect rule doesn't fit this stack). (2) R-C probe resolved positively — slash commands DO work over stream-json stdin, so <code>/compact</code> and <code>/</code>-skills are wired directly with no fallback. (3) Model list is a curated alias set (opus/sonnet/haiku/fable) since the CLI exposes no list command; the resolved version is shown from the init event.</p>
+        <p><strong>Verification:</strong> backend + frontend <code>tsc --noEmit</code> clean; migration applied (Batch 3); 70/70 existing tests pass. <strong>Pre-existing issue noted:</strong> <code>npm run lint</code> fails project-wide — no <code>eslint.config.js</code> for ESLint 9 (class c, untouched by this work).</p>
+        <p><strong>Updated Done criteria:</strong> behavioral acceptance items (UI/API runtime checks) remain pending a human/computer-use run against the live app — see <code>test-results.json</code>.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

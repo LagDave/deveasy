@@ -91,7 +91,8 @@ export function SessionPanel({
     });
   };
 
-  const { events, status, send, isReady, streaming, partialText } = useSession(activeSessionId);
+  const { events, status, send, isReady, streaming, partialText, model, slashCommands, context, setModel } =
+    useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
 
   // Seed the create-project session's opening turn once the CLI process is ready
@@ -183,6 +184,10 @@ export function SessionPanel({
             <SessionComposer
               onSend={send}
               disabled={status !== "open" || streaming}
+              model={model}
+              slashCommands={slashCommands}
+              context={context}
+              onSetModel={setModel}
               hint={
                 status !== "open"
                   ? "Connecting to the session…"

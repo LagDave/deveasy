@@ -9,6 +9,7 @@ import { useConfirm } from "../ui/confirm";
 import { Icon } from "../ui/Icon";
 import { fadeUp, staggerContainer } from "../ui/motion";
 import { BranchPicker } from "./BranchPicker";
+import { UsageRing } from "./UsageRing";
 
 /** localStorage key holding the ids of projects whose session lists are collapsed. */
 const COLLAPSED_PROJECTS_KEY = "deveasy:sidebar-collapsed-projects";
@@ -69,6 +70,7 @@ export function SessionSidebar(props: Props) {
 
   return (
     <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-r border-line">
+      <UsageRing />
       <div className="border-b border-line px-4 py-3">
         <p className="eyebrow">Sessions by project</p>
       </div>

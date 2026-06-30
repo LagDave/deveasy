@@ -8,6 +8,10 @@ export interface ISession {
   project_id: number;
   title: string | null;
   status: SessionStatus;
+  /** Claude model alias/full name for this session; null = CLI default. */
+  model: string | null;
+  /** The CLI's own session uuid (from the init event), used for --resume. */
+  cli_session_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,10 +25,11 @@ export class SessionModel extends BaseModel {
   static async create(
     projectId: number,
     title: string | null,
+    model: string | null = null,
     trx?: Knex.Transaction,
   ): Promise<ISession> {
     const [row] = await this.table(trx)
-      .insert({ project_id: projectId, title, status: "active" })
+      .insert({ project_id: projectId, title, status: "active", model })
       .returning("*");
     return row as ISession;
   }
@@ -52,6 +57,20 @@ export class SessionModel extends BaseModel {
 
   static async updateTitle(id: number, title: string, trx?: Knex.Transaction): Promise<void> {
     await this.table(trx).where({ id }).update({ title });
+  }
+
+  /** Set the session's selected model (null restores the CLI default). */
+  static async setModel(id: number, model: string | null, trx?: Knex.Transaction): Promise<void> {
+    await this.table(trx).where({ id }).update({ model });
+  }
+
+  /** Persist the CLI's own session uuid so a model switch can --resume it. */
+  static async setCliSessionId(
+    id: number,
+    cliSessionId: string,
+    trx?: Knex.Transaction,
+  ): Promise<void> {
+    await this.table(trx).where({ id }).update({ cli_session_id: cliSessionId });
   }
 
   /** Delete a session; session_messages cascade via the FK (migration 0002). */
