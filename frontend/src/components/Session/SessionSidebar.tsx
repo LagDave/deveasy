@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import type { Session, SessionRuntime } from "../../api/sessions";
 import type { Project } from "../../types";
+import { useConfirm } from "../ui/confirm";
 import { fadeUp, staggerContainer } from "../ui/motion";
 
 /**
@@ -76,8 +77,19 @@ function SessionRow({
 }: { session: Session; active: boolean } & Pick<Props, "onSelect" | "onRename" | "onDelete">) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const confirm = useConfirm();
   const label = session.title ?? `Session #${session.id}`;
   const runtime = session.runtime ?? null;
+
+  const requestDelete = async () => {
+    const ok = await confirm({
+      title: "Delete session?",
+      message: `"${label}" and its transcript will be permanently removed.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (ok) onDelete(session.id);
+  };
 
   if (editing) {
     const commit = () => {
@@ -129,9 +141,7 @@ function SessionRow({
         <button
           className="grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-danger"
           title="Delete"
-          onClick={() => {
-            if (window.confirm(`Delete "${label}"? This removes its transcript.`)) onDelete(session.id);
-          }}
+          onClick={() => void requestDelete()}
         >
           ✕
         </button>

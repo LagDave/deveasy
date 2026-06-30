@@ -5,6 +5,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 import App from "./App";
+import { ConfirmProvider } from "./components/ui/confirm";
 import "./index.css";
 import { queryClient } from "./lib/queryClient";
 
@@ -14,7 +15,9 @@ if (!rootEl) throw new Error("Root element #root not found");
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <ConfirmProvider>
+        <App />
+      </ConfirmProvider>
       <Toaster
         position="bottom-right"
         toastOptions={{

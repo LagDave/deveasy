@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import type { ConfigDocument, ConfigType, Frontmatter } from "../../api/agentConfig";
+import { useConfirm } from "../ui/confirm";
 import { fadeUp } from "../ui/motion";
 import { Spinner } from "../ui/Spinner";
 
@@ -40,6 +41,7 @@ export function AgentConfigEditor({
   onDelete,
 }: Props) {
   const hasFrontmatter = type !== "claudemd";
+  const confirm = useConfirm();
   const [fmName, setFmName] = useState("");
   const [description, setDescription] = useState("");
   const [body, setBody] = useState("");
@@ -64,11 +66,15 @@ export function AgentConfigEditor({
     onSave({ frontmatter: {}, body });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     const label = type === "skill" ? "skill" : "subagent";
-    if (window.confirm(`Delete this ${label} (${name})? This commits the removal.`)) {
-      onDelete();
-    }
+    const ok = await confirm({
+      title: `Delete ${label}?`,
+      message: `"${name}" will be removed and the deletion committed to the repo.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (ok) onDelete();
   };
 
   if (isLoading) {
@@ -139,7 +145,7 @@ export function AgentConfigEditor({
           <button
             type="button"
             className="btn btn-danger"
-            onClick={confirmDelete}
+            onClick={() => void confirmDelete()}
             disabled={isDeleting}
           >
             {isDeleting ? "Deleting…" : "Delete"}
