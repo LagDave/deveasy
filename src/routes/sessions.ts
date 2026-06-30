@@ -11,5 +11,7 @@ router.post("/", SessionsController.create);
 router.get("/", SessionsController.list);
 router.get("/:id/messages", SessionsController.listMessages);
 router.post("/:id/stop", SessionsController.stop);
+router.patch("/:id", SessionsController.rename);
+router.delete("/:id", SessionsController.remove);
 
 export default router;

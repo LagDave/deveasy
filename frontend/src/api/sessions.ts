@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./index";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./index";
 
 /**
  * Session REST domain (Constitution §12.1). Types are defined locally here rather
@@ -58,4 +58,12 @@ export async function getSessionMessages(sessionId: number): Promise<SessionMess
 /** Explicitly end a session's CLI process. */
 export async function stopSession(sessionId: number): Promise<void> {
   await apiPost<{ sessionId: number }>(`/api/sessions/${sessionId}/stop`);
+}
+
+export async function renameSession(sessionId: number, title: string): Promise<void> {
+  await apiPatch<{ sessionId: number }>(`/api/sessions/${sessionId}`, { title });
+}
+
+export async function deleteSession(sessionId: number): Promise<void> {
+  await apiDelete<{ sessionId: number }>(`/api/sessions/${sessionId}`);
 }

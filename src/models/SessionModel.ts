@@ -49,4 +49,13 @@ export class SessionModel extends BaseModel {
   ): Promise<void> {
     await this.table(trx).where({ id }).update({ status });
   }
+
+  static async updateTitle(id: number, title: string, trx?: Knex.Transaction): Promise<void> {
+    await this.table(trx).where({ id }).update({ title });
+  }
+
+  /** Delete a session; session_messages cascade via the FK (migration 0002). */
+  static async delete(id: number, trx?: Knex.Transaction): Promise<void> {
+    await this.table(trx).where({ id }).del();
+  }
 }

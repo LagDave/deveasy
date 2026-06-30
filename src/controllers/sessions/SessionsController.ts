@@ -91,6 +91,43 @@ export class SessionsController {
     }
   }
 
+  /** PATCH /api/sessions/:id { title } — rename a session. */
+  static async rename(req: Request, res: Response): Promise<Response> {
+    try {
+      const sessionId = Number(req.params.id);
+      if (!Number.isInteger(sessionId) || sessionId <= 0) {
+        throw new SessionError("SESSION_INPUT_INVALID", "A valid session id is required.");
+      }
+      const title = String((req.body ?? {}).title ?? "").trim();
+      if (!title || title.length > 80) {
+        throw new SessionError("SESSION_INPUT_INVALID", "Title must be 1–80 characters.");
+      }
+      const session = await SessionModel.findById(sessionId);
+      if (!session) throw new SessionError("SESSION_NOT_FOUND", "Session not found.", { sessionId });
+
+      await SessionModel.updateTitle(sessionId, title);
+      return ok(res, { sessionId, title });
+    } catch (error) {
+      return handleSessionError(res, error);
+    }
+  }
+
+  /** DELETE /api/sessions/:id — stop the process (if live) and delete the session. */
+  static async remove(req: Request, res: Response): Promise<Response> {
+    try {
+      const sessionId = Number(req.params.id);
+      if (!Number.isInteger(sessionId) || sessionId <= 0) {
+        throw new SessionError("SESSION_INPUT_INVALID", "A valid session id is required.");
+      }
+      SessionStreamService.stop(sessionId); // no-op if not live
+      await SessionModel.delete(sessionId); // session_messages cascade
+      log.info({ sessionId }, "Session deleted");
+      return ok(res, { sessionId });
+    } catch (error) {
+      return handleSessionError(res, error);
+    }
+  }
+
   /** GET /api/sessions/:id/messages — the persisted transcript for a session. */
   static async listMessages(req: Request, res: Response): Promise<Response> {
     try {

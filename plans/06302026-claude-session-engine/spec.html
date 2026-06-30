@@ -216,6 +216,12 @@
         <p><strong>Change:</strong> Assistant messages now render real markdown (<code>react-markdown</code> + <code>remark-gfm</code>) via a themed <code>ui/Markdown</code> renderer — headings, bold/italic, lists, links, tables, inline code chips, and fenced code blocks styled to the dark theme. User turns stay verbatim (whitespace-preserved).</p>
         <p><strong>Reason:</strong> User QA: assistant text was showing raw markdown source (<code>**bold**</code>, <code>###</code>, backticks, list markers).</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 7 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Session management. (1) <strong>Auto-naming</strong>: on the first prompt of an unnamed session, a fire-and-forget headless CLI call (<code>ClaudeProcessService.runHeadless</code> → <code>SessionTitleService</code>, subscription auth) generates a short title and persists it; the polled sidebar picks it up. (2) <strong>Rename</strong>: inline edit in the rail → <code>PATCH /api/sessions/:id</code> (1–80 chars). (3) <strong>Delete</strong>: hover action with confirm → <code>DELETE /api/sessions/:id</code> (stops the process if live; transcript cascades). Deleting the open session clears the selection.</p>
+        <p><strong>Reason:</strong> User request: auto-name sessions from the first prompt, and add rename + delete.</p>
+        <p><strong>Verified:</strong> rename + delete tested live (title updates, empty rejected, row removed); auto-naming wired + builds, pending a live first-turn run.</p>
+      </article>
     </section>
   </main>
 </body>

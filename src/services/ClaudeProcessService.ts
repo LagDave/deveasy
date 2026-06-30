@@ -186,6 +186,29 @@ export class ClaudeProcessService {
     return [...this.live.keys()];
   }
 
+  /**
+   * Run a single headless prompt and return the plain-text response. Uses the same
+   * subscription-auth env (API key scrubbed). For short utility calls like session
+   * auto-naming — not the interactive session loop.
+   */
+  static runHeadless(prompt: string, timeoutMs = 20_000): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const child = spawn(CLI_COMMAND, ["-p", prompt], {
+        env: this.buildChildEnv(),
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: timeoutMs,
+      });
+      let out = "";
+      child.stdout.setEncoding("utf8");
+      child.stdout.on("data", (c: string) => (out += c));
+      child.on("error", (err) => reject(err));
+      child.on("close", (code) => {
+        if (code === 0) resolve(out);
+        else reject(new ClaudeProcessError("HEADLESS_FAILED", "Headless CLI call failed.", { code }));
+      });
+    });
+  }
+
   // --- internals ---
 
   /** Build the child env with the API key scrubbed (subscription auth, critical). */

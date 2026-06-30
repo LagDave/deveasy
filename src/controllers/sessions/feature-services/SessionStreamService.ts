@@ -7,6 +7,7 @@ import {
   ClaudeProcessService,
   type ClaudeStreamEvent,
 } from "../../../services/ClaudeProcessService";
+import { SessionTitleService } from "../../../services/SessionTitleService";
 import { SessionError } from "../feature-utils/SessionError";
 
 const log = childLogger({ module: "SessionStreamService" });
@@ -24,6 +25,8 @@ interface Runtime {
   subscribers: Set<WebSocket>;
   /** working = producing a response; idle = alive and awaiting input. */
   state: RuntimeState;
+  /** Whether the first-prompt auto-naming has been kicked off for this runtime. */
+  named: boolean;
 }
 
 /**
@@ -69,7 +72,7 @@ export class SessionStreamService {
     let runtime = this.runtimes.get(sessionId);
     if (!runtime) {
       ClaudeProcessService.assertReady(); // throws SESSION_CLI_NOT_READY if logged out
-      runtime = { subscribers: new Set(), state: "idle" };
+      runtime = { subscribers: new Set(), state: "idle", named: false };
       this.runtimes.set(sessionId, runtime);
       await SessionModel.setStatus(sessionId, "active");
       ClaudeProcessService.start(sessionId, project.path, {
@@ -134,6 +137,12 @@ export class SessionStreamService {
       const runtime = this.runtimes.get(sessionId);
       if (runtime) runtime.state = "working";
       ClaudeProcessService.send(sessionId, command.text);
+
+      // Auto-name the session from its first prompt (fire-and-forget).
+      if (runtime && !runtime.named) {
+        runtime.named = true;
+        void SessionTitleService.generateFromFirstPrompt(sessionId, command.text);
+      }
     } catch (err) {
       log.error({ sessionId, err }, "Failed to handle user turn");
       this.safeSend(ws, { type: "error", message: "Could not send your message." });

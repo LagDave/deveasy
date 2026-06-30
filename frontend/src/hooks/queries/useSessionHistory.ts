@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createSession,
+  deleteSession,
   getAllSessions,
   getSessionMessages,
   getSessions,
+  renameSession,
   stopSession,
   type Session,
   type SessionMessage,
@@ -61,6 +63,22 @@ export function useStopSession() {
   const qc = useQueryClient();
   return useMutation<void, Error, number>({
     mutationFn: (sessionId) => stopSession(sessionId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.all }),
+  });
+}
+
+export function useRenameSession() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { sessionId: number; title: string }>({
+    mutationFn: ({ sessionId, title }) => renameSession(sessionId, title),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.all }),
+  });
+}
+
+export function useDeleteSession() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, number>({
+    mutationFn: (sessionId) => deleteSession(sessionId),
     onSuccess: () => void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.all }),
   });
 }

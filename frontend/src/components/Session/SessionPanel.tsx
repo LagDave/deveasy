@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { ApiError } from "../../api";
 import { useProjects } from "../../hooks/queries/useProjects";
-import { useAllSessions, useCreateSession, useStopSession } from "../../hooks/queries/useSessionHistory";
+import {
+  useAllSessions,
+  useCreateSession,
+  useDeleteSession,
+  useRenameSession,
+  useStopSession,
+} from "../../hooks/queries/useSessionHistory";
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
 import { EmptyState } from "../ui/EmptyState";
@@ -27,8 +33,26 @@ export function SessionPanel() {
   const { data: sessions, isLoading: sessionsLoading } = useAllSessions();
   const createSession = useCreateSession();
   const stopSession = useStopSession();
+  const renameSession = useRenameSession();
+  const deleteSession = useDeleteSession();
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [creatingProjectId, setCreatingProjectId] = useState<number | null>(null);
+
+  const onRename = (sessionId: number, title: string) => {
+    renameSession.mutate(
+      { sessionId, title },
+      { onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not rename") },
+    );
+  };
+
+  const onDelete = (sessionId: number) => {
+    deleteSession.mutate(sessionId, {
+      onSuccess: () => {
+        if (sessionId === activeSessionId) setActiveSessionId(null);
+      },
+      onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not delete"),
+    });
+  };
 
   const { events, status, send, streaming } = useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
@@ -58,6 +82,8 @@ export function SessionPanel() {
         creatingProjectId={creatingProjectId}
         onSelect={setActiveSessionId}
         onNewSession={onNewSession}
+        onRename={onRename}
+        onDelete={onDelete}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">

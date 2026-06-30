@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
-import type { Session } from "../../api/sessions";
+import { useState } from "react";
+import type { Session, SessionRuntime } from "../../api/sessions";
 import type { Project } from "../../types";
 import { fadeUp, staggerContainer } from "../ui/motion";
 
 /**
  * Left rail of the Sessions panel: every project is a group, its sessions listed
- * beneath. A running session shows a pulsing dot. Starting a new session is just
- * picking a project's "+", so you never have to switch the global active project.
+ * beneath with a running indicator. Sessions can be renamed inline or deleted.
  */
 interface Props {
   projects: Project[];
@@ -15,18 +15,13 @@ interface Props {
   creatingProjectId: number | null;
   onSelect: (sessionId: number) => void;
   onNewSession: (projectId: number) => void;
+  onRename: (sessionId: number, title: string) => void;
+  onDelete: (sessionId: number) => void;
 }
 
-export function SessionSidebar({
-  projects,
-  sessions,
-  activeSessionId,
-  creatingProjectId,
-  onSelect,
-  onNewSession,
-}: Props) {
-  const byProject = (projectId: number) =>
-    sessions.filter((s) => s.project_id === projectId);
+export function SessionSidebar(props: Props) {
+  const { projects, sessions, creatingProjectId, onNewSession } = props;
+  const byProject = (projectId: number) => sessions.filter((s) => s.project_id === projectId);
 
   return (
     <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-r border-line">
@@ -59,27 +54,9 @@ export function SessionSidebar({
                 <p className="px-2 pb-1 text-xs text-faint">No sessions yet</p>
               ) : (
                 <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-                  {list.map((s) => {
-                    const isActive = s.id === activeSessionId;
-                    const runtime = s.runtime ?? null;
-                    return (
-                      <li key={s.id}>
-                        <button
-                          onClick={() => onSelect(s.id)}
-                          className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors ${
-                            isActive ? "bg-surface-2 text-ink" : "text-muted hover:bg-surface/60 hover:text-ink"
-                          }`}
-                        >
-                          <RuntimeDot runtime={runtime} />
-                          <span className="min-w-0 flex-1 truncate text-sm">
-                            {s.title ?? `Session #${s.id}`}
-                          </span>
-                          {runtime === "working" && <span className="eyebrow !text-accent">working</span>}
-                          {runtime === "idle" && <span className="eyebrow !text-success">ready</span>}
-                        </button>
-                      </li>
-                    );
-                  })}
+                  {list.map((s) => (
+                    <SessionRow key={s.id} session={s} active={s.id === props.activeSessionId} {...props} />
+                  ))}
                 </ul>
               )}
             </motion.div>
@@ -90,8 +67,80 @@ export function SessionSidebar({
   );
 }
 
-function RuntimeDot({ runtime }: { runtime: "working" | "idle" | null }) {
-  // offline: faint static; idle/ready: steady green; working: pulsing amber.
+function SessionRow({
+  session,
+  active,
+  onSelect,
+  onRename,
+  onDelete,
+}: { session: Session; active: boolean } & Pick<Props, "onSelect" | "onRename" | "onDelete">) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const label = session.title ?? `Session #${session.id}`;
+  const runtime = session.runtime ?? null;
+
+  if (editing) {
+    const commit = () => {
+      const t = draft.trim();
+      if (t) onRename(session.id, t);
+      setEditing(false);
+    };
+    return (
+      <li className="px-1 py-1">
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={() => setEditing(false)}
+          className="field !py-1.5 text-sm"
+        />
+      </li>
+    );
+  }
+
+  return (
+    <li className="group relative">
+      <button
+        onClick={() => onSelect(session.id)}
+        className={`flex w-full items-center gap-2.5 rounded-md py-2 pl-2.5 pr-16 text-left transition-colors ${
+          active ? "bg-surface-2 text-ink" : "text-muted hover:bg-surface/60 hover:text-ink"
+        }`}
+      >
+        <RuntimeDot runtime={runtime} />
+        <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
+        {runtime === "working" && <span className="eyebrow !text-accent">working</span>}
+        {runtime === "idle" && <span className="eyebrow !text-success">ready</span>}
+      </button>
+      <div className="absolute right-1.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 group-hover:flex">
+        <button
+          className="grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink"
+          title="Rename"
+          onClick={() => {
+            setDraft(label);
+            setEditing(true);
+          }}
+        >
+          ✎
+        </button>
+        <button
+          className="grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-danger"
+          title="Delete"
+          onClick={() => {
+            if (window.confirm(`Delete "${label}"? This removes its transcript.`)) onDelete(session.id);
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function RuntimeDot({ runtime }: { runtime: SessionRuntime }) {
   if (runtime === null) return <span className="h-2 w-2 shrink-0 rounded-full bg-faint" />;
   if (runtime === "idle") return <span className="h-2 w-2 shrink-0 rounded-full bg-success" />;
   return (
