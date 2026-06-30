@@ -2,6 +2,24 @@
 
 All notable changes to DevEasy are documented here.
 
+## [0.1.2] - July 2026
+
+### Tabbed project workspace: REPO git desktop + persistent terminals
+
+The project takeover is now a tabbed workspace — **FILES · REPO · PRS · TERMINAL** — and the separate Cockpit tab is gone. REPO is a GitHub-Desktop-style working view, and TERMINAL hosts real, reload-persistent terminals that can be split and named.
+
+**Key Changes:**
+- **Tabbed takeover (`plans/07012026-editor-tabs-shell`):** `CodeEditorView` became a shell over FILES/REPO/PRS/TERMINAL; FILES stays mounted across tab switches so editor state survives. Azure pull-request panels moved into a project-scoped PRS tab; the top-level Cockpit entry, `CockpitPanel.tsx`, and `GitPanel.tsx` were removed.
+- **REPO git desktop (`plans/07012026-repo-git-desktop`):** changed-files list with an animated stage checkbox, a Monaco side-by-side HEAD-vs-working diff viewer, a commit bar, and a branch toolbar (themed search-select). `GitService` gained `stage`/`unstage`/`commit`/`createBranch`/`push`/`mergeToMain` — all via `execFile` argv arrays (§5.2), with merge-conflict abort and "merge to main" = local merge + push.
+- **Persistent terminals (`plans/07012026-terminal`):** `node-pty` + `@xterm/xterm` multi-instance terminals over a `/ws/terminal` relay, backed by an in-memory PTY registry with scrollback replay. They survive a browser reload and are reaped only on server shutdown. Terminals can be **split** (side by side / stacked, nestable) via per-pane corner icons, **renamed** (double-click a tab), and the layout + names persist to `localStorage`.
+- **Terminal typography:** bundled **Comic Code Ligatures** (primary) with **MesloLGL Nerd Font** fallback for powerline/git glyphs, a bar cursor, and tightened letter-spacing.
+- **UI kit:** new `ui/Checkbox` (animated) and `ui/SearchSelect` (themed search dropdown) replace native controls.
+
+**Commits:**
+- Backend: `src/controllers/git/` (write ops + handlers + routes), `src/services/TerminalProcessService.ts`, `src/ws/terminalWebSocket.ts`, `src/controllers/terminal/`, `src/routes/terminal.ts`, `src/index.ts`, `scripts/fix-node-pty.mjs`.
+- Frontend: `components/CodeEditor/` (`CodeEditorView`, `FilesTab`, `RepoTab` + `repo/*`, `PrsTab`, `TerminalTab` + `terminal/*`, `WorkspaceTabs`), `components/ui/{Checkbox,SearchSelect,Icon}.tsx`, `hooks/{useTerminalSocket, queries/useGit, queries/useTerminals}.ts`, `api/{git,terminal}.ts`, `index.css` + bundled fonts in `public/fonts/`.
+- Tests: `GitService.test.ts`, `TerminalProcessService.test.ts`, `terminalWebSocket.test.ts`.
+
 ## [0.1.1] - July 2026
 
 ### Collapsible project lists in the Sessions sidebar
