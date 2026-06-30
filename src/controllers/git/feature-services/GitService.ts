@@ -88,12 +88,19 @@ export class GitService {
     const cwd = await GitService.resolveProjectPath(projectId);
     const branch = await GitService.getCurrentBranch(cwd);
     const format = ["%H", "%an", "%aI", "%s"].join(LOG_FIELD_SEP) + LOG_RECORD_SEP;
-    const out = await GitService.runGit(cwd, [
-      "log",
-      `-${Math.max(1, Math.min(limit, 500))}`,
-      `--pretty=format:${format}`,
-    ]);
-    const commits = GitService.parseLog(out);
+    let commits: GitCommit[] = [];
+    try {
+      const out = await GitService.runGit(cwd, [
+        "log",
+        `-${Math.max(1, Math.min(limit, 500))}`,
+        `--pretty=format:${format}`,
+      ]);
+      commits = GitService.parseLog(out);
+    } catch {
+      // An unborn branch (no commits yet) makes `git log` exit non-zero — that's an
+      // empty history, not an error. Show the branch with no commits.
+      commits = [];
+    }
     return { branch, commits };
   }
 
@@ -130,8 +137,21 @@ export class GitService {
   }
 
   private static async getCurrentBranch(cwd: string): Promise<string> {
-    const out = await GitService.runGit(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
-    return out.trim() || "HEAD";
+    // symbolic-ref resolves the branch name even on an unborn branch (fresh
+    // `git init`, no commits) where `rev-parse --abbrev-ref` prints "HEAD".
+    try {
+      const out = await GitService.runGit(cwd, ["symbolic-ref", "--short", "HEAD"]);
+      const name = out.trim();
+      if (name) return name;
+    } catch {
+      // Detached HEAD (no symbolic ref) — fall through to rev-parse.
+    }
+    try {
+      const out = await GitService.runGit(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
+      return out.trim() || "HEAD";
+    } catch {
+      return "HEAD";
+    }
   }
 
   private static parseLog(raw: string): GitCommit[] {
@@ -160,7 +180,12 @@ export class GitService {
     for (const line of lines) {
       if (line.startsWith("##")) {
         const header = line.slice(2).trim();
-        branch = header.split("...")[0].split(" ")[0] || "HEAD";
+        // Unborn branch (fresh repo, no commits): "No commits yet on main".
+        if (header.startsWith("No commits yet on ")) {
+          branch = header.slice("No commits yet on ".length).trim() || "HEAD";
+        } else {
+          branch = header.split("...")[0].split(" ")[0] || "HEAD";
+        }
         const aheadMatch = header.match(/ahead (\d+)/);
         const behindMatch = header.match(/behind (\d+)/);
         if (aheadMatch) ahead = Number(aheadMatch[1]);
