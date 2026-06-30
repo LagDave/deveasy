@@ -19,8 +19,14 @@ export function SessionTranscript({ events, thinking }: { events: SessionEvent[]
   const [showSystem, setShowSystem] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const firstScroll = useRef(true);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    // Jump instantly to the latest on open; smooth-scroll for new messages after.
+    bottomRef.current?.scrollIntoView({
+      behavior: firstScroll.current ? "auto" : "smooth",
+      block: "end",
+    });
+    firstScroll.current = false;
   }, [items.length, thinking]);
 
   return (

@@ -84,7 +84,7 @@ export function SessionPanel() {
                 )}
               </div>
             </div>
-            <SessionTranscript events={events} thinking={streaming} />
+            <SessionTranscript key={activeSessionId} events={events} thinking={streaming} />
             <SessionComposer
               onSend={send}
               disabled={status !== "open" || streaming}

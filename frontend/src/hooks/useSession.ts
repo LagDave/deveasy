@@ -95,8 +95,10 @@ export function useSession(sessionId: number | null): UseSessionResult {
       if (parsed.type === "process_closed") {
         setStreaming(false);
       }
-      // A `result` event ends the current turn.
+      // Keep the in-chat indicator in sync with live activity: assistant/tool
+      // events mean Claude is working; a `result` ends the turn.
       if (parsed.type === "result") setStreaming(false);
+      else if (parsed.type === "assistant" || parsed.type === "user") setStreaming(true);
       setEvents((prev) => [...prev, parsed]);
     };
 

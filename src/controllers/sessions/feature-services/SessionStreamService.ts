@@ -142,8 +142,14 @@ export class SessionStreamService {
 
   private static async onProcessEvent(sessionId: number, event: ClaudeStreamEvent): Promise<void> {
     const runtime = this.runtimes.get(sessionId);
-    // A `result` event ends the turn -> the session is idle / awaiting input.
-    if (runtime && event.type === "result") runtime.state = "idle";
+    // Drive state from the actual stream: a `result` ends the turn (idle/awaiting
+    // input); any assistant message or tool result means it's actively working.
+    // System/init/hook events don't change state. This stays correct even after a
+    // reattach mid-turn, where keying only off the user's send would be stale.
+    if (runtime) {
+      if (event.type === "result") runtime.state = "idle";
+      else if (event.type === "assistant" || event.type === "user") runtime.state = "working";
+    }
 
     this.broadcast(sessionId, event);
     try {
