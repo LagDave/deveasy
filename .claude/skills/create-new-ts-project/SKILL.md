@@ -766,6 +766,7 @@ When `auth=none`, omit `@azure/msal-browser` and `@azure/msal-react`.
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^6.26.0",
     "@radix-ui/react-slot": "^1.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -1057,30 +1058,95 @@ export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDi
 
 When `auth=msal`, use the variant in §3.5 instead of this one.
 
-This is the project's **welcome / landing page** — a clean Tailwind hero. Use only
-default Tailwind palette classes (`zinc`, `indigo`, …) so it renders without any
-shadcn theme tokens. Replace `<Display Name>` with the real project name.
+The app uses **react-router** out of the box: `App.tsx` is the layout (a pill nav
++ `<Routes>`), and each page lives in `src/pages/`. Use only default Tailwind
+palette classes (`zinc`, `indigo`, …) so it renders without shadcn theme tokens.
 
 ````typescript
+import { NavLink, Route, Routes } from "react-router-dom";
+import Home from "@/pages/Home";
+import Health from "@/pages/Health";
+
+const navPill = ({ isActive }: { isActive: boolean }) =>
+  `rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+    isActive ? "bg-indigo-600 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+  }`;
+
 export default function App() {
   return (
     <main className="grid min-h-screen place-items-center bg-white px-6 text-zinc-900">
-      <div className="w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-10 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-          Welcome to DevEasy
-        </p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-          Your TypeScript project bootstrap for{" "}
-          <span className="text-indigo-600"><Display Name></span>
-        </h1>
-        <p className="mt-5 text-base leading-relaxed text-zinc-600">
-          Open DevEasy and start your Clauding session, or set your environment
-          variables from the code editor.
-        </p>
-        <p className="mt-10 text-lg font-semibold text-zinc-900">Keep Coding!</p>
-        <p className="text-sm text-zinc-500">~ Rustine Dave</p>
+      <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-10 shadow-sm">
+        <nav className="mb-8 flex flex-wrap gap-2">
+          <NavLink to="/" end className={navPill}>Home</NavLink>
+          <NavLink to="/health" className={navPill}>Health</NavLink>
+        </nav>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/health" element={<Health />} />
+        </Routes>
       </div>
     </main>
+  );
+}
+````
+
+**`<slug>-frontend/src/pages/Home.tsx`** (the welcome / landing page)
+
+Replace `<Display Name>` with the real project name.
+
+````typescript
+export default function Home() {
+  return (
+    <section>
+      <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+        Welcome to DevEasy
+      </p>
+      <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+        Your TypeScript project bootstrap for{" "}
+        <span className="text-indigo-600"><Display Name></span>
+      </h1>
+      <p className="mt-5 text-base leading-relaxed text-zinc-600">
+        Open DevEasy and start your Clauding session, or set your environment
+        variables from the code editor.
+      </p>
+      <p className="mt-10 text-lg font-semibold text-zinc-900">Keep Coding!</p>
+      <p className="text-sm text-zinc-500">~ Rustine Dave</p>
+    </section>
+  );
+}
+````
+
+**`<slug>-frontend/src/pages/Health.tsx`** (sample page calling the backend)
+
+````typescript
+import { useEffect, useState } from "react";
+import { apiGet } from "@/lib/api";
+
+interface Health {
+  status: string;
+  db: string;
+  time: string;
+}
+
+export default function Health() {
+  const [health, setHealth] = useState<Health | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGet<Health>("/health")
+      .then(setHealth)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to reach API"));
+  }, []);
+
+  return (
+    <section>
+      <h2 className="text-2xl font-bold">Backend health</h2>
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {health && (
+        <pre className="mt-3 rounded-md bg-zinc-100 p-3 text-sm">{JSON.stringify(health, null, 2)}</pre>
+      )}
+      {!health && !error && <p className="mt-3 text-sm text-zinc-500">Checking…</p>}
+    </section>
   );
 }
 ````
@@ -1092,6 +1158,7 @@ When `auth=msal`, use the variant in §3.5 instead of this one.
 ````typescript
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
@@ -1102,7 +1169,9 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </StrictMode>
 );
 ````
@@ -1124,17 +1193,22 @@ npm run dev            # http://localhost:5173
 
 ## Structure
 
+- `src/App.tsx` — router layout: a pill nav + `<Routes>` (react-router).
+- `src/pages/` — one component per route: `Home` (welcome / landing) and `Health`
+  (backend demo); with MSAL also `Dashboard` (protected) and `SignIn`.
 - `src/components/ui/` — shadcn-style primitives (`button`, `card`).
 - `src/lib/` — `api.ts` typed fetch wrapper, `utils.ts` `cn()` helper.
-- `src/App.tsx` — welcome / landing page (Tailwind). With MSAL, a pill nav for the Home / Dashboard / Sign In views.
-- `src/auth/` — MSAL config + provider + login button. *(present only if Microsoft auth was scaffolded)*
+- `src/auth/` — MSAL config + provider + login button + `RequireAuth` route guard. *(present only if Microsoft auth was scaffolded)*
 ````
 
 ---
 
 ### 3.5 Frontend — MSAL files **[MSAL only]**
 
-Write these only when `auth=msal`, and use these variants of `main.tsx` / `App.tsx`.
+Write these only when `auth=msal`. This section adds `msalConfig.ts`, `LoginButton.tsx`,
+`auth/RequireAuth.tsx`, `pages/Dashboard.tsx`, `pages/SignIn.tsx`, and uses the MSAL
+variants of `main.tsx` / `App.tsx` below (replacing the §3.4 ones). `pages/Home.tsx`
+from §3.4 is reused as-is.
 
 **`<slug>-frontend/src/auth/msalConfig.ts`** **[MSAL only]**
 
@@ -1195,6 +1269,7 @@ export function LoginButton() {
 ````typescript
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { MsalProvider } from "@azure/msal-react";
 import App from "./App";
@@ -1212,7 +1287,9 @@ msalInstance.initialize().then(() => {
   createRoot(rootElement).render(
     <StrictMode>
       <MsalProvider instance={msalInstance}>
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </MsalProvider>
     </StrictMode>
   );
@@ -1221,37 +1298,35 @@ msalInstance.initialize().then(() => {
 
 **`<slug>-frontend/src/App.tsx`** **[MSAL variant — replaces the §3.4 one]**
 
-Same welcome hero, plus a **pill nav for the views the MSAL scaffold created**
-(Home, Dashboard, Sign In). Views are switched in-page (no router dep). The
-"Sign In" pill is labelled so the user knows it needs the MSAL keys in `.env`.
-Replace `<Display Name>` with the real project name.
+Same router layout as §3.4, with the MSAL routes the scaffold created: `/`
+(Home), `/dashboard` (protected — bounces to Sign In when unauthenticated), and
+`/signin`. The "Sign In" pill is labelled so the user knows it needs the MSAL
+keys in `.env`. Reuses `pages/Home.tsx` from §3.4.
 
 ````typescript
-import { useState } from "react";
-import { AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from "@azure/msal-react";
-import { LoginButton } from "@/auth/LoginButton";
+import { NavLink, Route, Routes } from "react-router-dom";
+import { AuthenticatedTemplate, useMsal } from "@azure/msal-react";
+import Home from "@/pages/Home";
+import Dashboard from "@/pages/Dashboard";
+import SignIn from "@/pages/SignIn";
+import { RequireAuth } from "@/auth/RequireAuth";
 
-type Page = "home" | "dashboard" | "signin";
+const navPill = ({ isActive }: { isActive: boolean }) =>
+  `rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+    isActive ? "bg-indigo-600 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+  }`;
 
 export default function App() {
   const { instance, accounts } = useMsal();
-  const [page, setPage] = useState<Page>("home");
   const account = accounts[0];
-
-  const pill = (active: boolean) =>
-    `rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-      active ? "bg-indigo-600 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-    }`;
 
   return (
     <main className="grid min-h-screen place-items-center bg-white px-6 text-zinc-900">
       <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-10 shadow-sm">
         <nav className="mb-8 flex flex-wrap items-center gap-2">
-          <button className={pill(page === "home")} onClick={() => setPage("home")}>Home</button>
-          <button className={pill(page === "dashboard")} onClick={() => setPage("dashboard")}>Dashboard</button>
-          <button className={pill(page === "signin")} onClick={() => setPage("signin")}>
-            Sign In (requires MSAL keys)
-          </button>
+          <NavLink to="/" end className={navPill}>Home</NavLink>
+          <NavLink to="/dashboard" className={navPill}>Dashboard</NavLink>
+          <NavLink to="/signin" className={navPill}>Sign In (requires MSAL keys)</NavLink>
           <AuthenticatedTemplate>
             <button
               className="ml-auto rounded-full border border-zinc-200 px-4 py-1.5 text-sm text-zinc-500 hover:bg-zinc-50"
@@ -1261,64 +1336,75 @@ export default function App() {
             </button>
           </AuthenticatedTemplate>
         </nav>
-
-        {page === "home" && <Home />}
-        {page === "dashboard" && <Dashboard />}
-        {page === "signin" && <SignIn />}
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/signin" element={<SignIn />} />
+        </Routes>
       </div>
     </main>
   );
 }
+````
 
-function Home() {
-  return (
-    <section>
-      <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Welcome to DevEasy</p>
-      <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-        Your TypeScript project bootstrap for{" "}
-        <span className="text-indigo-600"><Display Name></span>
-      </h1>
-      <p className="mt-5 text-base leading-relaxed text-zinc-600">
-        Open DevEasy and start your Clauding session, or set your environment
-        variables from the code editor.
-      </p>
-      <p className="mt-10 text-lg font-semibold text-zinc-900">Keep Coding!</p>
-      <p className="text-sm text-zinc-500">~ Rustine Dave</p>
-    </section>
-  );
+**`<slug>-frontend/src/auth/RequireAuth.tsx`** **[MSAL only]** (route guard)
+
+````typescript
+import type { ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { useIsAuthenticated } from "@azure/msal-react";
+
+/** Gate a route behind Microsoft sign-in; bounce to /signin when unauthenticated. */
+export function RequireAuth({ children }: { children: ReactNode }) {
+  const isAuthenticated = useIsAuthenticated();
+  if (!isAuthenticated) return <Navigate to="/signin" replace />;
+  return <>{children}</>;
 }
+````
 
-function Dashboard() {
+**`<slug>-frontend/src/pages/Dashboard.tsx`** **[MSAL only]** (protected route)
+
+````typescript
+import { useMsal } from "@azure/msal-react";
+
+export default function Dashboard() {
+  const { accounts } = useMsal();
+  const name = accounts[0]?.name ?? accounts[0]?.username ?? "there";
   return (
     <section>
       <h2 className="text-2xl font-bold">Dashboard</h2>
-      <AuthenticatedTemplate>
-        <p className="mt-3 text-zinc-600">You're signed in — protected content goes here.</p>
-      </AuthenticatedTemplate>
-      <UnauthenticatedTemplate>
-        <p className="mt-3 text-zinc-600">Sign in with Microsoft to view the dashboard.</p>
-      </UnauthenticatedTemplate>
+      <p className="mt-3 text-zinc-600">
+        Welcome back, {name}. This route is protected — only reachable once signed in.
+      </p>
     </section>
   );
 }
+````
 
-function SignIn() {
+**`<slug>-frontend/src/pages/SignIn.tsx`** **[MSAL only]**
+
+````typescript
+import { AuthenticatedTemplate, UnauthenticatedTemplate } from "@azure/msal-react";
+import { Navigate } from "react-router-dom";
+import { LoginButton } from "@/auth/LoginButton";
+
+export default function SignIn() {
   return (
     <section>
       <h2 className="text-2xl font-bold">Sign In</h2>
-      <p className="mt-3 text-zinc-600">
-        Microsoft Entra sign-in. Set{" "}
-        <code className="rounded bg-zinc-100 px-1">VITE_AZURE_CLIENT_ID</code> and{" "}
-        <code className="rounded bg-zinc-100 px-1">VITE_AZURE_TENANT_ID</code> in{" "}
-        <code className="rounded bg-zinc-100 px-1">.env</code> first.
-      </p>
       <UnauthenticatedTemplate>
+        <p className="mt-3 text-zinc-600">
+          Microsoft Entra sign-in. Set{" "}
+          <code className="rounded bg-zinc-100 px-1">VITE_AZURE_CLIENT_ID</code> and{" "}
+          <code className="rounded bg-zinc-100 px-1">VITE_AZURE_TENANT_ID</code> in{" "}
+          <code className="rounded bg-zinc-100 px-1">.env</code> first.
+        </p>
         <div className="mt-5">
           <LoginButton />
         </div>
       </UnauthenticatedTemplate>
       <AuthenticatedTemplate>
-        <p className="mt-5 text-green-600">You're already signed in.</p>
+        <Navigate to="/dashboard" replace />
       </AuthenticatedTemplate>
     </section>
   );
@@ -1371,8 +1457,8 @@ answer, and confirm in the summary that **no secrets were written** — only
 - [ ] Slug is `[a-z0-9-]` only; folders are `<slug>-backend/` and `<slug>-frontend/`.
 - [ ] Root `README.md` + `.gitignore` + root `package.json` (with the `concurrently` `dev` script) written.
 - [ ] Backend: package.json, tsconfig, eslint, `.env.example`, knexfile, `src/server.ts` (health route + configurable PORT), model + service + controller + routes.
-- [ ] Frontend: package.json, vite/tsconfig/eslint/postcss/tailwind config, `index.html`, `src/main.tsx`, `src/App.tsx`, UI primitives, `.env.example`.
-- [ ] If `auth=msal`: backend `@azure/msal-node` config + JWT verify + protected route; frontend `@azure/msal-browser` config + provider + login button; both READMEs mention auth; `.env.example` has `AZURE_*` / `VITE_AZURE_*` placeholders. If `auth=none`: none of these written and no MSAL deps in package.json.
+- [ ] Frontend: package.json (incl. `react-router-dom`), vite/tsconfig/eslint/postcss/tailwind config, `index.html`, `src/main.tsx` (wraps `<App/>` in `<BrowserRouter>`), `src/App.tsx` (router layout: pill nav + `<Routes>`), `src/pages/Home.tsx` + `src/pages/Health.tsx`, UI primitives, `.env.example`.
+- [ ] If `auth=msal`: backend `@azure/msal-node` config + JWT verify + protected route; frontend `@azure/msal-browser` config + provider + login button + `src/auth/RequireAuth.tsx` route guard + `src/pages/Dashboard.tsx` (protected) + `src/pages/SignIn.tsx`; `main.tsx` wraps in both `MsalProvider` and `BrowserRouter`; both READMEs mention auth; `.env.example` has `AZURE_*` / `VITE_AZURE_*` placeholders. If `auth=none`: none of these written and no MSAL deps in package.json.
 - [ ] No real secrets/tenant/client IDs anywhere — placeholders only.
 - [ ] `git init` + initial commit on `main` (clean source, before install) via `git add -A` then a `-c`-authored commit.
 - [ ] `npm install` run at root + both packages (each exits); **never** ran `npm run dev` or any dev server.
