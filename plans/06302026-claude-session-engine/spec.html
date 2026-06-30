@@ -227,6 +227,11 @@
         <p><strong>Change:</strong> Token-by-token streaming. Added <code>--include-partial-messages</code> to the CLI args; the backend relays the partial <code>stream_event</code> deltas live but does not persist them (only the final assistant message is persisted, so history replay is unchanged). The client accumulates text deltas into a live "Claude" bubble that fills in as it generates, replaced by the committed message when the full event lands; the working spinner shows only before the first token.</p>
         <p><strong>Reason:</strong> User request: stream the response as it generates instead of waiting for the whole message.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 9 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Workflow commands in chat get a styled badge. A leading flag (the CLAUDE.md command-gate vocabulary: <code>-s/-i/-x/-a/-c/-d/-b/-q/-st/-r/-u</code> + long forms) is parsed off the user message and rendered as a color-coded badge (icon + label) with the bubble outlined in that command's hue, instead of raw <code>-s</code> text. The flag stays in the sent/stored message so Claude's own command gate still interprets it — only the rendering changes (<code>chatCommands.ts</code> parser + <code>SessionMessage</code> user branch; command icons added to <code>ui/Icon</code>).</p>
+        <p><strong>Reason:</strong> User request: commands passed through chat should have their own subtle coloring/outline and icon rather than appearing as plain flag text.</p>
+      </article>
     </section>
   </main>
 </body>

@@ -34,8 +34,11 @@ export default function App() {
       {/* ── Sidebar ── */}
       <aside className="flex w-[256px] shrink-0 flex-col gap-7 border-r border-line px-5 py-6">
         <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="DevEasy" className="h-9 w-9 shrink-0 object-contain" />
-          <span className="font-mono text-lg font-semibold tracking-tight">DevEasy</span>
+          <img src="/logo.png" alt="DevEasy" className="h-9 w-9 shrink-0 object-contain -left-[25px] -bottom-[10px] rotate-45 scale-330 relative" />
+          <div className="relative top-4">
+            <span className="font-mono text-lg font-black tracking-tight">DevEasy<span className='text-accent text-2xl'>.</span></span>
+            <p className="text-[8px] font-mono">Agentic Collaboration. Made Easy.</p>
+          </div>
         </div>
 
         <nav className="flex flex-col gap-1">

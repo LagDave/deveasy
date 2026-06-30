@@ -3,29 +3,18 @@ import { useState } from "react";
 import { Icon, type IconName } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
 import { fadeUp } from "../ui/motion";
+import { parseCommand } from "./chatCommands";
 import type { RenderItem } from "./sessionEvents";
 
 /** Renders one clean conversation item. Tool calls collapse; system noise is tiny. */
 export function SessionMessage({ item }: { item: RenderItem }) {
   if (item.kind === "text") {
-    const isUser = item.role === "user";
+    if (item.role === "user") return <UserMessage text={item.text} />;
     return (
-      <motion.div variants={fadeUp} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-        <div
-          className={`max-w-[85%] break-words rounded-2xl px-4 py-2.5 ${
-            isUser
-              ? "whitespace-pre-wrap rounded-br-md bg-accent text-sm leading-relaxed text-[#1a1205]"
-              : "surface-2 rounded-bl-md"
-          }`}
-        >
-          {isUser ? (
-            item.text
-          ) : (
-            <>
-              <div className="eyebrow mb-1 !text-faint">Claude</div>
-              <Markdown>{item.text}</Markdown>
-            </>
-          )}
+      <motion.div variants={fadeUp} className="flex justify-start">
+        <div className="surface-2 max-w-[85%] break-words rounded-2xl rounded-bl-md px-4 py-2.5">
+          <div className="eyebrow mb-1 !text-faint">Claude</div>
+          <Markdown>{item.text}</Markdown>
         </div>
       </motion.div>
     );
@@ -57,6 +46,28 @@ export function SessionMessage({ item }: { item: RenderItem }) {
   }
 
   return null; // system items are rendered in aggregate by SessionTranscript
+}
+
+/** A user turn — a leading workflow command (if any) renders as a colored badge. */
+function UserMessage({ text }: { text: string }) {
+  const { command, body } = parseCommand(text);
+  return (
+    <motion.div variants={fadeUp} className="flex justify-end">
+      {command ? (
+        <div className={`max-w-[85%] break-words rounded-2xl rounded-br-md border px-4 py-2.5 ${command.border} ${command.bg}`}>
+          <div className={`mb-1.5 flex items-center gap-1.5 font-mono text-[0.66rem] font-semibold uppercase tracking-wider ${command.text}`}>
+            <Icon name={command.icon} size={13} />
+            {command.label}
+          </div>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{body || <span className="text-muted">(no message)</span>}</div>
+        </div>
+      ) : (
+        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-sm leading-relaxed text-[#1a1205]">
+          {text}
+        </div>
+      )}
+    </motion.div>
+  );
 }
 
 function stringifyInput(input: unknown): string {
