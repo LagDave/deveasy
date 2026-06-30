@@ -82,18 +82,20 @@ export function SessionPanel({
     });
   };
 
-  const { events, status, send, streaming, partialText } = useSession(activeSessionId);
+  const { events, status, send, isReady, streaming, partialText } = useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
 
-  // Seed the create-project session's opening turn once it's connected; clearing
-  // the request afterward so re-entering Sessions never re-seeds.
+  // Seed the create-project session's opening turn once the CLI process is ready
+  // (isReady, not just ws-open — the backend wires its message handler and starts
+  // the process inside attach(), and a turn sent before that is dropped). Clear the
+  // request afterward so re-entering Sessions never re-seeds.
   useEffect(() => {
-    if (!openSession || activeSessionId !== openSession.id || status !== "open") return;
+    if (!openSession || activeSessionId !== openSession.id || !isReady) return;
     if (seededRef.current.has(openSession.id)) return;
     seededRef.current.add(openSession.id);
     send(buildSeedTurn(openSession.projectName));
     onOpenConsumed?.();
-  }, [openSession, activeSessionId, status, send, onOpenConsumed]);
+  }, [openSession, activeSessionId, isReady, send, onOpenConsumed]);
 
   // When the latest assistant turn carries a deveasy-question, offer it as buttons.
   // Self-gating: normal sessions never emit these blocks, so nothing changes there.
