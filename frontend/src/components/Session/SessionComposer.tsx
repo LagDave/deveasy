@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { MODEL_ALIASES, modelPillLabel } from "../../utils/modelLabels";
+import { familyOf, MODEL_ALIASES, modelPillLabel, prettyModel } from "../../utils/modelLabels";
 import { Icon } from "../ui/Icon";
 import { COMMAND_PRESETS, parseCommand } from "./chatCommands";
 import { ContextRing } from "./ContextRing";
@@ -210,6 +210,10 @@ export function SessionComposer({
                 <div className="surface absolute bottom-full right-0 z-20 mb-2 w-44 p-1">
                   {MODEL_ALIASES.map((a) => {
                     const isCurrent = a.id === selectedModel;
+                    // Show the version on the model that's actually running (resolved);
+                    // others show just the family — their version isn't known until run.
+                    const isResolved = familyOf(resolvedModel) === a.id;
+                    const label = isResolved ? (prettyModel(resolvedModel) ?? a.label) : a.label;
                     return (
                       <button
                         key={a.label}
@@ -217,7 +221,7 @@ export function SessionComposer({
                         onClick={() => chooseModel(a.id)}
                         className="flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-2"
                       >
-                        <span>{a.label}</span>
+                        <span>{label}</span>
                         {isCurrent && <Icon name="done" size={13} className="text-success" />}
                       </button>
                     );

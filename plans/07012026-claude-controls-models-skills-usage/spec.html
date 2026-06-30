@@ -340,6 +340,12 @@
         <p><strong>Reason:</strong> User request: selector placement, last-used-as-default, drop the explicit Default entry.</p>
         <p><strong>Files:</strong> <code>modelLabels.ts</code> (drop Default, add get/setLastModel), <code>useSession.ts</code> (persist on switch), <code>api/sessions.ts</code> + <code>useSessionHistory.ts</code> (create accepts model), <code>SessionPanel.tsx</code> (new sessions open on last model), <code>SessionComposer.tsx</code> (selector before Send).</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 6 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Show the model version in the picker dropdown, not only in the pill. The entry whose family is currently running shows its resolved version (e.g. "Opus 4.8"); the rest show the family name.</p>
+        <p><strong>Reason:</strong> User request: version in the dropdown entries too.</p>
+        <p><strong>Constraint:</strong> a model's version is only known once it has run (from its init event), so unrun models show just the family — there is no reliable source for their version without running them. Files: <code>SessionComposer.tsx</code>.</p>
+      </article>
     </section>
   </main>
 </body>
