@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut } from "./index";
-import type { EditorState, FileContent, FileTreeEntry } from "../types";
+import type { EditorState, FileContent, FileTreeEntry, HeadContent } from "../types";
 
 /** Thin typed functions over the HTTP client — one file per backend domain (§12.1). */
 
@@ -33,6 +33,16 @@ export async function saveFileContent(
     path,
     content,
   });
+}
+
+/** The file's content at git HEAD, for the editor's diff gutter ({content:null} = new/untracked). */
+export async function getHeadContent(
+  projectId: number,
+  path: string,
+): Promise<HeadContent> {
+  return apiGet<HeadContent>(
+    `/api/editor/head?projectId=${projectId}&path=${encodeURIComponent(path)}`,
+  );
 }
 
 export async function getEditorState(projectId: number): Promise<EditorState> {

@@ -10,6 +10,7 @@ const router = express.Router();
 
 router.get("/tree", EditorController.getTree);
 router.get("/file", EditorController.getFile);
+router.get("/head", EditorController.getHead);
 router.get("/raw", EditorController.getRaw);
 router.post("/file", EditorController.saveFile);
 router.get("/state", EditorController.getState);

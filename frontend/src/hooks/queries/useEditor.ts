@@ -3,6 +3,7 @@ import {
   getDirListing,
   getEditorState,
   getFileContent,
+  getHeadContent,
   saveEditorState,
   saveFileContent,
 } from "../../api/editor";

@@ -52,7 +52,7 @@ export function SessionSidebar(props: Props) {
                       className="btn btn-ghost !px-2 !py-1.5"
                       title={`Open code editor for ${project.name}`}
                     >
-                      <Icon name="code" size={16} />
+                      <Icon name="folder" size={16} />
                     </button>
                     <button
                       onClick={() => onNewSession(project.id)}
