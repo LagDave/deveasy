@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+/*
+ * Comic Code (Ligatures) — bundled terminal font. Drop the files into
+ * frontend/public/fonts/ (see that folder's README for the exact names). These
+ * live in public/ on purpose: the URLs resolve at runtime, so a missing file
+ * just falls back to the mono stack instead of breaking the build.
+ */
+@font-face {
+  font-family: "Comic Code Ligatures";
+  src: url("/fonts/ComicCodeLigatures-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Comic Code Ligatures";
+  src: url("/fonts/ComicCodeLigatures-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ─── Design tokens (DevEasy: precision developer instrument, warm phosphor accent) ─── */
 @theme {
   --color-bg: #0b0b0d;
@@ -21,6 +42,8 @@
 
   --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", monospace;
+  /* Terminal-only face: Comic Code when bundled, else the mono stack. */
+  --font-terminal: "Comic Code Ligatures", "JetBrains Mono Variable", ui-monospace, monospace;
 
   --radius: 0.625rem;
 }

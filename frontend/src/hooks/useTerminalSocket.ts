@@ -22,8 +22,10 @@ export function useTerminalSocket(terminalId: string) {
     if (!container) return;
 
     const term = new Terminal({
-      fontFamily: "var(--font-mono), ui-monospace, monospace",
+      fontFamily: "var(--font-terminal), ui-monospace, monospace",
       fontSize: 13,
+      // Keep glyphs tight — no extra tracking on top of the font's own metrics.
+      letterSpacing: 0,
       cursorBlink: true,
       theme: { background: "#0b0b0b" },
     });
@@ -34,6 +36,20 @@ export function useTerminalSocket(terminalId: string) {
       fit.fit();
     } catch {
       // container may not be laid out yet; the ResizeObserver below will refit
+    }
+
+    // The bundled font loads async; re-measure once it's ready so cell metrics
+    // match the real glyphs instead of the fallback.
+    let fontsCancelled = false;
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      void document.fonts.ready.then(() => {
+        if (fontsCancelled) return;
+        try {
+          fit.fit();
+        } catch {
+          // ignore
+        }
+      });
     }
 
     const ws = new WebSocket(buildWsUrl(terminalId));
@@ -77,6 +93,7 @@ export function useTerminalSocket(terminalId: string) {
     ro.observe(container);
 
     return () => {
+      fontsCancelled = true;
       inputSub.dispose();
       resizeSub.dispose();
       ro.disconnect();

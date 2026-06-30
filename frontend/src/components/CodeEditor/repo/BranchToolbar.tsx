@@ -11,6 +11,7 @@ import {
 import { toast } from "../../../lib/toast";
 import { useConfirm } from "../../ui/confirm";
 import { Icon } from "../../ui/Icon";
+import { SearchSelect } from "../../ui/SearchSelect";
 
 const MAIN_BRANCH = "main";
 
@@ -93,18 +94,17 @@ export function BranchToolbar({ projectId, status }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
       <Icon name="branch" size={14} className="text-accent" />
-      <select
-        className="field max-w-[14rem]"
+      <SearchSelect
+        className="w-56"
         value={current}
+        options={options}
+        onSelect={doCheckout}
         disabled={busy}
-        onChange={(e) => doCheckout(e.target.value)}
-      >
-        {options.map((b) => (
-          <option key={b} value={b}>
-            {b}
-          </option>
-        ))}
-      </select>
+        icon="branch"
+        placeholder="Select branch"
+        searchPlaceholder="Search branches…"
+        emptyLabel="No matching branches"
+      />
       {status && status.ahead > 0 && <span className="pill">ahead {status.ahead}</span>}
       {status && status.behind > 0 && <span className="pill">behind {status.behind}</span>}
 

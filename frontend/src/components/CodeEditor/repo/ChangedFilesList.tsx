@@ -1,5 +1,6 @@
 import type { GitStatusFile } from "../../../api/git";
 import type { ChangeKind } from "../../../types";
+import { Checkbox } from "../../ui/Checkbox";
 import { changeBadge, changeColorClass } from "../gitChanges";
 
 /** Porcelain XY status → change kind (mirrors gitChanges.kindOf). */
@@ -47,8 +48,7 @@ export function ChangedFilesList({ files, activePath, busy, onSelect, onToggleSt
               active ? "bg-surface-2" : "hover:bg-surface-2/60"
             }`}
           >
-            <input
-              type="checkbox"
+            <Checkbox
               checked={staged}
               disabled={busy}
               onChange={() => onToggleStage(p, staged)}

@@ -225,6 +225,11 @@
         <p><strong>Reason:</strong> Execution deviation: removing the dead GitPanel export (post-exec Step 1) and giving merge-conflict / branch-exists their correct HTTP status.</p>
         <p><strong>Updated Done criteria:</strong> Backend write ops are proven by <code>GitService.test.ts</code> (11 tests incl. merge-conflict abort); the diff-renders and UI-flow items remain manual (need the running app).</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 2 - 2026-07-01</h3>
+        <p><strong>Change:</strong> UI polish (User QA). Replaced the native stage <code>&lt;input type="checkbox"&gt;</code> in <code>ChangedFilesList</code> with an animated <code>ui/Checkbox</code> (framer-motion checkmark draw), and the native branch <code>&lt;select&gt;</code> in <code>BranchToolbar</code> with a themed <code>ui/SearchSelect</code> (search + animated popover, modeled on <code>Session/BranchPicker</code>) so the menu is no longer the unstyled OS dropdown.</p>
+        <p><strong>Reason:</strong> User QA: the native checkbox and OS select looked out of place against the app's design.</p>
+      </article>
     </section>
   </main>
 </body>

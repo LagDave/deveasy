@@ -227,6 +227,12 @@
         <p><strong>Reason:</strong> Execution deviation: node-pty 1.1.0's prebuilt darwin <code>spawn-helper</code> shipped without the execute bit, so <code>posix_spawnp</code> failed at spawn time. The postinstall restores it (no-op off darwin) so <code>npm install</code> yields a working terminal — satisfying the "installs cleanly" Done item.</p>
         <p><strong>Note:</strong> The PTY child env scrubs <code>ANTHROPIC_API_KEY</code> so <code>claude</code> in the terminal uses the subscription login, consistent with the app's sessions. The Vite dev proxy already forwards all <code>/ws</code> (covers <code>/ws/terminal</code>), so no proxy change was needed. Added an end-to-end WS integration test (<code>terminalWebSocket.test.ts</code>) beyond the spec's task list.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 2 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Terminal font (User QA). Added a terminal-only <code>--font-terminal</code> token + <code>@font-face</code> for <strong>Comic Code Ligatures</strong>, bundled from <code>frontend/public/fonts/</code> (runtime-served so a missing file falls back to the mono stack, never breaks the build). The xterm instance now uses <code>--font-terminal</code> with <code>letterSpacing: 0</code> and refits on <code>document.fonts.ready</code>.</p>
+        <p><strong>Reason:</strong> User QA: the JetBrains Mono terminal looked off with loose spacing; switch to bundled Comic Code with tight tracking.</p>
+        <p><strong>Note:</strong> Comic Code is a commercial font, so its files are not committed — drop <code>ComicCodeLigatures-Regular.woff2</code> / <code>-Bold.woff2</code> into <code>frontend/public/fonts/</code> (see that folder's README). Until then the terminal falls back to JetBrains Mono.</p>
+      </article>
     </section>
   </main>
 </body>
