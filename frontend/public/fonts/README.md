@@ -1,23 +1,22 @@
-# Bundled terminal font — MesloLGL Nerd Font
+# Bundled terminal fonts
 
-The terminal (TERMINAL tab) uses **MesloLGL Nerd Font** via the `--font-terminal`
-token (`src/index.css`). The font files are bundled here and served from
-`/fonts/...` at runtime:
+The terminal (TERMINAL tab) uses the `--font-terminal` stack (`src/index.css`):
 
-```
-MesloLGLNerdFont-Regular.ttf
-MesloLGLNerdFont-Bold.ttf
-MesloLGLNerdFont-Italic.ttf
-MesloLGLNerdFont-BoldItalic.ttf
-```
+1. **Comic Code Ligatures** (`ComicCodeLigatures-*.otf`) — primary face.
+2. **MesloLGL Nerd Font** (`MesloLGLNerdFont-*.ttf`) — fallback that supplies the
+   powerline / git glyphs Comic Code doesn't have (browsers fall back per-glyph).
+3. JetBrains Mono / system mono — last resort.
 
-It's a Nerd Font, so it includes the powerline / git glyphs that prompts (p10k,
-starship, etc.) render — no more missing-glyph boxes.
+All files are served from `/fonts/...` at runtime, so a missing file just falls
+back instead of breaking the build.
 
-## Swapping the terminal font
+> **Note:** Comic Code is a commercial font, committed here per project request
+> for a private, local-first app. If this repo ever goes public, remove the
+> `ComicCodeLigatures-*.otf` files (and the matching `@font-face` blocks) — the
+> terminal will fall back to Meslo.
 
-1. Drop the new `.ttf`/`.woff2` files in this folder.
-2. Update the `@font-face` blocks + `--font-terminal` token in `src/index.css`.
+## Swapping a font
 
-Files here live in `public/` on purpose: the URLs resolve at runtime, so a
-missing file falls back to the mono stack instead of breaking the build.
+Drop the file(s) here and update the `@font-face` blocks + `--font-terminal`
+token in `src/index.css`. Inter-letter density is tuned via the xterm
+`letterSpacing` option in `src/hooks/useTerminalSocket.ts`.

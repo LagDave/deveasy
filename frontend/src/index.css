@@ -1,10 +1,39 @@
 @import "tailwindcss";
 
 /*
- * MesloLGL Nerd Font — bundled terminal font. Served from public/fonts/ so the
- * URLs resolve at runtime (a missing file falls back to the mono stack, never
- * breaks the build). The Nerd Font carries the powerline/git glyphs prompts use.
+ * Terminal fonts, bundled from public/fonts/ (runtime-served, so a missing file
+ * just falls back instead of breaking the build). Comic Code (Ligatures) is the
+ * primary face; MesloLGL Nerd Font is the fallback that supplies the powerline /
+ * git glyphs Comic Code lacks (browsers fall back per-glyph).
  */
+@font-face {
+  font-family: "Comic Code Ligatures";
+  src: url("/fonts/ComicCodeLigatures-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Comic Code Ligatures";
+  src: url("/fonts/ComicCodeLigatures-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Comic Code Ligatures";
+  src: url("/fonts/ComicCodeLigatures-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Comic Code Ligatures";
+  src: url("/fonts/ComicCodeLigatures-BoldItalic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
 @font-face {
   font-family: "Meslo Nerd Font";
   src: url("/fonts/MesloLGLNerdFont-Regular.ttf") format("truetype");
@@ -55,8 +84,9 @@
 
   --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", monospace;
-  /* Terminal-only face: Meslo Nerd Font (bundled), else the mono stack. */
-  --font-terminal: "Meslo Nerd Font", "JetBrains Mono Variable", ui-monospace, monospace;
+  /* Terminal face: Comic Code primary; Meslo Nerd Font supplies glyphs Comic Code
+     lacks (powerline/git icons); mono stack as last resort. */
+  --font-terminal: "Comic Code Ligatures", "Meslo Nerd Font", "JetBrains Mono Variable", ui-monospace, monospace;
 
   --radius: 0.625rem;
 }

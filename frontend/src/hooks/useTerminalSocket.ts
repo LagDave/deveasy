@@ -24,8 +24,9 @@ export function useTerminalSocket(terminalId: string) {
     const term = new Terminal({
       fontFamily: "var(--font-terminal), ui-monospace, monospace",
       fontSize: 13,
-      // Keep glyphs tight — no extra tracking on top of the font's own metrics.
-      letterSpacing: 0,
+      // Comic Code has generous sidebearings, so claw spacing back hard. This is
+      // CSS pixels of inter-cell spacing; negative tightens. Tune here if needed.
+      letterSpacing: -1.5,
       cursorBlink: true,
       theme: { background: "#0b0b0b" },
     });

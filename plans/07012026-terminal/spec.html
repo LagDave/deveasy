@@ -238,6 +238,12 @@
         <p><strong>Change:</strong> Switched the terminal font from Comic Code to <strong>MesloLGL Nerd Font</strong> (bundled, free). Replaced the Comic Code <code>@font-face</code> with Meslo (regular/bold/italic/bold-italic <code>.ttf</code> committed under <code>frontend/public/fonts/</code>) and repointed <code>--font-terminal</code>.</p>
         <p><strong>Reason:</strong> User QA: the terminal still read with wide letter spacing (the Comic Code <code>.otf</code> files had landed in <code>src/fonts/</code>, so the <code>@font-face</code> never loaded and it fell back to the wide JetBrains Mono). Meslo LG is a narrower face and a Nerd Font, so it also fixes the missing powerline/git glyphs (the □ boxes in the prompt).</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 4 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Final terminal font stack: <strong>Comic Code Ligatures</strong> primary (bundled <code>.otf</code> in <code>public/fonts/</code>), <strong>MesloLGL Nerd Font</strong> fallback for the powerline/git glyphs Comic Code lacks (per-glyph fallback), then the mono stack. Set xterm <code>letterSpacing: -1.5</code> to claw back Comic Code's generous sidebearings.</p>
+        <p><strong>Reason:</strong> User QA: wanted Comic Code as the default with Meslo only filling in icons, and the inter-letter spacing cut down hard.</p>
+        <p><strong>Note:</strong> Comic Code is commercial; committed for this private app. <code>letterSpacing</code> lives in <code>useTerminalSocket.ts</code> and is easy to tune.</p>
+      </article>
     </section>
   </main>
 </body>
