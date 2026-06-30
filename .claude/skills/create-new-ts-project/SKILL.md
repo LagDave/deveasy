@@ -1265,8 +1265,14 @@ After every file is written (and only the MSAL files if `auth=msal`):
 
 1. Run `git init` in the current directory (the project root). Do **not** run
    `npm install` and do **not** start any dev server.
-2. Optionally stage with `git add -A` so the user sees a clean initial tree
-   (do not commit unless the user asked — a clean stage is enough).
+2. Make the initial commit so the project has a real `main` branch (a freshly
+   `git init`'d repo with no commits shows no branch in DevEasy's cockpit). Run,
+   in order, from the project root:
+   - `git add -A`
+   - `git -c user.name="DevEasy" -c user.email="noreply@deveasy.local" commit -m "chore: scaffold <Display Name> via DevEasy"`
+     (the inline `-c` author makes the commit succeed even when no global git
+     identity is configured)
+   - `git branch -M main` (name the branch `main`)
 3. Emit exactly one completion block as your final output:
 
 ````
@@ -1291,5 +1297,5 @@ answer, and confirm in the summary that **no secrets were written** — only
 - [ ] Frontend: package.json, vite/tsconfig/eslint/postcss/tailwind config, `index.html`, `src/main.tsx`, `src/App.tsx`, UI primitives, `.env.example`.
 - [ ] If `auth=msal`: backend `@azure/msal-node` config + JWT verify + protected route; frontend `@azure/msal-browser` config + provider + login button; both READMEs mention auth; `.env.example` has `AZURE_*` / `VITE_AZURE_*` placeholders. If `auth=none`: none of these written and no MSAL deps in package.json.
 - [ ] No real secrets/tenant/client IDs anywhere — placeholders only.
-- [ ] `git init` run; no `npm install`, no dev server.
+- [ ] `git init` + initial commit on `main` (via `git add -A` then a `-c`-authored commit); no `npm install`, no dev server.
 - [ ] Emitted exactly one `deveasy-done` block last.
