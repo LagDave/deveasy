@@ -50,8 +50,8 @@ export function useSessionHistory(sessionId: number | null | undefined) {
 
 export function useCreateSession() {
   const qc = useQueryClient();
-  return useMutation<Session, Error, { projectId: number; title?: string }>({
-    mutationFn: ({ projectId, title }) => createSession(projectId, title),
+  return useMutation<Session, Error, { projectId: number; title?: string; model?: string | null }>({
+    mutationFn: ({ projectId, title, model }) => createSession(projectId, title, model),
     onSuccess: (session) => {
       void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.list(session.project_id) });
       void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.all });

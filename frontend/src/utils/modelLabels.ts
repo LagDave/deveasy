@@ -9,14 +9,34 @@
  *    (e.g. `claude-opus-4-8[1m]`), known only after the model next runs.
  */
 
-/** Curated, stable model aliases for the picker. null = the CLI default. */
-export const MODEL_ALIASES: { id: string | null; label: string }[] = [
-  { id: null, label: "Default" },
+/** Curated, stable model aliases for the picker. */
+export const MODEL_ALIASES: { id: string; label: string }[] = [
   { id: "opus", label: "Opus" },
   { id: "sonnet", label: "Sonnet" },
   { id: "haiku", label: "Haiku" },
   { id: "fable", label: "Fable" },
 ];
+
+const LAST_MODEL_KEY = "deveasy:last-model";
+
+/** The last model the operator picked — the default for new sessions. */
+export function getLastModel(): string | null {
+  try {
+    return localStorage.getItem(LAST_MODEL_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remember the last model picked so new sessions open on it. */
+export function setLastModel(id: string | null): void {
+  try {
+    if (id) localStorage.setItem(LAST_MODEL_KEY, id);
+    else localStorage.removeItem(LAST_MODEL_KEY);
+  } catch {
+    // Storage unavailable (private mode) — the preference just won't persist.
+  }
+}
 
 /** Family of a resolved model string: "opus" | "sonnet" | "haiku" | "fable" | null. */
 export function familyOf(model: string | null): string | null {

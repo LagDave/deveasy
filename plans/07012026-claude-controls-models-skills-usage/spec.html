@@ -334,6 +334,12 @@
         <p><strong>Files:</strong> new <code>frontend/src/utils/modelLabels.ts</code>; <code>useSession.ts</code> (selectedModel/resolvedModel + switch notice), <code>SessionComposer.tsx</code>, <code>SessionPanel.tsx</code>, <code>sessionEvents.ts</code> + <code>SessionMessage.tsx</code> (notice render). <code>prettyModel</code> formatting checked against the real model strings.</p>
         <p><strong>Note:</strong> Each switch restarts the CLI, which re-runs SessionStart hooks — so repeated switching accumulates collapsed <code>hook_*</code> system events in the transcript. Harmless (they stay collapsed); flagged in case it warrants filtering later.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 5 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Moved the model selector into the input row just before Send (its menu opens upward, right-aligned). Removed the "Default" picker option. The last model the operator picks is now persisted (<code>localStorage</code> <code>deveasy:last-model</code>) and used as the model for new sessions.</p>
+        <p><strong>Reason:</strong> User request: selector placement, last-used-as-default, drop the explicit Default entry.</p>
+        <p><strong>Files:</strong> <code>modelLabels.ts</code> (drop Default, add get/setLastModel), <code>useSession.ts</code> (persist on switch), <code>api/sessions.ts</code> + <code>useSessionHistory.ts</code> (create accepts model), <code>SessionPanel.tsx</code> (new sessions open on last model), <code>SessionComposer.tsx</code> (selector before Send).</p>
+      </article>
     </section>
   </main>
 </body>

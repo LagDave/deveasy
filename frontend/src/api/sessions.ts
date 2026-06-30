@@ -34,8 +34,12 @@ export interface SessionMessage {
   created_at: string;
 }
 
-export async function createSession(projectId: number, title?: string): Promise<Session> {
-  const data = await apiPost<{ session: Session }>("/api/sessions", { projectId, title });
+export async function createSession(
+  projectId: number,
+  title?: string,
+  model?: string | null,
+): Promise<Session> {
+  const data = await apiPost<{ session: Session }>("/api/sessions", { projectId, title, model });
   return data.session;
 }
 

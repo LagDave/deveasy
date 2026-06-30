@@ -117,41 +117,8 @@ export function SessionComposer({
   return (
     <div className="border-t border-line px-6 py-4">
       <div className="mx-auto max-w-3xl">
-        {/* Controls row: model picker + compact */}
+        {/* Controls row: compact */}
         <div className="mb-2 flex items-center gap-2">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setModelOpen((o) => !o)}
-              disabled={disabled}
-              className="btn btn-ghost !px-2.5 !py-1 disabled:opacity-50"
-              title={disabled ? "Switch model when idle" : "Switch model (keeps context)"}
-            >
-              <Icon name="instant" size={13} />
-              <span className="font-mono text-xs">{modelPillLabel(selectedModel, resolvedModel)}</span>
-            </button>
-            {modelOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setModelOpen(false)} />
-                <div className="surface absolute bottom-full left-0 z-20 mb-2 w-44 p-1">
-                  {MODEL_ALIASES.map((a) => {
-                    const isCurrent = a.id === selectedModel;
-                    return (
-                      <button
-                        key={a.label}
-                        type="button"
-                        onClick={() => chooseModel(a.id)}
-                        className="flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-2"
-                      >
-                        <span>{a.label}</span>
-                        {isCurrent && <Icon name="done" size={13} className="text-success" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
           <button
             type="button"
             onClick={() => onSend("/compact")}
@@ -225,6 +192,40 @@ export function SessionComposer({
             rows={1}
             className="max-h-[200px] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed text-ink outline-none placeholder:text-faint disabled:opacity-60"
           />
+          {/* Model picker — sits just before Send */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setModelOpen((o) => !o)}
+              disabled={disabled}
+              className="btn btn-ghost !px-2.5 !py-1.5 disabled:opacity-50"
+              title={disabled ? "Switch model when idle" : "Switch model (keeps context)"}
+            >
+              <Icon name="instant" size={14} />
+              <span className="font-mono text-xs">{modelPillLabel(selectedModel, resolvedModel)}</span>
+            </button>
+            {modelOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setModelOpen(false)} />
+                <div className="surface absolute bottom-full right-0 z-20 mb-2 w-44 p-1">
+                  {MODEL_ALIASES.map((a) => {
+                    const isCurrent = a.id === selectedModel;
+                    return (
+                      <button
+                        key={a.label}
+                        type="button"
+                        onClick={() => chooseModel(a.id)}
+                        className="flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-2"
+                      >
+                        <span>{a.label}</span>
+                        {isCurrent && <Icon name="done" size={13} className="text-success" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={submit} disabled={!canSend} className="btn btn-primary">
             Send
           </button>

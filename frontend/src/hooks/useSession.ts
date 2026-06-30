@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionMessage } from "../api/sessions";
 import { getSessionMessages } from "../api/sessions";
-import { prettyModel } from "../utils/modelLabels";
+import { prettyModel, setLastModel } from "../utils/modelLabels";
 
 /**
  * Owns the live WebSocket connection for a session (Constitution §14.3): connects,
@@ -222,6 +222,8 @@ export function useSession(sessionId: number | null): UseSessionResult {
     // follows once the model actually runs and reports its resolved name.
     setSelectedModel(next);
     pendingSwitchRef.current = true;
+    // Remember it as the default for new sessions.
+    setLastModel(next);
   }, []);
 
   return {

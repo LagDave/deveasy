@@ -9,6 +9,7 @@ import {
 } from "../../hooks/queries/useSessionHistory";
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
+import { getLastModel } from "../../utils/modelLabels";
 import type { WorkspaceTab } from "../CodeEditor/WorkspaceTabs";
 import { WizardChoice } from "../CreateProject/WizardChoice";
 import { buildSeedTurn, parseWizardQuestion } from "../CreateProject/wizardProtocol";
@@ -121,8 +122,9 @@ export function SessionPanel({
 
   const onNewSession = (projectId: number) => {
     setCreatingProjectId(projectId);
+    // New sessions open on the last model the operator picked (their default).
     createSession.mutate(
-      { projectId },
+      { projectId, model: getLastModel() },
       {
         onSuccess: (session) => setActiveSessionId(session.id),
         onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not start a session"),
