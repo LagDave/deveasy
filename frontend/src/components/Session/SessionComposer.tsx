@@ -149,7 +149,7 @@ export function SessionComposer({
   return (
     <div className="border-t border-line px-6 py-4">
       <div className="mx-auto max-w-3xl">
-        <div className={`surface flex items-end gap-2 p-2 ${borderClass}`}>
+        <div className={`surface flex items-center gap-2 p-2 ${borderClass}`}>
           {/* Command picker / active-command indicator */}
           <div className="relative">
             <button
