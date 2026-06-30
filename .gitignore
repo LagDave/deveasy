@@ -6,8 +6,8 @@ frontend/node_modules/
 dist/
 frontend/dist/
 
-# Local project clones live here — never version-controlled in the DevEasy repo
-# Anchored to the repo root so it does not also match src/controllers/projects/.
+# Local project clones live here — never version-controlled in the DevEasy repo.
+# Anchored to repo root so it does NOT also ignore src/controllers/projects/.
 /projects/
 
 # Env / secrets

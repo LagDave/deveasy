@@ -19,12 +19,13 @@ interface Props {
   creatingProjectId: number | null;
   onSelect: (sessionId: number) => void;
   onNewSession: (projectId: number) => void;
+  onOpenEditor: (projectId: number) => void;
   onRename: (sessionId: number, title: string) => void;
   onDelete: (sessionId: number) => void;
 }
 
 export function SessionSidebar(props: Props) {
-  const { projects, sessions, creatingProjectId, onNewSession } = props;
+  const { projects, sessions, creatingProjectId, onNewSession, onOpenEditor } = props;
   const byProject = (projectId: number) => sessions.filter((s) => s.project_id === projectId);
 
   return (
@@ -45,14 +46,23 @@ export function SessionSidebar(props: Props) {
               <div className="px-2 py-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-mono text-xs font-semibold text-muted">{project.name}</span>
-                  <button
-                    onClick={() => onNewSession(project.id)}
-                    disabled={creatingProjectId === project.id}
-                    className="btn btn-ghost !px-2 !py-1.5"
-                    title={`New session in ${project.name}`}
-                  >
-                    <Icon name="add" size={16} />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <button
+                      onClick={() => onOpenEditor(project.id)}
+                      className="btn btn-ghost !px-2 !py-1.5"
+                      title={`Open code editor for ${project.name}`}
+                    >
+                      <Icon name="code" size={16} />
+                    </button>
+                    <button
+                      onClick={() => onNewSession(project.id)}
+                      disabled={creatingProjectId === project.id}
+                      className="btn btn-ghost !px-2 !py-1.5"
+                      title={`New session in ${project.name}`}
+                    >
+                      <Icon name="add" size={16} />
+                    </button>
+                  </div>
                 </div>
                 <ProjectGitInfo projectId={project.id} />
               </div>

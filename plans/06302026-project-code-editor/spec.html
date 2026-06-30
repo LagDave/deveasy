@@ -39,11 +39,11 @@
     <header class="spec-hero">
       <div class="hero-topline">
         <p class="eyebrow">DevEasy Plan Spec</p>
-        <span class="status-pill">Pending Execution</span>
+        <span class="status-pill">Completed</span>
       </div>
       <h1>Project Code Editor</h1>
       <dl class="meta-grid">
-        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div class="status-card"><dt>Status</dt><dd>Completed — Layer-2 UI acceptance pending manual run</dd></div>
         <div><dt>Plan Folder</dt><dd>plans/06302026-project-code-editor</dd></div>
         <div><dt>Size</dt><dd>Large (~25 files, DB migration)</dd></div>
         <div><dt>Risk</dt><dd>Level 3</dd></div>
@@ -282,6 +282,24 @@
         <li><input type="checkbox" disabled> Security: a request with <code>path=../../etc/passwd</code> (and an absolute path) is rejected; no read/write escapes the project root</li>
         <li><input type="checkbox" disabled> No regression in the existing Session chat flow</li>
       </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="task-card">
+        <h3>Rev 1 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Executed the plan in an isolated git worktree (<code>../deveasy-code-editor</code>, branch <code>feat/project-code-editor</code>) via parallel sub-agents (backend / frontend-infra / UI), then integrated and verified.</p>
+        <p><strong>Reason — Execution deviations &amp; discoveries:</strong></p>
+        <ul class="tight">
+          <li><strong>Pre-existing repo bug found &amp; fixed.</strong> <code>.gitignore</code> had an unanchored <code>projects/</code> rule that also ignored <code>src/controllers/projects/</code> — so that whole backend domain was never committed (exists only as on-disk files in main). Anchored it to <code>/projects/</code> so the domain is trackable; recovered the 4 on-disk files into the worktree so the backend builds/runs. Committed as a separate <code>fix:</code> commit. The domain files themselves are left untracked (mirroring main's state) — recommend committing them on main.</li>
+          <li><strong>State validation relaxed to lexical (bug fix).</strong> <code>EditorStateService.saveState</code> originally ran the full <code>resolveSafePath</code> (incl. <code>fs.realpath</code>) on each persisted tab path, which hard-failed persistence whenever an open tab was a symlink — and DevEasy injects <code>CLAUDE.md</code>/<code>.claude/*</code> as symlinks. Persisted paths are UI bookmarks, so they are now validated lexically (reject absolute/<code>..</code>) via a new <code>assertRelativePathShape</code>; the authoritative fs guard (incl. symlink realpath) still runs at every read/write.</li>
+          <li><strong>Known tradeoff — symlinked config not openable.</strong> The read/write symlink-escape guard (spec mitigation) blocks opening DevEasy's injected <code>CLAUDE.md</code>/<code>.claude/*</code> because they realpath outside the project root. Kept the safe default rather than weaken it. Follow-up: allowlist the managed-config target so those specific files can be opened.</li>
+          <li><strong>Lazy-loaded the editor.</strong> <code>CodeEditorView</code> is <code>React.lazy</code> + <code>Suspense</code> in <code>SessionPanel</code>, so Monaco (~3.4 MB) is split into its own on-demand chunk; the initial bundle stayed ~620 kB.</li>
+          <li><strong>Isolated test environment.</strong> Worktree points at its own DB <code>deveasy_editor</code> (all 4 migrations applied) and at the real projects folder, on backend port <code>1240</code> / Vite <code>5174</code> — so it runs alongside the main app without touching its DB/migration state.</li>
+          <li><strong>Backend save body limit</strong> raised <code>2mb</code> → <code>4mb</code> in <code>src/index.ts</code> so a max-size 2 MB text save survives JSON escaping.</li>
+        </ul>
+        <p><strong>Verification:</strong> backend <code>tsc</code> clean; 33/33 vitest pass; frontend <code>tsc</code> clean; <code>vite build</code> succeeds with Monaco workers bundled offline; migration applied; all six API endpoints + the path-traversal/absolute/symlink guards verified live against the running app. Repo-wide ESLint is broken pre-existing (no <code>eslint.config.js</code> for ESLint v9) — unrelated to this work. Layer-2 UI click-through (UI1–UI5 in <code>test-results.json</code>) left <code>pending</code> for manual run.</p>
+      </article>
     </section>
   </main>
 </body>
