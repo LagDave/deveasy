@@ -28,6 +28,7 @@ export function useTerminalSocket(terminalId: string) {
       // CSS pixels of inter-cell spacing; negative tightens. Tune here if needed.
       letterSpacing: -3.5,
       cursorBlink: true,
+      cursorStyle: "bar",
       theme: { background: "#0b0b0b" },
     });
     const fit = new FitAddon();
