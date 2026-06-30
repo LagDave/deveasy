@@ -1,13 +1,22 @@
-import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SessionEvent } from "../../hooks/useSession";
 import { EmptyState } from "../ui/EmptyState";
 import { Icon } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
 import { Spinner } from "../ui/Spinner";
-import { staggerContainer } from "../ui/motion";
 import { SessionMessage } from "./SessionMessage";
-import { flattenEvents, meaningfulCount } from "./sessionEvents";
+import { flattenEvents, meaningfulCount, type RenderItem } from "./sessionEvents";
+
+/** Group items into turns: a user message starts a turn; the rest belong to it.
+ *  Each turn is its own block so a sticky user header is pushed out by the next. */
+function groupTurns(items: RenderItem[]): RenderItem[][] {
+  const turns: RenderItem[][] = [];
+  for (const it of items) {
+    if ((it.kind === "text" && it.role === "user") || turns.length === 0) turns.push([it]);
+    else turns[turns.length - 1].push(it);
+  }
+  return turns;
+}
 
 /**
  * Scrollable transcript. Renders the conversation cleanly and quarantines the
@@ -50,11 +59,13 @@ export function SessionTranscript({
           />
         )}
 
-        <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-3">
-          {visible.map((item) => (
-            <SessionMessage key={item.key} item={item} />
-          ))}
-        </motion.div>
+        {groupTurns(visible).map((turn, ti) => (
+          <div key={turn[0]?.key ?? ti} className="flex flex-col gap-3">
+            {turn.map((item) => (
+              <SessionMessage key={item.key} item={item} />
+            ))}
+          </div>
+        ))}
 
         {/* Live, token-streaming assistant text (not yet committed). */}
         {partialText && (

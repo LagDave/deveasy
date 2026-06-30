@@ -6,12 +6,14 @@ import { fadeUp } from "../ui/motion";
 import { parseCommand } from "./chatCommands";
 import type { RenderItem } from "./sessionEvents";
 
+const enter = { variants: fadeUp, initial: "hidden", animate: "show" } as const;
+
 /** Renders one clean conversation item. Tool calls collapse; system noise is tiny. */
 export function SessionMessage({ item }: { item: RenderItem }) {
   if (item.kind === "text") {
     if (item.role === "user") return <UserMessage text={item.text} />;
     return (
-      <motion.div variants={fadeUp} className="flex justify-start">
+      <motion.div {...enter} className="flex justify-start">
         <div className="surface-2 max-w-[85%] break-words rounded-2xl rounded-bl-md px-4 py-2.5">
           <div className="eyebrow mb-1 !text-faint">Claude</div>
           <Markdown>{item.text}</Markdown>
@@ -37,8 +39,8 @@ export function SessionMessage({ item }: { item: RenderItem }) {
 
   if (item.kind === "result") {
     return (
-      <motion.div variants={fadeUp} className="flex justify-center py-1">
-        <span className={`pill ${item.isError ? "pill-danger" : "pill-success"}`}>
+      <motion.div {...enter} className="flex justify-start py-1">
+        <span className={`pill ${item.isError ? "pill-danger" : "!text-faint"}`}>
           {item.isError ? "session error" : "turn complete"}
         </span>
       </motion.div>
@@ -48,13 +50,17 @@ export function SessionMessage({ item }: { item: RenderItem }) {
   return null; // system items are rendered in aggregate by SessionTranscript
 }
 
-/** A user turn — a leading workflow command (if any) renders as a colored badge. */
+/**
+ * A user turn — sticky to the top of the scroll area so you always see which
+ * question the response below belongs to. A leading workflow command (if any)
+ * renders as a colored badge.
+ */
 function UserMessage({ text }: { text: string }) {
   const { command, body } = parseCommand(text);
   return (
-    <motion.div variants={fadeUp} className="flex justify-end">
+    <motion.div {...enter} className="sticky top-0 z-10 flex justify-end">
       {command ? (
-        <div className={`max-w-[85%] break-words rounded-2xl rounded-br-md border px-4 py-2.5 ${command.border} ${command.bg}`}>
+        <div className={`max-w-[85%] break-words rounded-2xl rounded-br-md border px-4 py-2.5 backdrop-blur-md ${command.border} ${command.bg}`}>
           <div className={`mb-1.5 flex items-center gap-1.5 font-mono text-[0.66rem] font-semibold uppercase tracking-wider ${command.text}`}>
             <Icon name={command.icon} size={13} />
             {command.label}
@@ -94,7 +100,7 @@ function ToolCard({
   const [open, setOpen] = useState(false);
   const accent = tone === "error" ? "text-danger" : tone === "use" ? "text-accent" : "text-success";
   return (
-    <motion.div variants={fadeUp} className="surface-2 overflow-hidden rounded-lg">
+    <motion.div {...enter} className="surface-2 overflow-hidden rounded-lg">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-2 px-3.5 py-2 text-left"

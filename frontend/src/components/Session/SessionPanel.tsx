@@ -6,7 +6,6 @@ import {
   useCreateSession,
   useDeleteSession,
   useRenameSession,
-  useStopSession,
 } from "../../hooks/queries/useSessionHistory";
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
@@ -33,7 +32,6 @@ export function SessionPanel() {
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: sessions, isLoading: sessionsLoading } = useAllSessions();
   const createSession = useCreateSession();
-  const stopSession = useStopSession();
   const renameSession = useRenameSession();
   const deleteSession = useDeleteSession();
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
@@ -94,23 +92,10 @@ export function SessionPanel() {
               <span className="truncate font-mono text-sm text-muted">
                 {activeSession?.title ?? `Session #${activeSessionId}`}
               </span>
-              <div className="flex items-center gap-2">
-                <span className={`pill ${STATUS_PILL[status] ?? "pill"}`}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                  {streaming ? "responding" : status}
-                </span>
-                {activeSession?.runtime && (
-                  <button
-                    className="btn btn-danger"
-                    disabled={stopSession.isPending}
-                    onClick={() => stopSession.mutate(activeSessionId)}
-                    title="End this session's process"
-                  >
-                    <Icon name="close" size={15} />
-                    End session
-                  </button>
-                )}
-              </div>
+              <span className={`pill ${STATUS_PILL[status] ?? "pill"}`}>
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                {streaming ? "responding" : status}
+              </span>
             </div>
             <SessionTranscript key={activeSessionId} events={events} thinking={streaming} partialText={partialText} />
             <SessionComposer
