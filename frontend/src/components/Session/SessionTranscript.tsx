@@ -38,6 +38,7 @@ export function SessionTranscript({
   const [showSystem, setShowSystem] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const firstScroll = useRef(true);
   useEffect(() => {
     // Jump instantly to the latest on open; smooth-scroll for new messages after.
@@ -49,7 +50,7 @@ export function SessionTranscript({
   }, [items.length, thinking, partialText]);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {meaningfulCount(items) === 0 && !thinking && !partialText && (
           <EmptyState
@@ -62,7 +63,7 @@ export function SessionTranscript({
         {groupTurns(visible).map((turn, ti) => (
           <div key={turn[0]?.key ?? ti} className="flex flex-col gap-3">
             {turn.map((item) => (
-              <SessionMessage key={item.key} item={item} />
+              <SessionMessage key={item.key} item={item} scrollRef={scrollRef} />
             ))}
           </div>
         ))}

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
 import { fadeUp } from "../ui/motion";
@@ -8,10 +8,12 @@ import type { RenderItem } from "./sessionEvents";
 
 const enter = { variants: fadeUp, initial: "hidden", animate: "show" } as const;
 
+type ScrollRef = React.RefObject<HTMLDivElement | null>;
+
 /** Renders one clean conversation item. Tool calls collapse; system noise is tiny. */
-export function SessionMessage({ item }: { item: RenderItem }) {
+export function SessionMessage({ item, scrollRef }: { item: RenderItem; scrollRef?: ScrollRef }) {
   if (item.kind === "text") {
-    if (item.role === "user") return <UserMessage text={item.text} />;
+    if (item.role === "user") return <UserMessage text={item.text} scrollRef={scrollRef} />;
     return (
       <motion.div {...enter} className="flex justify-start">
         <div className="surface-2 max-w-[85%] break-words rounded-2xl rounded-bl-md px-4 py-2.5">
@@ -51,27 +53,59 @@ export function SessionMessage({ item }: { item: RenderItem }) {
 }
 
 /**
- * A user turn — sticky to the top of the scroll area so you always see which
- * question the response below belongs to. A leading workflow command (if any)
- * renders as a colored badge.
+ * A user turn. In flow it's a right-aligned bubble; once it sticks to the top of
+ * the scroll area it morphs into a full-width one-line bar (so you always see
+ * which question the response belongs to). A sentinel + IntersectionObserver
+ * detects the pinned state; Framer's layout animation does the bubble→bar morph.
  */
-function UserMessage({ text }: { text: string }) {
+function UserMessage({ text, scrollRef }: { text: string; scrollRef?: ScrollRef }) {
   const { command, body } = parseCommand(text);
+  const tone = command;
+  const content = body || text;
+
+  const [stuck, setStuck] = useState(false);
+  const sentinelRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    const root = scrollRef?.current;
+    const el = sentinelRef.current;
+    if (!root || !el) return;
+    const io = new IntersectionObserver(([entry]) => setStuck(!entry.isIntersecting), {
+      root,
+      threshold: 0,
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [scrollRef]);
+
   return (
-    <motion.div {...enter} className="sticky top-0 z-10 flex justify-end">
-      {command ? (
-        <div className={`max-w-[85%] break-words rounded-2xl rounded-br-md border px-4 py-2.5 backdrop-blur-md ${command.border} ${command.bg}`}>
-          <div className={`mb-1.5 flex items-center gap-1.5 font-mono text-[0.66rem] font-semibold uppercase tracking-wider ${command.text}`}>
-            <Icon name={command.icon} size={13} />
-            {command.label}
+    <motion.div {...enter} className={`sticky top-0 z-20 flex ${stuck ? "justify-stretch" : "justify-end"}`}>
+      {/* sentinel just above the pinned position — out of view ⇒ stuck */}
+      <span ref={sentinelRef} aria-hidden className="pointer-events-none absolute -top-px left-0 h-px w-full" />
+      <motion.div
+        layout
+        transition={{ type: "spring", stiffness: 520, damping: 42 }}
+        style={{ borderRadius: stuck ? 10 : 18 }}
+        className={`overflow-hidden border backdrop-blur-md ${stuck ? "w-full px-4 py-2" : "max-w-[85%] px-4 py-2.5"} ${
+          tone ? `${tone.border} ${tone.bg}` : "border-accent-line bg-accent/15"
+        }`}
+      >
+        <div className={stuck ? "flex min-w-0 items-center gap-2" : "flex flex-col gap-1.5"}>
+          {tone && (
+            <span className={`flex shrink-0 items-center gap-1.5 font-mono text-[0.66rem] font-semibold uppercase tracking-wider ${tone.text}`}>
+              <Icon name={tone.icon} size={13} />
+              {tone.label}
+            </span>
+          )}
+          <div
+            className={`text-sm leading-relaxed text-ink ${
+              stuck ? "min-w-0 flex-1 truncate" : "whitespace-pre-wrap break-words"
+            }`}
+          >
+            {content || <span className="text-muted">(no message)</span>}
           </div>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{body || <span className="text-muted">(no message)</span>}</div>
         </div>
-      ) : (
-        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-sm leading-relaxed text-[#1a1205]">
-          {text}
-        </div>
-      )}
+      </motion.div>
     </motion.div>
   );
 }
