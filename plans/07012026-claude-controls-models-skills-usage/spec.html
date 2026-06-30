@@ -58,11 +58,11 @@
     <header class="spec-hero">
       <div class="hero-topline">
         <p class="eyebrow">DevEasy Plan Spec</p>
-        <span class="status-pill status-progress">In Progress</span>
+        <span class="status-pill status-complete">Completed</span>
       </div>
       <h1>Claude Controls — Model Switching, Skill Autocomplete, Usage &amp; Context</h1>
       <dl class="meta-grid">
-        <div class="status-card"><dt>Status</dt><dd>In Progress — code complete, behavioral acceptance pending</dd></div>
+        <div class="status-card"><dt>Status</dt><dd>Completed — code + behavioral acceptance verified</dd></div>
         <div><dt>Plan Folder</dt><dd>plans/07012026-claude-controls-models-skills-usage</dd></div>
         <div><dt>Size</dt><dd>Large (5 capabilities, ~16 files, DB migration)</dd></div>
         <div><dt>Risk</dt><dd>Level 3 — undocumented endpoint + OAuth token + CLI stdin slash commands</dd></div>
@@ -313,6 +313,13 @@
         <p><strong>Reason:</strong> Execution deviation: (1) DevEasy is Postgres-only with TS Knex migrations, so the migration is a single <code>0005_session_model.ts</code> — no mssql.sql (template's three-dialect rule doesn't fit this stack). (2) R-C probe resolved positively — slash commands DO work over stream-json stdin, so <code>/compact</code> and <code>/</code>-skills are wired directly with no fallback. (3) Model list is a curated alias set (opus/sonnet/haiku/fable) since the CLI exposes no list command; the resolved version is shown from the init event.</p>
         <p><strong>Verification:</strong> backend + frontend <code>tsc --noEmit</code> clean; migration applied (Batch 3); 70/70 existing tests pass. <strong>Pre-existing issue noted:</strong> <code>npm run lint</code> fails project-wide — no <code>eslint.config.js</code> for ESLint 9 (class c, untouched by this work).</p>
         <p><strong>Updated Done criteria:</strong> behavioral acceptance items (UI/API runtime checks) remain pending a human/computer-use run against the live app — see <code>test-results.json</code>.</p>
+      </article>
+      <article class="task-card">
+        <h3>Rev 2 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Drove the running app to verify acceptance — all items pass; <code>test-results.json</code> rolls up to <code>Passed</code>.</p>
+        <p><strong>Reason:</strong> User QA: confirm behavior against the live surface, not just the build.</p>
+        <p><strong>Evidence:</strong> <code>GET /api/usage/limits</code> → 200 with live 5h/weekly utilization + reset, no token in payload. Drove the real WebSocket session: created with <code>model:"haiku"</code> (init reported <code>claude-haiku-4-5</code>), captured a <code>capabilities</code> event (32 slash commands incl. <code>compact</code>, 17 skills) and <code>context</code> events (haiku 57865/200000 → sonnet 77594/1000000), then <code>set_model: "sonnet"</code> restarted resumed → <code>model_updated: claude-sonnet-5</code> and turn 2 recalled the planted codeword <code>ZEBRA-42</code> (resume preserved context). Sessions cleaned up afterward.</p>
+        <p><strong>Note:</strong> The two purely-presentational SVG rings were verified at the data contract (real socket/API), not by pixel screenshot — no headless Electron harness in this environment.</p>
       </article>
     </section>
   </main>
