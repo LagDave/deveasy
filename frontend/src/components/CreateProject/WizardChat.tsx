@@ -1,0 +1,126 @@
+import { useEffect, useMemo, useRef } from "react";
+import { useSession } from "../../hooks/useSession";
+import { flattenEvents, type RenderItem } from "../Session/sessionEvents";
+import { Markdown } from "../ui/Markdown";
+import { Spinner } from "../ui/Spinner";
+import { WizardChoice } from "./WizardChoice";
+import {
+  parseWizardDone,
+  parseWizardQuestion,
+  stripWizardBlocks,
+  type WizardDone,
+} from "./wizardProtocol";
+
+/**
+ * The wizard conversation surface. Reuses the live session hook (useSession)
+ * against the session the create endpoint opened — no duplicated WebSocket
+ * logic. On first ready it seeds one gated turn that invokes the skill; from
+ * then on it renders the streamed transcript and turns the latest assistant
+ * question into clickable choices via the deveasy-question protocol.
+ */
+export function WizardChat({
+  sessionId,
+  projectName,
+  onDone,
+}: {
+  sessionId: number;
+  projectName: string;
+  onDone?: (done: WizardDone) => void;
+}) {
+  const { events, send, isReady, streaming, partialText } = useSession(sessionId);
+  const seededRef = useRef(false);
+  const doneRef = useRef(false);
+
+  // Seed exactly one turn once the session is ready. The leading `-i` passes the
+  // injected CLAUDE.md command gate; the rest invokes the skill, which then
+  // overrides the gate and drives the deveasy-question protocol.
+  useEffect(() => {
+    if (!isReady || seededRef.current) return;
+    seededRef.current = true;
+    send(seedTurn(projectName));
+  }, [isReady, projectName, send]);
+
+  const items = useMemo(() => flattenEvents(events), [events]);
+  // Show the conversation, but never the technical gate-passing seed turn.
+  const textItems = useMemo(
+    () => items.filter(isVisibleText).filter((it) => !(it.role === "user" && it.text.startsWith(SEED_PREFIX))),
+    [items],
+  );
+  const lastAssistant = [...textItems].reverse().find((it) => it.role === "assistant");
+
+  const question = lastAssistant ? parseWizardQuestion(lastAssistant.text) : null;
+  const done = lastAssistant ? parseWizardDone(lastAssistant.text) : null;
+
+  // Fire onDone once when the completion block arrives.
+  useEffect(() => {
+    if (done && !doneRef.current) {
+      doneRef.current = true;
+      onDone?.(done);
+    }
+  }, [done, onDone]);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 py-1">
+      {textItems.map((it) => (
+        <ChatBubble key={it.key} role={it.role} text={visibleText(it.text)} />
+      ))}
+
+      {partialText && <ChatBubble role="assistant" text={visibleText(partialText)} />}
+
+      {streaming && !partialText && (
+        <div className="surface-2 w-fit rounded-2xl rounded-bl-md px-4 py-3">
+          <Spinner label="Claude is working" />
+        </div>
+      )}
+
+      {done ? (
+        <div className="surface mt-2 flex flex-col gap-1.5 px-4 py-3.5">
+          <span className="eyebrow !text-success">Project ready</span>
+          <p className="m-0 text-sm text-ink">{done.summary || `${done.project} is scaffolded.`}</p>
+        </div>
+      ) : question ? (
+        <WizardChoice key={lastAssistant?.key} question={question} onSubmit={send} />
+      ) : null}
+    </div>
+  );
+}
+
+// Kept in sync: the seed turn is built from SEED_PREFIX so the transcript filter
+// can reliably recognize and hide it.
+const SEED_PREFIX = `-i Scaffold a new TypeScript project named`;
+
+function seedTurn(projectName: string): string {
+  return `${SEED_PREFIX} "${projectName}". Invoke the create-new-ts-project skill and follow its wizard protocol exactly — ask me each question as a deveasy-question JSON block and wait for my answer.`;
+}
+
+type TextItem = Extract<RenderItem, { kind: "text" }>;
+
+function isVisibleText(item: RenderItem): item is TextItem {
+  return item.kind === "text";
+}
+
+/** Hide the user's gate-passing seed turn and suppress fenced wizard blocks. */
+function visibleText(text: string): string {
+  return stripWizardBlocks(text);
+}
+
+function ChatBubble({ role, text }: { role: "assistant" | "user"; text: string }) {
+  if (!text) return null;
+  if (role === "user") {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] break-words rounded-2xl rounded-br-md border border-accent-line bg-accent/15 px-4 py-2.5 text-sm text-ink">
+          {text}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex justify-start">
+      <div className="surface-2 max-w-[85%] break-words rounded-2xl rounded-bl-md px-4 py-2.5">
+        <div className="eyebrow mb-1 !text-faint">Claude</div>
+        <Markdown>{text}</Markdown>
+      </div>
+    </div>
+  );
+}
