@@ -72,11 +72,14 @@ function UserMessage({ text, scrollRef }: { text: string; scrollRef?: ScrollRef 
     if (!root || !el) return;
     // Stuck only when actually pinned: the turn's top has reached the scroll
     // container's top. In its natural position its top sits below that.
+    // A sticky turn pins at the scroll container's content top — i.e. below its
+    // top padding — so the threshold is the padding, not 0.
+    const padTop = parseFloat(getComputedStyle(root).paddingTop) || 0;
     let raf = 0;
     const check = () => {
       raf = 0;
       const offset = el.getBoundingClientRect().top - root.getBoundingClientRect().top;
-      setStuck(offset <= 1);
+      setStuck(offset <= padTop + 1);
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(check);
