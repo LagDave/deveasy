@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Code Editor Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#fff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); margin-top:14px; }
+    .eyebrow,dt { color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,4.5rem); line-height:.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:.1rem .3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:.9em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid > div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .task-card dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:0; }
+    .task-card dd { font-weight:500; }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    ul.tight li { margin-bottom:6px; }
+    @media (max-width:640px){ .spec-shell{width:min(100% - 20px,1120px);padding:24px 0;} .spec-hero,.spec-card{padding:20px;} }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec</p>
+        <span class="status-pill">Completed</span>
+      </div>
+      <h1>Project Code Editor</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Completed — Layer-2 UI acceptance pending manual run</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/06302026-project-code-editor</dd></div>
+        <div><dt>Size</dt><dd>Large (~25 files, DB migration)</dd></div>
+        <div><dt>Risk</dt><dd>Level 3</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>DevEasy operators jump to an external editor to read or tweak a file in a project they're running a Claude session against. An in-app, VS Code–style editor keeps browse → edit → save in one window, right next to the session and git cockpit for that same repo. It also lets the operator view the images, PDFs, and rendered HTML that Claude produces without leaving the app.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>A files icon next to the <code>+</code> in each project's Sessions-sidebar header. Clicking it takes over the Sessions panel for that project: the left rail becomes a lazy-loaded file tree (header shows the project name + a back arrow to return to sessions), and the main area becomes a VS Code–style tabbed editor.</p>
+      <ul class="tight">
+        <li><strong>Tabs:</strong> clicking a file opens a closeable tab to the right. Text files open in a Monaco editor (syntax highlighting + Emmet) and are fully editable.</li>
+        <li><strong>Save & dirty state:</strong> <code>Cmd/Ctrl+S</code> writes to disk; a dirty tab shows a dot; closing a dirty tab prompts for confirmation.</li>
+        <li><strong>Languages:</strong> JS/TS/JSX/TSX, JSON, <code>.config</code> files, XML, HTML, CSS, Markdown, and the rest of Monaco's built-in set, with Emmet on for HTML/JSX/CSS.</li>
+        <li><strong>Binary viewers:</strong> images (PNG/JPG/GIF/SVG/WebP) and PDF render in the same tab system (read-only). HTML files toggle between <em>view as code</em> and <em>view as page</em>.</li>
+        <li><strong>Persistence:</strong> open tabs + active tab persist per project across app reloads (DB-backed). Unsaved buffer content is not persisted.</li>
+      </ul>
+      <p><strong>Done when:</strong> from a project's files icon, the operator can browse the tree, open multiple file tabs, edit and save a text file to disk, view an image and a PDF, toggle an HTML file between code and page, close tabs (with an unsaved-changes guard), reload the app and find the same tabs reopened, and return to the session list via the back arrow.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files (reference analogs &amp; integration points)</h3>
+      <ul class="tight">
+        <li><code>src/controllers/git/</code> — the backend domain to mirror (§6.1): <code>GitController</code> → <code>GitService</code> → <code>feature-utils/{GitError,controllerResponses}</code>. The new <code>editor</code> domain copies this exactly.</li>
+        <li><code>src/services/PathGuard.ts</code> — <code>assertInsideRoot</code> + the separator-boundary check; the basis for the per-file path guard (§5.2).</li>
+        <li><code>src/models/ProjectModel.ts</code> — <code>findById</code> resolves the trusted project root; new <code>EditorStateModel</code> sits beside it (§7.4).</li>
+        <li><code>src/routes/index.ts</code> — register <code>/api/editor</code> here, next to <code>/api/git</code>.</li>
+        <li><code>src/index.ts</code> — helmet runs with <code>contentSecurityPolicy:false</code> (line ~24), so same-origin image/PDF/HTML rendering is not blocked; JSON body limit is <code>2mb</code> (line ~25) — raise for the save endpoint or document the cap.</li>
+        <li><code>frontend/src/api/index.ts</code> — <code>apiGet/apiPost/apiPatch</code> + envelope/<code>ApiError</code>; new <code>api/editor.ts</code> is a thin domain file over it (§12.1).</li>
+        <li><code>frontend/src/components/Session/SessionPanel.tsx</code> — owns the <code>w-72</code> rail + main area; gains an <code>editorProjectId</code> state that switches the panel into editor-takeover mode.</li>
+        <li><code>frontend/src/components/Session/SessionSidebar.tsx</code> — project header row (the files icon goes beside the existing <code>+</code> button; add an <code>onOpenEditor(projectId)</code> prop).</li>
+        <li><code>frontend/src/components/ui/Icon.tsx</code> — add file/folder/chevron + code/preview icons from the HugeIcons set already imported.</li>
+        <li><code>frontend/src/index.css</code> — design tokens + <code>.btn/.eyebrow/.surface</code> classes the new UI reuses.</li>
+        <li><code>frontend/vite.config.ts</code> — Monaco worker bundling configured here.</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul class="tight">
+        <li>Backend: thin controller, logic in <code>feature-services/</code>, typed <code>EditorError</code> + one <code>handleEditorError</code> status mapper, all DB through <code>EditorStateModel</code> (§6.3, §7.1–7.4, §8.1–8.4); Pino via <code>childLogger</code>, no <code>console.*</code> (§9.1).</li>
+        <li>Frontend: data-fetching in <code>use…()</code> hooks, server state in React Query (not <code>useState</code>), errors through the one <code>ApiError</code> contract + shared toast (§14.3, §15.1, §16.1); no <code>any</code> (§17.2); HTML preview via <code>&lt;iframe src&gt;</code>, never <code>dangerouslySetInnerHTML</code> (§17.4).</li>
+        <li>Match the existing git-status query pattern in <code>hooks/queries/useGit.ts</code> for query-key shape and <code>enabled</code> gating.</li>
+      </ul>
+      <p><strong>Reference files:</strong> backend → <code>src/controllers/git/</code> (whole domain). Frontend → <code>api/git.ts</code> + <code>hooks/queries/useGit.ts</code> (api/hook triad) and <code>SessionSidebar.tsx</code> (rail + project header structure).</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul class="tight">
+            <li>Every file/dir path is validated server-side before any fs call: reject absolute paths and <code>..</code>, resolve against the project root, and verify the <code>fs.realpath</code> result is still inside the root (defeats symlink escape) (§5.2, §5.4).</li>
+            <li>Resolve the project root only via <code>ProjectModel.findById</code> — never trust a client-supplied root (§5.4, §7.4).</li>
+            <li>New backend domain mirrors <code>git/</code> structure and the <code>{success,data,error}</code> contract (§6.1, §8.1).</li>
+            <li>Tree listing is lazy (one directory level per request) and skips <code>.git</code> and <code>node_modules</code> via a named ignore list (§4.2).</li>
+            <li>Text read/write capped by a named max size; binary stream capped by its own named max (§4.2).</li>
+            <li>Schema change ships as a Knex migration in the project's migrations dir (§10.3); the plan's <code>migrations/</code> folder scaffolds it.</li>
+            <li>Monaco workers are self-hosted/bundled (offline), not loaded from a CDN — DevEasy is local-first (§4.4).</li>
+            <li>New deps justified and pinned: <code>monaco-editor</code>, <code>@monaco-editor/react</code>, <code>emmet-monaco-es</code> (§4.4).</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul class="tight">
+            <li>No inline <code>db()</code>/SQL outside <code>models/</code> (§7.4); no business logic in routes/controllers (§7.2, §7.3).</li>
+            <li>No raw <code>fetch</code> in components/domain files — only <code>api/index.ts</code> (§14.2).</li>
+            <li>No <code>dangerouslySetInnerHTML</code> for HTML preview (§17.4); no <code>any</code> (§17.2); no <code>console.*</code> (§17.1).</li>
+            <li>Do not persist unsaved buffer contents to the DB (only which files are open).</li>
+            <li>Do not let the editor write outside the project root, follow a symlink out, or write to <code>.git/</code>.</li>
+            <li>No refactor of the existing Session chat flow beyond the takeover wiring.</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul class="tight">
+        <li>Creating/renaming/deleting/moving files in the tree (read + edit-existing + save only for v1).</li>
+        <li>Multi-pane/split editor, diff view, search-across-files, git gutter decorations, terminal.</li>
+        <li>Non-JS-adjacent language servers / IntelliSense beyond Monaco's built-in tokenizer.</li>
+        <li>Editing binary files; office formats; very large files beyond the size cap.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 — arbitrary file read/write under a project root is a real security surface, and Monaco is a heavy new dependency.</p>
+      <h3>Risks Identified</h3>
+      <ul class="tight">
+        <li><strong>Path traversal / symlink escape (read &amp; write).</strong> A crafted <code>path</code> could read or overwrite files outside the repo. <strong>Mitigation:</strong> centralize all path resolution in one <code>fileSafety</code> guard built on <code>PathGuard.assertInsideRoot</code>, add an <code>fs.realpath</code> + re-check step, and unit-test the escape vectors (§5.2, §20.2). Every endpoint calls the guard; no fs call bypasses it.</li>
+        <li><strong>Destructive overwrite.</strong> Save writes straight to disk. <strong>Mitigation:</strong> writes confined to the guarded root, blocked under <code>.git/</code>, capped by size, and only reachable for files the tree already exposed; the dirty-close confirm prevents accidental UI-side loss. (Accepted: this is the requested "fully editable" behavior.)</li>
+        <li><strong>Monaco bundle size / Vite worker setup.</strong> ~2MB and worker config can break the build. <strong>Mitigation:</strong> self-host workers via the documented Vite pattern, verify <code>frontend:build</code> succeeds, lazy-load the editor route so the chunk isn't in the initial load.</li>
+        <li><strong>Large/binary files freezing the UI.</strong> <strong>Mitigation:</strong> server classifies file kind and enforces size caps; oversized/binary text reads return a typed error the UI renders as "too large / binary."</li>
+        <li><strong>HTML "view as page" executing arbitrary local HTML/JS.</strong> <strong>Mitigation:</strong> render in a sandboxed <code>&lt;iframe&gt;</code> pointed at the raw endpoint (relative assets resolve correctly), not inline injection (§17.4). Acceptable for local single-operator content.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> new <code>editor</code> backend domain (additive); new <code>/api/editor</code> route registration in <code>routes/index.ts</code>; new DB table + migration; <code>SessionPanel.tsx</code> and <code>SessionSidebar.tsx</code> gain editor-mode wiring (their existing session behavior must stay intact); <code>Icon.tsx</code>, <code>types/index.ts</code>, <code>vite.config.ts</code>, and both <code>package.json</code>s gain additions. No existing endpoint or model is modified.</p>
+      <h3>Pushback</h3>
+      <ul class="tight">
+        <li><strong>One git-status-style query per directory expand is fine; a full recursive tree read is not</strong> — node_modules-sized trees would stall. The spec mandates lazy per-directory listing; do not "simplify" to a single recursive scan.</li>
+        <li><strong>Persisted tabs add a table for modest payoff.</strong> You chose persistence; the cost is one migration + one model + two endpoints. If that feels heavy later, the in-memory fallback is a clean downgrade (drop the state endpoints, keep everything else).</li>
+        <li><strong>Consider a read-only first cut.</strong> Writes are the entire Level-3 surface. Shipping browse+view first and adding save behind the verified guard would de-risk — but you explicitly want fully-editable now, so the guard + tests are the gate instead.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="architecture">
+      <h2>Architecture</h2>
+      <h3>Backend — new <code>editor</code> domain (mirrors <code>git/</code>)</h3>
+      <ul class="tight">
+        <li><code>src/routes/editor.ts</code> — thin routes; registered as <code>/api/editor</code> in <code>routes/index.ts</code>.</li>
+        <li><code>src/controllers/editor/EditorController.ts</code> — thin handlers: validate query/body → call service → <code>ok()</code>/<code>handleEditorError()</code>.</li>
+        <li><code>src/controllers/editor/feature-services/EditorService.ts</code> — <code>listDir</code>, <code>readFile</code>, <code>writeFile</code>, <code>statForRaw</code>; resolves root via <code>ProjectModel</code>, routes every path through the guard.</li>
+        <li><code>src/controllers/editor/feature-services/EditorStateService.ts</code> — get/upsert persisted tab state via the model.</li>
+        <li><code>src/controllers/editor/feature-utils/fileSafety.ts</code> — <code>resolveSafePath(root, relPath)</code> (reject abs/<code>..</code>, resolve, <code>realpath</code> re-check), <code>classifyFile(name)</code> → <code>text|image|pdf|html</code>, ignore-list + size + extension constants.</li>
+        <li><code>src/controllers/editor/feature-utils/EditorError.ts</code> + <code>controllerResponses.ts</code> — typed error + <code>ok/fail/handleEditorError</code> (codes → 400/403/404/413/422/500).</li>
+        <li><code>src/models/EditorStateModel.ts</code> — all DB access for <code>project_editor_state</code>.</li>
+        <li><code>src/database/migrations/&lt;ts&gt;_create_project_editor_state.ts</code> — table create.</li>
+      </ul>
+      <h3>Endpoints (all under <code>/api/editor</code>, envelope <code>{success,data,error}</code>)</h3>
+      <ul class="tight">
+        <li><code>GET /tree?projectId=&amp;path=</code> → one directory level: <code>[{ name, path, type: "file"|"dir" }]</code>, sorted dirs-first, ignore-list applied.</li>
+        <li><code>GET /file?projectId=&amp;path=</code> → <code>{ path, content, kind:"text", tooLarge:false }</code>; rejects binary/oversized with a typed code.</li>
+        <li><code>GET /raw?projectId=&amp;path=</code> → streams bytes with detected <code>Content-Type</code>, <code>Content-Disposition: inline</code> (images, PDF, HTML-as-page).</li>
+        <li><code>POST /file</code> <code>{projectId, path, content}</code> → writes text file (guarded, size-capped) → <code>{ path, savedAt }</code>.</li>
+        <li><code>GET /state?projectId=</code> → <code>{ openPaths:string[], activePath:string|null }</code>.</li>
+        <li><code>PUT /state</code> <code>{projectId, openPaths, activePath}</code> → upsert; returns the saved state.</li>
+      </ul>
+      <h3>Frontend — new <code>CodeEditor/</code> feature</h3>
+      <ul class="tight">
+        <li><code>frontend/src/api/editor.ts</code> — typed fns over the client + a <code>rawFileUrl(projectId,path)</code> helper for <code>&lt;img&gt;</code>/<code>&lt;iframe&gt;</code>/<code>&lt;embed&gt;</code> src.</li>
+        <li><code>frontend/src/hooks/queries/useEditor.ts</code> — <code>useDirListing</code>, <code>useFileContent</code>, <code>useSaveFile</code>, <code>useEditorState</code>, <code>useSaveEditorState</code>.</li>
+        <li><code>frontend/src/types/index.ts</code> — add <code>FileTreeEntry</code>, <code>FileContent</code>, <code>EditorState</code>, <code>FileKind</code>.</li>
+        <li><code>components/CodeEditor/CodeEditorView.tsx</code> — the takeover: file-tree rail (back arrow + project name) + tab bar + active viewer; owns open-tabs state, syncs to <code>useEditorState</code>.</li>
+        <li><code>components/CodeEditor/FileTree.tsx</code> + <code>FileTreeNode.tsx</code> — lazy expand/collapse, file-type icons.</li>
+        <li><code>components/CodeEditor/EditorTabs.tsx</code> — tab strip, dirty dot, close (×) with confirm-on-dirty.</li>
+        <li><code>components/CodeEditor/EditorPane.tsx</code> — Monaco wrapper: language from extension, Emmet init, dirty tracking, <code>Cmd/Ctrl+S</code>.</li>
+        <li><code>components/CodeEditor/viewers/{ImageViewer,PdfViewer,HtmlViewer}.tsx</code> — image <code>&lt;img&gt;</code>; PDF <code>&lt;embed&gt;</code>/<code>&lt;iframe&gt;</code>; HTML toggle code↔page.</li>
+        <li><code>components/CodeEditor/editorLanguages.ts</code> — extension → Monaco language id; kind classification mirror of the backend.</li>
+        <li><code>frontend/src/lib/monaco.ts</code> — loader + <code>MonacoEnvironment</code> worker wiring; <code>vite.config.ts</code> worker config.</li>
+      </ul>
+      <h3>Persistence schema — <code>project_editor_state</code></h3>
+      <ul class="tight">
+        <li><code>id</code> PK; <code>project_id</code> FK → <code>projects(id)</code> ON DELETE CASCADE, <strong>unique</strong>; <code>open_paths</code> JSONB (ordered relative paths); <code>active_path</code> TEXT NULL; <code>created_at</code>, <code>updated_at</code> timestamps. Index on <code>project_id</code> (unique covers it).</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <p>Grouped for parallel execution (§ Parallel Sub-Agent Orchestration). Group A and B share only the endpoint contract above, so they can run in parallel; C depends on B; D depends on A+C.</p>
+
+      <article class="task-card">
+        <h3>T1: Migration + EditorStateModel (Group A)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add the Knex migration creating <code>project_editor_state</code>; add <code>EditorStateModel</code> with <code>getByProjectId</code> and <code>upsert</code> (all DB access here, §7.4).</dd></div>
+          <div><dt>Files</dt><dd><code>src/database/migrations/&lt;ts&gt;_create_project_editor_state.ts</code>, <code>src/models/EditorStateModel.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd><code>npm run db:migrate</code> succeeds; <code>npx tsc -p tsconfig.json --noEmit</code> clean.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T2: Editor backend domain + path guard (Group A)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Create the <code>editor</code> controller/service/feature-utils mirroring <code>git/</code>; implement <code>fileSafety</code> (path guard + classify + constants), the six endpoints, and <code>EditorError</code>/<code>handleEditorError</code>. Register <code>/api/editor</code> in <code>routes/index.ts</code>. Raise/confirm the body-size limit for <code>POST /file</code>.</dd></div>
+          <div><dt>Files</dt><dd><code>src/routes/editor.ts</code>, <code>src/controllers/editor/**</code>, <code>src/routes/index.ts</code>, <code>src/index.ts</code> (body limit)</dd></div>
+          <div><dt>Depends on</dt><dd>T1 (state endpoints use the model)</dd></div>
+          <div><dt>Verify</dt><dd><code>npm run typecheck</code> + <code>npm run lint</code> clean; manual <code>curl</code> of each endpoint against a real project.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T3: Path-guard unit tests (Group A)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Vitest for <code>fileSafety.resolveSafePath</code> and <code>EditorService</code>: happy path, <code>..</code> escape, absolute path, symlink-out, oversized, binary, and the <code>{success,data,error}</code> contract on error paths (§20.1, §20.2).</dd></div>
+          <div><dt>Files</dt><dd><code>src/controllers/editor/feature-services/__tests__/EditorService.test.ts</code>, <code>.../feature-utils/__tests__/fileSafety.test.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T2</dd></div>
+          <div><dt>Verify</dt><dd><code>npm test</code> green; escape vectors rejected.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T4: Frontend data layer + types (Group B)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add <code>api/editor.ts</code> (incl. <code>rawFileUrl</code>), <code>hooks/queries/useEditor.ts</code>, and the new types. Mirror <code>api/git.ts</code> + <code>useGit.ts</code> (§12.1, §14.3, §15.1).</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/api/editor.ts</code>, <code>frontend/src/hooks/queries/useEditor.ts</code>, <code>frontend/src/types/index.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>endpoint contract (can start with Group A)</dd></div>
+          <div><dt>Verify</dt><dd><code>frontend</code> <code>tsc --noEmit</code> clean.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T5: Monaco integration + languages (Group B)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add deps (<code>monaco-editor</code>, <code>@monaco-editor/react</code>, <code>emmet-monaco-es</code>, pinned); wire self-hosted workers in <code>lib/monaco.ts</code> + <code>vite.config.ts</code>; add <code>editorLanguages.ts</code> (ext→language, kind classify). Extend <code>Icon.tsx</code> with file/folder/chevron/code/preview glyphs.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/lib/monaco.ts</code>, <code>frontend/vite.config.ts</code>, <code>frontend/src/components/CodeEditor/editorLanguages.ts</code>, <code>frontend/src/components/ui/Icon.tsx</code>, <code>frontend/package.json</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd><code>npm --prefix frontend run build</code> succeeds with workers bundled.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T6: Tree, tabs, editor pane, viewers (Group C)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Build <code>FileTree</code>/<code>FileTreeNode</code> (lazy), <code>EditorTabs</code> (dirty dot + confirm-on-close via <code>useConfirm</code>), <code>EditorPane</code> (Monaco, Emmet, save shortcut, dirty tracking), and <code>ImageViewer</code>/<code>PdfViewer</code>/<code>HtmlViewer</code> (code↔page toggle). Match design tokens; keep each file in its size tier (§13.1, §13.2).</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/CodeEditor/**</code> (FileTree, FileTreeNode, EditorTabs, EditorPane, viewers/*)</dd></div>
+          <div><dt>Depends on</dt><dd>T4, T5</dd></div>
+          <div><dt>Verify</dt><dd>Manual: open text/image/pdf/html; edit + save; dirty-close prompt fires.</dd></div>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T7: CodeEditorView + Sessions takeover wiring (Group D)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Build <code>CodeEditorView</code> (rail + tabs + viewer, syncing open tabs to <code>useEditorState</code>). Add the files icon beside <code>+</code> in <code>SessionSidebar</code> with an <code>onOpenEditor</code> prop; add <code>editorProjectId</code> state in <code>SessionPanel</code> that swaps in <code>CodeEditorView</code>; back arrow clears it. Preserve all existing session behavior.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/CodeEditor/CodeEditorView.tsx</code>, <code>frontend/src/components/Session/SessionSidebar.tsx</code>, <code>frontend/src/components/Session/SessionPanel.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>T6 (and T4)</dd></div>
+          <div><dt>Verify</dt><dd>Manual: files icon enters editor; back returns to sessions; tabs persist across reload.</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>npm run typecheck</code> (backend) and frontend <code>tsc --noEmit</code> — zero errors</li>
+        <li><input type="checkbox" disabled> <code>npm run lint</code> + <code>npm run check:conventions --strict</code> (backend) — no new violations</li>
+        <li><input type="checkbox" disabled> <code>npm test</code> — path-guard escape vectors (<code>..</code>, absolute, symlink-out) all rejected; error-contract paths covered (§20.2)</li>
+        <li><input type="checkbox" disabled> <code>npm run db:migrate</code> applies <code>project_editor_state</code>; rollback works</li>
+        <li><input type="checkbox" disabled> <code>npm --prefix frontend run build</code> succeeds with Monaco workers bundled (offline, no CDN)</li>
+        <li><input type="checkbox" disabled> Manual: files icon beside <code>+</code> opens the editor takeover; back arrow returns to sessions</li>
+        <li><input type="checkbox" disabled> Manual: open a JS/TS/JSON/XML/HTML file — syntax highlighting + Emmet work</li>
+        <li><input type="checkbox" disabled> Manual: edit a text file, <code>Cmd/Ctrl+S</code>, confirm change on disk; closing a dirty tab prompts</li>
+        <li><input type="checkbox" disabled> Manual: view a PNG and a PDF in a tab; toggle an HTML file between code and page</li>
+        <li><input type="checkbox" disabled> Manual: reload the app — previously open tabs reopen for that project</li>
+        <li><input type="checkbox" disabled> Security: a request with <code>path=../../etc/passwd</code> (and an absolute path) is rejected; no read/write escapes the project root</li>
+        <li><input type="checkbox" disabled> No regression in the existing Session chat flow</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="task-card">
+        <h3>Rev 1 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Executed the plan in an isolated git worktree (<code>../deveasy-code-editor</code>, branch <code>feat/project-code-editor</code>) via parallel sub-agents (backend / frontend-infra / UI), then integrated and verified.</p>
+        <p><strong>Reason — Execution deviations &amp; discoveries:</strong></p>
+        <ul class="tight">
+          <li><strong>Pre-existing repo bug found &amp; fixed.</strong> <code>.gitignore</code> had an unanchored <code>projects/</code> rule that also ignored <code>src/controllers/projects/</code> — so that whole backend domain was never committed (exists only as on-disk files in main). Anchored it to <code>/projects/</code> so the domain is trackable; recovered the 4 on-disk files into the worktree so the backend builds/runs. Committed as a separate <code>fix:</code> commit. The domain files themselves are left untracked (mirroring main's state) — recommend committing them on main.</li>
+          <li><strong>State validation relaxed to lexical (bug fix).</strong> <code>EditorStateService.saveState</code> originally ran the full <code>resolveSafePath</code> (incl. <code>fs.realpath</code>) on each persisted tab path, which hard-failed persistence whenever an open tab was a symlink — and DevEasy injects <code>CLAUDE.md</code>/<code>.claude/*</code> as symlinks. Persisted paths are UI bookmarks, so they are now validated lexically (reject absolute/<code>..</code>) via a new <code>assertRelativePathShape</code>; the authoritative fs guard (incl. symlink realpath) still runs at every read/write.</li>
+          <li><strong>Known tradeoff — symlinked config not openable.</strong> The read/write symlink-escape guard (spec mitigation) blocks opening DevEasy's injected <code>CLAUDE.md</code>/<code>.claude/*</code> because they realpath outside the project root. Kept the safe default rather than weaken it. Follow-up: allowlist the managed-config target so those specific files can be opened.</li>
+          <li><strong>Lazy-loaded the editor.</strong> <code>CodeEditorView</code> is <code>React.lazy</code> + <code>Suspense</code> in <code>SessionPanel</code>, so Monaco (~3.4 MB) is split into its own on-demand chunk; the initial bundle stayed ~620 kB.</li>
+          <li><strong>Isolated test environment.</strong> Worktree points at its own DB <code>deveasy_editor</code> (all 4 migrations applied) and at the real projects folder, on backend port <code>1240</code> / Vite <code>5174</code> — so it runs alongside the main app without touching its DB/migration state.</li>
+          <li><strong>Backend save body limit</strong> raised <code>2mb</code> → <code>4mb</code> in <code>src/index.ts</code> so a max-size 2 MB text save survives JSON escaping.</li>
+        </ul>
+        <p><strong>Verification:</strong> backend <code>tsc</code> clean; 33/33 vitest pass; frontend <code>tsc</code> clean; <code>vite build</code> succeeds with Monaco workers bundled offline; migration applied; all six API endpoints + the path-traversal/absolute/symlink guards verified live against the running app. Repo-wide ESLint is broken pre-existing (no <code>eslint.config.js</code> for ESLint v9) — unrelated to this work. Layer-2 UI click-through (UI1–UI5 in <code>test-results.json</code>) left <code>pending</code> for manual run.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

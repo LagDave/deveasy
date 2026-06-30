@@ -1,0 +1,172 @@
+{
+  "plan": "plans/06302026-project-code-editor",
+  "generatedAt": "2026-06-30",
+  "status": "In Progress",
+  "items": [
+    {
+      "id": "T1",
+      "title": "Migration applies; project_editor_state table exists",
+      "surface": "cli",
+      "precondition": "Isolated DB deveasy_editor on localhost:1231.",
+      "steps": ["1. npm run db:migrate", "2. inspect information_schema for project_editor_state"],
+      "expected": "Batch runs 4 migrations; table has id, project_id (unique FK), open_paths jsonb, active_path, timestamps.",
+      "status": "pass",
+      "evidence": "Migrated (Batch 1 run: 4 migrations); columns verified: id, project_id, open_paths jsonb, active_path, created_at, updated_at.",
+      "notes": ""
+    },
+    {
+      "id": "T2a",
+      "title": "Projects sync from disk via /api/projects",
+      "surface": "api",
+      "precondition": "Backend on :1240, PROJECTS_ROOT pointed at real projects.",
+      "steps": ["1. GET /api/editor/.. requires a projectId", "2. GET /api/projects"],
+      "expected": "Returns Vision + puzzlepulse with real on-disk paths.",
+      "status": "pass",
+      "evidence": "GET /api/projects -> success true, projects [1 Vision, 2 puzzlepulse].",
+      "notes": ""
+    },
+    {
+      "id": "T2b",
+      "title": "Directory tree lists lazily and hides .git/node_modules",
+      "surface": "api",
+      "precondition": "projectId=1 (Vision).",
+      "steps": ["1. GET /api/editor/tree?projectId=1&path="],
+      "expected": "One level of entries, dirs first; no .git or node_modules.",
+      "status": "pass",
+      "evidence": "Returned .claude, plans, vision-backend, vision-frontend (dirs) then files; no .git/node_modules.",
+      "notes": ""
+    },
+    {
+      "id": "T2c",
+      "title": "File read returns text content + kind",
+      "surface": "api",
+      "precondition": "projectId=1.",
+      "steps": ["1. GET /api/editor/file?projectId=1&path=README.md"],
+      "expected": "success true, kind 'text', content present.",
+      "status": "pass",
+      "evidence": "GET file README.md -> success true, kind text, 341 bytes.",
+      "notes": ""
+    },
+    {
+      "id": "T2d",
+      "title": "Raw stream sets correct Content-Type (incl text/html for HTML)",
+      "surface": "api",
+      "precondition": "projectId=1.",
+      "steps": ["1. GET /api/editor/raw for an .html file", "2. inspect Content-Type + Content-Disposition"],
+      "expected": "HTML -> text/html; charset=utf-8; Content-Disposition: inline.",
+      "status": "pass",
+      "evidence": "raw .html -> Content-Type text/html; charset=utf-8; inline. (octet-stream default for unmapped types.)",
+      "notes": ""
+    },
+    {
+      "id": "T2e",
+      "title": "Save writes text to disk (round-trip)",
+      "surface": "api",
+      "precondition": "projectId=1.",
+      "steps": ["1. POST /api/editor/file with content", "2. read back via GET /file", "3. confirm on disk"],
+      "expected": "File written verbatim to the project directory.",
+      "status": "pass",
+      "evidence": "POST save -> success; read-back matched written content; on-disk file confirmed; temp file cleaned up.",
+      "notes": ""
+    },
+    {
+      "id": "SEC1",
+      "title": "Path traversal and absolute paths are rejected (read)",
+      "surface": "api",
+      "precondition": "projectId=1.",
+      "steps": ["1. GET /api/editor/file?path=../../../../etc/passwd", "2. GET /api/editor/file?path=/etc/passwd"],
+      "expected": "Both rejected with EDITOR_PATH_FORBIDDEN; no file contents leaked.",
+      "status": "pass",
+      "evidence": "Both returned success:false, error EDITOR_PATH_FORBIDDEN.",
+      "notes": ""
+    },
+    {
+      "id": "SEC2",
+      "title": "Symlink escape is blocked at read/write time",
+      "surface": "api",
+      "precondition": "Vision contains symlinked-in config (CLAUDE.md -> outside root).",
+      "steps": ["1. GET /api/editor/file?path=CLAUDE.md (a symlink out)"],
+      "expected": "Rejected with EDITOR_PATH_OUTSIDE_ROOT (fs.realpath guard).",
+      "status": "pass",
+      "evidence": "Symlinked CLAUDE.md resolved outside root and was rejected (EDITOR_PATH_OUTSIDE_ROOT). KNOWN TRADEOFF: injected config can't be opened in the editor yet.",
+      "notes": "See spec Revision Log Rev 1."
+    },
+    {
+      "id": "T3",
+      "title": "Editor state persists per project (and guard holds)",
+      "surface": "api",
+      "precondition": "projectId=1.",
+      "steps": ["1. PUT /api/editor/state with openPaths incl a symlinked file", "2. GET /api/editor/state", "3. PUT with ../../etc/passwd"],
+      "expected": "Saves and reads back; lexical guard still rejects absolute/.. paths.",
+      "status": "pass",
+      "evidence": "PUT/GET round-trip returned the saved openPaths+activePath (incl CLAUDE.md bookmark); ../../etc/passwd rejected EDITOR_PATH_FORBIDDEN.",
+      "notes": ""
+    },
+    {
+      "id": "BUILD",
+      "title": "Frontend builds with Monaco workers bundled offline; backend tests pass",
+      "surface": "cli",
+      "precondition": "Worktree deps installed.",
+      "steps": ["1. npm --prefix frontend run build", "2. backend npm test + npm run typecheck"],
+      "expected": "Build succeeds, Monaco split into lazy chunk + 5 self-hosted workers; 33 backend tests pass; tsc clean both trees.",
+      "status": "pass",
+      "evidence": "Build OK (main 620kB, CodeEditorView 3.45MB lazy chunk, ts/css/html/json mode workers emitted, no CDN). Backend 33/33 tests pass; tsc clean BE+FE.",
+      "notes": ""
+    },
+    {
+      "id": "UI1",
+      "title": "Files icon opens the editor takeover; back arrow returns to sessions",
+      "surface": "ui",
+      "precondition": "App running (open http://localhost:1240).",
+      "steps": ["1. In Sessions, click the code icon next to + on a project", "2. confirm the left rail becomes a file tree with project name + back arrow", "3. click back"],
+      "expected": "Editor takeover appears; back arrow restores the session list.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Awaiting manual run."
+    },
+    {
+      "id": "UI2",
+      "title": "Open text files in tabs with syntax highlighting + Emmet",
+      "surface": "ui",
+      "precondition": "Editor open on a project (e.g. vision-backend has .ts/.json).",
+      "steps": ["1. Expand folders, open a .ts/.tsx/.json/.xml/.html file", "2. each opens a closeable tab", "3. in an HTML/JSX file type 'div>ul>li' + Tab (Emmet)"],
+      "expected": "Tabs open with correct highlighting; Emmet expands abbreviations.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Awaiting manual run."
+    },
+    {
+      "id": "UI3",
+      "title": "Edit + save; dirty-close confirmation",
+      "surface": "ui",
+      "precondition": "A text file open.",
+      "steps": ["1. edit content (tab shows a dirty dot)", "2. Cmd/Ctrl+S", "3. open a new dirty tab and click its x"],
+      "expected": "Save writes to disk (toast); closing a dirty tab prompts to discard.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Backend save verified via API (T2e); UI flow awaits manual run."
+    },
+    {
+      "id": "UI4",
+      "title": "Image + PDF viewers; HTML code/page toggle",
+      "surface": "ui",
+      "precondition": "A project containing a png and a pdf (or add one), and an html file.",
+      "steps": ["1. open a .png -> image viewer", "2. open a .pdf -> pdf viewer", "3. open a .html -> toggle Code/Page"],
+      "expected": "Image renders; PDF renders; HTML switches between Monaco code and a rendered page (iframe).",
+      "status": "pending",
+      "evidence": "",
+      "notes": "raw content-types verified via API (T2d); UI rendering awaits manual run."
+    },
+    {
+      "id": "UI5",
+      "title": "Open tabs persist across an app reload",
+      "surface": "ui",
+      "precondition": "Editor open with 2+ tabs.",
+      "steps": ["1. open a few files", "2. reload the browser", "3. reopen the editor for that project"],
+      "expected": "Previously open tabs + active tab reappear.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "State API persistence verified (T3); UI hydration awaits manual run."
+    }
+  ]
+}

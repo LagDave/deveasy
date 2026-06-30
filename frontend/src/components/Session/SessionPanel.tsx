@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ApiError } from "../../api";
 import { useProjects } from "../../hooks/queries/useProjects";
 import {
@@ -15,6 +15,12 @@ import { Spinner } from "../ui/Spinner";
 import { SessionComposer } from "./SessionComposer";
 import { SessionSidebar } from "./SessionSidebar";
 import { SessionTranscript } from "./SessionTranscript";
+
+// Lazy so Monaco (~heavy) is only fetched when the editor takeover is opened,
+// keeping the initial Sessions bundle lean.
+const CodeEditorView = lazy(() =>
+  import("../CodeEditor/CodeEditorView").then((m) => ({ default: m.CodeEditorView })),
+);
 
 const STATUS_PILL: Record<string, string> = {
   open: "pill-success",
@@ -36,6 +42,7 @@ export function SessionPanel() {
   const deleteSession = useDeleteSession();
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [creatingProjectId, setCreatingProjectId] = useState<number | null>(null);
+  const [editorProjectId, setEditorProjectId] = useState<number | null>(null);
 
   const onRename = (sessionId: number, title: string) => {
     renameSession.mutate(
@@ -72,6 +79,19 @@ export function SessionPanel() {
     return <div className="px-8 py-7"><Spinner label="Loading sessions" /></div>;
   }
 
+  if (editorProjectId !== null) {
+    const editorProject = projects?.find((p) => p.id === editorProjectId);
+    return (
+      <Suspense fallback={<div className="px-8 py-7"><Spinner label="Loading editor" /></div>}>
+        <CodeEditorView
+          projectId={editorProjectId}
+          projectName={editorProject?.name ?? `Project #${editorProjectId}`}
+          onBack={() => setEditorProjectId(null)}
+        />
+      </Suspense>
+    );
+  }
+
   return (
     <div className="flex h-full">
       <SessionSidebar
@@ -81,6 +101,7 @@ export function SessionPanel() {
         creatingProjectId={creatingProjectId}
         onSelect={setActiveSessionId}
         onNewSession={onNewSession}
+        onOpenEditor={setEditorProjectId}
         onRename={onRename}
         onDelete={onDelete}
       />

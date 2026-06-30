@@ -22,7 +22,8 @@ const isProduction = process.env.NODE_ENV === "production";
 function createApiApp(): express.Express {
   const app = express();
   app.use(helmet({ contentSecurityPolicy: false })); // CSP off so Vite HMR works in dev
-  app.use(express.json({ limit: "2mb" }));
+  // 4mb headroom so a max-size (2mb) editor save survives JSON string-escaping.
+  app.use(express.json({ limit: "4mb" }));
   app.use(pinoHttp({ logger }));
 
   app.get("/api/health", (_req, res) => {
