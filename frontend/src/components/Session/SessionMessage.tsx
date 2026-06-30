@@ -64,24 +64,29 @@ function UserMessage({ text, scrollRef }: { text: string; scrollRef?: ScrollRef 
   const content = body || text;
 
   const [stuck, setStuck] = useState(false);
-  const sentinelRef = useRef<HTMLSpanElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const root = scrollRef?.current;
-    const el = sentinelRef.current;
+    const el = wrapperRef.current;
     if (!root || !el) return;
-    const io = new IntersectionObserver(([entry]) => setStuck(!entry.isIntersecting), {
+    // Canonical "is it pinned?" detection: with a -1px top margin, a pinned
+    // element gets clipped (ratio < 1); fully in flow it's ratio 1.
+    const io = new IntersectionObserver(([entry]) => setStuck(entry.intersectionRatio < 1), {
       root,
-      threshold: 0,
+      threshold: [1],
+      rootMargin: "-1px 0px 0px 0px",
     });
     io.observe(el);
     return () => io.disconnect();
   }, [scrollRef]);
 
   return (
-    <motion.div {...enter} className={`sticky top-0 z-20 flex ${stuck ? "justify-stretch" : "justify-end"}`}>
-      {/* sentinel just above the pinned position — out of view ⇒ stuck */}
-      <span ref={sentinelRef} aria-hidden className="pointer-events-none absolute -top-px left-0 h-px w-full" />
+    <motion.div
+      {...enter}
+      ref={wrapperRef}
+      className={`sticky top-0 z-20 flex ${stuck ? "justify-stretch" : "justify-end"}`}
+    >
       <motion.div
         layout
         transition={{ type: "spring", stiffness: 520, damping: 42 }}
