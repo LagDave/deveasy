@@ -125,7 +125,6 @@ function SessionRow({
       >
         <RuntimeDot runtime={runtime} />
         <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
-        {runtime === "working" && <span className="eyebrow !text-accent">working</span>}
         {runtime === "idle" && <span className="eyebrow !text-success">ready</span>}
       </button>
       <div className="absolute right-1.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 group-hover:flex">
@@ -154,14 +153,17 @@ function SessionRow({
 function RuntimeDot({ runtime }: { runtime: SessionRuntime }) {
   if (runtime === null) return <span className="h-2 w-2 shrink-0 rounded-full bg-faint" />;
   if (runtime === "idle") return <span className="h-2 w-2 shrink-0 rounded-full bg-success" />;
+  // working: a subtle "typing" indicator — three amber dots bouncing in sequence.
   return (
-    <span className="relative grid h-2 w-2 shrink-0 place-items-center">
-      <motion.span
-        className="absolute inset-0 rounded-full bg-accent"
-        animate={{ opacity: [0.4, 0, 0.4], scale: [1, 2.2, 1] }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <span className="h-2 w-2 rounded-full bg-accent" />
+    <span className="flex shrink-0 items-end gap-0.5" aria-label="working">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full bg-accent"
+          animate={{ y: [0, -3, 0], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 }}
+        />
+      ))}
     </span>
   );
 }
