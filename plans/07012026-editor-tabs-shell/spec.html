@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editor Tabs Shell &amp; Nav Restructure Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#fff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); margin-top:14px; }
+    .eyebrow,dt { color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,4rem); line-height:.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:.1rem .3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:.92em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid>div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    ul { margin:0; padding-left:1.1rem; }
+    li { margin:4px 0; }
+    .revision-entry { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; }
+    .revision-entry:first-of-type { border-top:0; padding-top:0; margin-top:0; }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec · 1 of 3</p>
+        <span class="status-pill">In Progress</span>
+      </div>
+      <h1>Editor Tabs Shell &amp; Nav Restructure</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>In Progress</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/07012026-editor-tabs-shell</dd></div>
+        <div><dt>Size</dt><dd>Medium</dd></div>
+        <div><dt>Risk</dt><dd>Level 2</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>Cockpit is a separate top-level tab, detached from the project you are actually editing. Everything project-scoped (files, git, pull requests, and soon a terminal) should live in one place: the editor takeover. This spec turns that takeover into a tabbed shell and removes the Cockpit sidebar entry, relocating its Azure pull-request panels into a <code>PRS</code> sub-tab.</p>
+      <p>This is the structural skeleton the other two plans build on: <strong>plans/07012026-repo-git-desktop</strong> fills the <code>REPO</code> tab, <strong>plans/07012026-terminal</strong> fills the <code>TERMINAL</code> tab.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>The editor takeover (<code>CodeEditorView</code>) gains a tab strip with four tabs: <strong>FILES · REPO · PRS · TERMINAL</strong>. FILES holds today's file tree + editor unchanged. PRS holds the Azure PR panels scoped to the open project (no project selector — the project is already known). REPO and TERMINAL ship as empty placeholders in this plan (filled by plans 2 and 3); REPO temporarily hosts the existing read-only <code>GitPanel</code> so no git visibility is lost between plans.</p>
+      <p>The <code>Cockpit</code> entry is removed from the left sidebar. Done when: opening a project shows the four-tab takeover, FILES works exactly as before, PRS shows that project's PRs and connect/settings flow, and there is no Cockpit tab in the sidebar.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files</h3>
+      <ul>
+        <li><code>frontend/src/App.tsx</code> — top-level sidebar; <code>SECTIONS</code> array (lines 20-25) and <code>renderSection()</code> hold the Cockpit entry to remove.</li>
+        <li><code>frontend/src/components/CodeEditor/CodeEditorView.tsx</code> — the takeover to wrap in a tab shell; current body becomes the FILES tab.</li>
+        <li><code>frontend/src/components/CodeEditor/EditorTabs.tsx</code> — existing in-app tab UI; the closest analog for the new workspace tab strip.</li>
+        <li><code>frontend/src/components/Cockpit/CockpitPanel.tsx</code> — source of the PR panels; its project selector logic is dropped (project comes from the takeover).</li>
+        <li><code>frontend/src/components/Cockpit/{PullRequestList,PullRequestDetail,CreatePullRequestForm,AzureSettings,GitPanel}.tsx</code> — moved/reused, not rewritten.</li>
+        <li><code>frontend/src/components/Session/SessionPanel.tsx</code> (lines 128-139) — mounts <code>CodeEditorView</code>; the mount call is unchanged.</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li><strong>§12.3</strong> feature folders — new tab components live under <code>components/CodeEditor/</code> (or a new <code>components/Workspace/</code>), not a flat dump.</li>
+        <li><strong>§13.1 / §13.3</strong> — <code>CodeEditorView</code> must not absorb every tab's body; each tab is its own child component (FilesTab, RepoTab placeholder, PrsTab, TerminalTab placeholder). One responsibility per file; stay well under the 800-line ceiling.</li>
+        <li><strong>§15.1 / §15.2</strong> — server state stays in React Query (existing Azure/git hooks); only the active-tab id is local UI state.</li>
+        <li><strong>§15.1</strong> — the PRS tab reuses the existing <code>useAzure*</code> / <code>useGit*</code> hooks; do not refetch or mirror into <code>useState</code>.</li>
+      </ul>
+      <p><strong>Reference file:</strong> <code>frontend/src/components/CodeEditor/EditorTabs.tsx</code> — match its tab-strip structure, active styling, and props shape for the workspace tab strip.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li>Keep FILES behavior byte-for-byte: tree, open tabs, dirty state, persisted editor state.</li>
+            <li>Scope PRS to the takeover's <code>projectId</code> — drop the Cockpit project selector.</li>
+            <li>Default active tab = FILES.</li>
+            <li>Preserve PR connect / reconnect (401 → settings) behavior from CockpitPanel.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No new dependencies.</li>
+            <li>Do not build REPO git-write or TERMINAL logic here — placeholders only (REPO temporarily shows read-only GitPanel).</li>
+            <li>Do not change any backend route, controller, or model.</li>
+            <li>No drive-by refactor of the Azure PR components beyond removing the selector.</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>REPO commit/branch/push/merge and the diff viewer (plan 2).</li>
+        <li>Terminal / node-pty / xterm.js (plan 3).</li>
+        <li>Persisting the active tab across reloads (acceptable to default to FILES).</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 2 — Concern. UI restructure plus deleting a top-level entry; no backend change.</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li>Removing Cockpit before PRS exists would strip PR access. <strong>Mitigation:</strong> build the PRS tab in the same pass that removes the Cockpit entry; do not merge a state where neither exists.</li>
+        <li>Read-only git visibility (branch/status/history) lived only in Cockpit's GitPanel. <strong>Mitigation:</strong> REPO placeholder hosts GitPanel until plan 2 replaces it.</li>
+        <li><code>CockpitPanel.tsx</code> becomes dead after the move. <strong>Mitigation:</strong> delete it in this plan (its children are reused; the container is not) to avoid a dead export (§ post-exec Step 1).</li>
+        <li>The PR panels assumed a nullable selected project; the takeover always has one. <strong>Mitigation:</strong> pass the non-null <code>projectId</code> through; remove the null-state branches that no longer apply.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> <code>App.tsx</code> (sidebar), <code>SessionPanel.tsx</code> (unchanged mount), the five Cockpit child components (re-parented), <code>CodeEditorView.tsx</code> (wrapped). No backend consumers.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li>Four tabs in a takeover that you reach <em>per project</em> means PRs are no longer reachable without opening a project. That is the intended consolidation, but if you ever want an all-projects PR overview, this removes it. Recommended: accept it now; revisit only if a cross-project view is actually needed.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <article class="task-card">
+        <h3>T1: Workspace tab shell</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add a tab strip + active-tab state to the takeover. Header keeps back button + project name; below it, the FILES · REPO · PRS · TERMINAL strip. Render the active tab's child component.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/CodeEditor/CodeEditorView.tsx</code>, new <code>WorkspaceTabs.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd>Manual: open a project, see four tabs, FILES active by default.</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T2: Extract FILES tab</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Move the current tree + editor body of <code>CodeEditorView</code> into a <code>FilesTab</code> child (props: <code>projectId</code>). No behavior change.</dd></div>
+          <div><dt>Files</dt><dd>new <code>FilesTab.tsx</code>, <code>CodeEditorView.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>Manual: tree, open/close tabs, edit, save, dirty markers all unchanged.</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T3: PRS tab (Azure relocation)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Build <code>PrsTab</code> from CockpitPanel's PR section: AzureSettings + PullRequestList + PullRequestDetail + CreatePullRequestForm, scoped to <code>projectId</code>, no project selector. Keep the 401→settings reconnect flow.</dd></div>
+          <div><dt>Files</dt><dd>new <code>PrsTab.tsx</code>; reuse <code>components/Cockpit/*</code> children</dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>Manual: PRS tab lists the open project's PRs; connect/settings works.</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T4: REPO + TERMINAL placeholders</h3>
+        <dl>
+          <div><dt>Do</dt><dd>REPO tab renders the existing read-only <code>GitPanel</code> (interim) with a note that full git tooling lands in plan 2. TERMINAL renders an empty state pointing to plan 3.</dd></div>
+          <div><dt>Files</dt><dd>new <code>RepoTab.tsx</code>, <code>TerminalTab.tsx</code>; reuse <code>components/Cockpit/GitPanel.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>Manual: REPO shows branch/status/history; TERMINAL shows placeholder.</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T5: Remove Cockpit from the sidebar</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Drop the <code>cockpit</code> entry from <code>SECTIONS</code> and its <code>renderSection</code> case in <code>App.tsx</code>. Delete the now-dead <code>CockpitPanel.tsx</code>. Leave the <code>cockpit</code> icon in the Icon set (still used by GitPanel header).</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/App.tsx</code>, delete <code>components/Cockpit/CockpitPanel.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>T3, T4</dd></div>
+          <div><dt>Verify</dt><dd><code>npm run frontend:build</code> clean; no Cockpit tab; no dead import.</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>npm run frontend:build</code> passes</li>
+        <li><input type="checkbox" disabled> <code>cd frontend &amp;&amp; npx tsc --noEmit</code> — zero new errors</li>
+        <li><input type="checkbox" disabled> Manual: takeover shows FILES · REPO · PRS · TERMINAL; FILES default</li>
+        <li><input type="checkbox" disabled> Manual: FILES behaves exactly as before (tree, tabs, edit, save, dirty)</li>
+        <li><input type="checkbox" disabled> Manual: PRS lists the open project's PRs and connect/settings works</li>
+        <li><input type="checkbox" disabled> Manual: no Cockpit entry in the sidebar; no dead imports/exports</li>
+        <li><input type="checkbox" disabled> <code>npm run check:conventions</code> — no new violations</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Executed. Status → In Progress (code complete; UI acceptance items pending a running-app run). Added a <code>terminal</code> icon (<code>ComputerTerminal01Icon</code>) to the Icon set for the tab strip. FILES stays mounted (hidden when inactive) so editor buffers survive tab switches — Monaco's <code>automaticLayout</code> re-measures on show.</p>
+        <p><strong>Reason:</strong> Execution deviation: keeping FILES mounted preserves "FILES behaves exactly as before" across the new tab switches.</p>
+        <p><strong>Note:</strong> <code>check:conventions</code> is not wired in this project (no script); gated on <code>tsc</code> + build instead. Project lint config (<code>eslint.config.js</code>) is missing pre-existing, so lint was not run.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

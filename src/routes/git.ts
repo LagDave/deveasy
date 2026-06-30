@@ -12,5 +12,11 @@ router.get("/history", GitController.history);
 router.get("/status", GitController.status);
 router.get("/branches", GitController.branches);
 router.post("/checkout", GitController.checkout);
+router.post("/stage", GitController.stage);
+router.post("/unstage", GitController.unstage);
+router.post("/commit", GitController.commit);
+router.post("/branch", GitController.branch);
+router.post("/push", GitController.push);
+router.post("/merge-main", GitController.mergeMain);
 
 export default router;

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TERMINAL Tab Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#fff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); margin-top:14px; }
+    .eyebrow,dt { color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,4rem); line-height:.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:.1rem .3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:.92em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid>div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    ul { margin:0; padding-left:1.1rem; }
+    li { margin:4px 0; }
+    table { border-collapse:collapse; width:100%; margin-top:8px; font-size:.9rem; }
+    th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; }
+    th { background:var(--soft); }
+    .revision-entry { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; }
+    .revision-entry:first-of-type { border-top:0; padding-top:0; margin-top:0; }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec · 3 of 3</p>
+        <span class="status-pill">In Progress</span>
+      </div>
+      <h1>TERMINAL Tab</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>In Progress</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/07012026-terminal</dd></div>
+        <div><dt>Size</dt><dd>Large</dd></div>
+        <div><dt>Risk</dt><dd>Level 4</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>To work in a project without leaving DevEasy, the operator needs real terminals — run builds, git, scripts, anything. They must support multiple instances and, critically, <strong>survive a browser reload</strong>: a long-running command should keep going and the view should reattach. They only die when the DevEasy server stops.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>The TERMINAL tab (placeholder from plan 1) hosts <strong>multiple terminal instances</strong> per project, each a real PTY (pseudo-terminal) running the operator's shell in the project directory, rendered with <strong>xterm.js</strong>. The PTYs live in the backend process — keyed by id, kept in memory for the server's lifetime, killed only on server shutdown. The browser connects to a PTY over a WebSocket; on reload it re-lists the project's live terminals, reconnects, and <strong>replays scrollback</strong> so the recent output reappears.</p>
+      <p>Done when: you can open several terminals in a project, run commands, reload the page and find the same terminals still running with their recent output restored, and the PTYs only terminate when the DevEasy server is stopped.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files</h3>
+      <ul>
+        <li><code>src/services/ClaudeProcessService.ts</code> — the persistence pattern to mirror: an in-memory <code>Map</code> keyed by id, idempotent start, clean teardown, <code>bindSignals()</code> reaping children on SIGINT/SIGTERM, API-key-scrubbed env. The terminal service is the same shape for PTYs.</li>
+        <li><code>src/ws/sessionWebSocket.ts</code> — the <code>noServer</code> WS upgrade pattern; add a parallel handler for <code>/ws/terminal</code> that does not collide with <code>/ws/sessions</code>.</li>
+        <li><code>src/index.ts</code> (the <code>&lt;deveasy:websockets&gt;</code> marker) — where the new WS relay attaches.</li>
+        <li><code>frontend/src/hooks/useSession.ts</code> — the frontend WS-lifecycle hook to model the terminal socket hook on (connect, reconnect, cleanup).</li>
+        <li><code>src/controllers/git/</code> + <code>frontend/src/api/git.ts</code> — the controller/route + frontend-triad shapes to copy for the terminal REST management endpoints.</li>
+        <li><code>frontend/src/components/CodeEditor/TerminalTab.tsx</code> — the placeholder from plan 1, rebuilt here.</li>
+      </ul>
+      <h3>New Dependencies (§4.4 justification)</h3>
+      <ul>
+        <li><strong><code>node-pty</code></strong> (backend) — the standard native PTY binding. No pure-JS alternative gives a real TTY; the pipe-based fallback was explicitly rejected (vim/top/colors break). Native module: needs prebuilt binaries or a build toolchain (node-gyp) on each machine — see Risk.</li>
+        <li><strong><code>@xterm/xterm</code> + <code>@xterm/addon-fit</code></strong> (frontend) — the standard terminal emulator widget + auto-resize addon.</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li><strong>§5.2</strong> — spawn the shell via <code>node-pty.spawn(shell, [], { cwd, env })</code> with an argv array and the project path as <code>cwd</code> — never interpolate the path into a shell command string.</li>
+        <li><strong>§7.1-7.4, §8.1-8.3</strong> — the REST management endpoints (create/list/kill) go through Routes → Controller → Service with the <code>{ success, data, error }</code> envelope and a typed <code>TerminalError</code>.</li>
+        <li><strong>§9.1</strong> — Pino only; PTY output is never logged (it can contain secrets the operator types) (§5.3).</li>
+        <li><strong>§13.1</strong> — split frontend into <code>TerminalTab</code> (instance strip) + <code>TerminalInstance</code> (one xterm) + <code>useTerminalSocket</code> hook.</li>
+      </ul>
+      <p><strong>Reference file (backend):</strong> <code>ClaudeProcessService.ts</code> for the process registry + signal reaping; <code>sessionWebSocket.ts</code> for the WS upgrade. <strong>Reference (frontend):</strong> <code>useSession.ts</code> for the socket lifecycle.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li>PTYs persist in a backend registry for the server's lifetime; closing the WebSocket detaches, it does not kill the PTY.</li>
+            <li>Bound scrollback per terminal (ring buffer, fixed byte cap) replayed on attach.</li>
+            <li>Reap all PTYs on SIGINT/SIGTERM (reuse the <code>bindSignals</code> pattern).</li>
+            <li>Cap concurrent PTYs (mirror <code>MAX_CONCURRENT_SESSIONS</code>).</li>
+            <li>Support resize (cols/rows) from the client via the fit addon.</li>
+            <li>On reload, list the project's live terminals and reconnect to each.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No unbounded scrollback buffer (memory growth) — cap it (§ failure-mode thinking).</li>
+            <li>Do not log PTY input/output (§5.3).</li>
+            <li>Do not kill PTYs on WS close or browser reload — only on server shutdown.</li>
+            <li>Do not reuse the <code>/ws/sessions</code> channel — separate <code>/ws/terminal</code>.</li>
+            <li>No auth/remote exposure changes — this stays a localhost single-operator app.</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>Persisting PTYs across a server restart (they die with the server — that is the stated boundary).</li>
+        <li>Splits/panes inside one terminal, themes, font config (defaults only in v1).</li>
+        <li>Remote/multi-user access or terminal sharing.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 4 — Major impact. New native dependency, a new WS channel, in-memory process state, and by design arbitrary shell execution at the server's privilege.</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li><strong>Arbitrary command execution.</strong> A PTY is a full shell at the server user's privilege. <strong>Mitigation:</strong> acceptable for a local-first single-operator app bound to localhost; document it. Do not expose the server beyond localhost. No new attack surface vs. the operator's own terminal.</li>
+        <li><strong>node-pty native build.</strong> Needs prebuilt binaries or node-gyp + toolchain per machine; can fail on <code>npm install</code>. <strong>Mitigation:</strong> pin a version with darwin/arm64 prebuilds; document the toolchain fallback; fail fast with a clear message if the binding can't load (§5.6 spirit).</li>
+        <li><strong>Orphaned PTYs / leak.</strong> <strong>Mitigation:</strong> <code>bindSignals</code> reaping + a concurrent-PTY cap + explicit kill endpoint.</li>
+        <li><strong>Scrollback memory growth.</strong> <strong>Mitigation:</strong> fixed-size ring buffer per terminal; drop oldest bytes.</li>
+        <li><strong>Reconnect races / duplicate streams</strong> on reload. <strong>Mitigation:</strong> model the socket hook on <code>useSession</code>; one WS per instance; idempotent attach; replay-then-live ordering.</li>
+        <li><strong>WS upgrade collision.</strong> <strong>Mitigation:</strong> path-scoped <code>noServer</code> handler that ignores non-<code>/ws/terminal</code> upgrades, exactly as <code>sessionWebSocket</code> does for its path.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> new <code>TerminalProcessService</code>, new <code>terminalWebSocket.ts</code>, <code>index.ts</code> (attach), new terminal controller/routes, <code>package.json</code> + <code>frontend/package.json</code> (deps), new frontend <code>api/terminal.ts</code> + hooks + <code>TerminalTab</code> children.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li>This is genuinely a Level 4 change and the largest of the three. Recommend executing it <strong>last</strong>, after plans 1 and 2 are merged and stable, and on its own branch — the native dependency alone can derail an install. Confirmed sequencing: plan 1 → plan 2 → plan 3.</li>
+        <li>Consider whether "survives reload" is enough, or whether you'll later want "survives server restart" (would require detaching PTYs from the node process — e.g. tmux/screen-backed — a much bigger design). v1 stops at reload, by decision.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="protocol">
+      <h2>Management API + WS protocol</h2>
+      <table>
+        <tr><th>Channel</th><th>Shape</th><th>Purpose</th></tr>
+        <tr><td><code>POST /api/terminal</code></td><td><code>{ projectId } → { terminalId }</code></td><td>Spawn a PTY in the project cwd</td></tr>
+        <tr><td><code>GET /api/terminal?projectId=</code></td><td><code>→ { terminals: [{ id, createdAt }] }</code></td><td>List live PTYs (for reattach on reload)</td></tr>
+        <tr><td><code>DELETE /api/terminal/:id</code></td><td><code>→ { ok }</code></td><td>Kill one PTY</td></tr>
+        <tr><td><code>WS /ws/terminal?terminalId=</code></td><td>attach → replay scrollback → live duplex</td><td>Stream one PTY</td></tr>
+      </table>
+      <p>WS messages: client→server <code>{ type: "input", data }</code> and <code>{ type: "resize", cols, rows }</code>; server→client raw output frames (data) plus a leading scrollback replay.</p>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <article class="task-card">
+        <h3>T1: TerminalProcessService (PTY registry)</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add <code>node-pty</code>. Build the registry: <code>create(projectId)</code>, <code>attach(terminalId, onData)</code> with scrollback replay, <code>write</code>, <code>resize</code>, <code>list(projectId)</code>, <code>kill</code>. Ring-buffer scrollback, concurrent cap, <code>bindSignals</code> reaping, fail-fast if the binding won't load.</dd></div>
+          <div><dt>Files</dt><dd>new <code>src/services/TerminalProcessService.ts</code>, <code>package.json</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd>Unit: create→write→read echoes; scrollback caps; kill removes from registry.</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T2: Terminal WebSocket relay</h3>
+        <dl>
+          <div><dt>Do</dt><dd><code>terminalWebSocket.ts</code> on <code>/ws/terminal</code> (noServer): read <code>terminalId</code>, attach, replay scrollback, pipe PTY↔WS, handle input/resize; detach (not kill) on close. Wire into <code>index.ts</code>.</dd></div>
+          <div><dt>Files</dt><dd>new <code>src/ws/terminalWebSocket.ts</code>, <code>src/index.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>Connect with a WS client; type a command; see output; close + reconnect replays scrollback.</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T3: Terminal management endpoints</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Controller + routes for create/list/kill, thin (§7.3), typed <code>TerminalError</code>, <code>{ success, data, error }</code>. Add Vite dev-proxy entry for <code>/ws/terminal</code> if needed.</dd></div>
+          <div><dt>Files</dt><dd>new <code>src/controllers/terminal/</code> (Controller + feature-utils), <code>src/routes/terminal.ts</code>, <code>src/routes/index.ts</code>, <code>frontend/vite.config.ts</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd>curl create→list→delete; envelope shape correct.</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T4: Frontend api + socket hook</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add <code>@xterm/xterm</code> + <code>@xterm/addon-fit</code>. <code>api/terminal.ts</code> (create/list/kill) + <code>useTerminalSocket</code> hook bridging an xterm instance to <code>/ws/terminal</code> (modeled on <code>useSession</code>), with fit/resize.</dd></div>
+          <div><dt>Files</dt><dd>new <code>frontend/src/api/terminal.ts</code>, <code>frontend/src/hooks/useTerminalSocket.ts</code>, <code>frontend/package.json</code></dd></div>
+          <div><dt>Depends on</dt><dd>T3</dd></div>
+          <div><dt>Verify</dt><dd><code>cd frontend &amp;&amp; npx tsc --noEmit</code> clean.</dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T5: TERMINAL tab UI</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Rebuild <code>TerminalTab</code>: instance strip with "+" (create) and close (kill); each <code>TerminalInstance</code> renders an xterm wired via the hook. On mount, list the project's live terminals and reattach.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/CodeEditor/TerminalTab.tsx</code> + new <code>terminal/TerminalInstance.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>T4</dd></div>
+          <div><dt>Verify</dt><dd>Manual: open 2 terminals, run a long command, reload → both still running, scrollback restored.</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>npm install</code> builds <code>node-pty</code> cleanly (or documented toolchain step)</li>
+        <li><input type="checkbox" disabled> <code>npm test</code> + <code>npm run frontend:build</code> pass</li>
+        <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> (root + frontend) — zero new errors</li>
+        <li><input type="checkbox" disabled> <code>npm run check:conventions --strict</code> — passes</li>
+        <li><input type="checkbox" disabled> Manual: open multiple terminals in a project; commands run with a real TTY (colors/vim work)</li>
+        <li><input type="checkbox" disabled> Manual: reload the browser → terminals still running, recent scrollback restored</li>
+        <li><input type="checkbox" disabled> Manual: resize the window → terminal reflows (fit addon)</li>
+        <li><input type="checkbox" disabled> Manual: stopping the DevEasy server kills the PTYs (no orphans — verify with <code>ps</code>)</li>
+        <li><input type="checkbox" disabled> No PTY input/output written to logs</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Executed. Status → In Progress (service + WS relay built and proven by automated tests; UI reload/resize/shutdown acceptance pending a running app). Added <code>scripts/fix-node-pty.mjs</code> + a <code>postinstall</code> hook.</p>
+        <p><strong>Reason:</strong> Execution deviation: node-pty 1.1.0's prebuilt darwin <code>spawn-helper</code> shipped without the execute bit, so <code>posix_spawnp</code> failed at spawn time. The postinstall restores it (no-op off darwin) so <code>npm install</code> yields a working terminal — satisfying the "installs cleanly" Done item.</p>
+        <p><strong>Note:</strong> The PTY child env scrubs <code>ANTHROPIC_API_KEY</code> so <code>claude</code> in the terminal uses the subscription login, consistent with the app's sessions. The Vite dev proxy already forwards all <code>/ws</code> (covers <code>/ws/terminal</code>), so no proxy change was needed. Added an end-to-end WS integration test (<code>terminalWebSocket.test.ts</code>) beyond the spec's task list.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,13 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { AgentManagerPanel } from "./components/AgentManager/AgentManagerPanel";
-import { CockpitPanel } from "./components/Cockpit/CockpitPanel";
 import { SessionPanel, type OpenSessionRequest } from "./components/Session/SessionPanel";
 import { Icon, type IconName } from "./components/ui/Icon";
 import { panelSwap } from "./components/ui/motion";
 import { ProjectPicker } from "./pages/ProjectPicker";
 
-type SectionId = "sessions" | "cockpit" | "agents" | "projects";
+type SectionId = "sessions" | "agents" | "projects";
 
 interface Section {
   id: SectionId;
@@ -19,7 +18,6 @@ interface Section {
 // Projects is last: projects aren't "opened" — they just appear in the session list.
 const SECTIONS: Section[] = [
   { id: "sessions", label: "Sessions", icon: "sessions", blurb: "Chat with Claude" },
-  { id: "cockpit", label: "Cockpit", icon: "cockpit", blurb: "Git & pull requests" },
   { id: "agents", label: "Agents", icon: "agents", blurb: "Shared config" },
   { id: "projects", label: "Projects", icon: "projects", blurb: "Workspace" },
 ];
@@ -37,8 +35,6 @@ export default function App() {
 
   const renderSection = () => {
     switch (current.id) {
-      case "cockpit":
-        return <CockpitPanel />;
       case "agents":
         return <AgentManagerPanel />;
       case "projects":

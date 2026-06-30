@@ -9,6 +9,7 @@ import {
   Cancel01Icon,
   CheckmarkBadge01Icon,
   CheckmarkCircle02Icon,
+  ComputerTerminal01Icon,
   Delete02Icon,
   EyeIcon,
   File01Icon,
@@ -57,6 +58,7 @@ export const ICONS = {
   pullRequest: GitPullRequestIcon,
   commit: GitCommitIcon,
   branch: GitBranchIcon,
+  terminal: ComputerTerminal01Icon,
   file: File01Icon,
   // code-editor glyphs (file tree + viewers)
   folder: Folder01Icon,

@@ -1,0 +1,58 @@
+{
+  "plan": "plans/07012026-editor-tabs-shell",
+  "generatedAt": "2026-07-01",
+  "status": "In Progress",
+  "items": [
+    {
+      "id": "T1",
+      "title": "Project takeover shows four workspace tabs (FILES · REPO · PRS · TERMINAL)",
+      "surface": "ui",
+      "precondition": "At least one project exists; open it via the folder icon in the session sidebar.",
+      "steps": ["1. Start the app (npm run dev:all).", "2. Open a project's editor.", "3. Observe the tab strip below the project header."],
+      "expected": "Four tabs render; FILES is active by default.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "tsc + frontend build pass; visual check needs the running app."
+    },
+    {
+      "id": "T2",
+      "title": "FILES tab behaves exactly as before",
+      "surface": "ui",
+      "precondition": "Editor takeover open on FILES.",
+      "steps": ["1. Expand the file tree.", "2. Open a file, edit it, Cmd/Ctrl+S to save.", "3. Switch to REPO and back to FILES."],
+      "expected": "Tree, open tabs, dirty markers, save, and editor state all work; switching tabs does not reset open editors.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "T3",
+      "title": "PRS tab lists the open project's pull requests and connect/settings works",
+      "surface": "ui",
+      "precondition": "Azure connection configured for the project (or ready to configure).",
+      "steps": ["1. Click the PRS tab.", "2. Observe the Azure connection panel and PR list.", "3. If disconnected, enter a PAT and reconnect."],
+      "expected": "PRs for the open project load; the 401→settings reconnect flow works; no project selector is shown.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "T4",
+      "title": "Cockpit is gone from the sidebar; no dead imports",
+      "surface": "ui",
+      "precondition": "App running.",
+      "steps": ["1. Look at the left sidebar.", "2. Confirm there is no Cockpit entry (Sessions · Agents · Projects only)."],
+      "expected": "No Cockpit tab; CockpitPanel.tsx and GitPanel.tsx are deleted.",
+      "status": "pass",
+      "evidence": "App.tsx SECTIONS no longer contains cockpit; CockpitPanel.tsx and GitPanel.tsx removed; frontend build clean (no dead imports)."
+    },
+    {
+      "id": "T5",
+      "title": "Build + typecheck pass",
+      "surface": "cli",
+      "precondition": "Dependencies installed.",
+      "steps": ["1. cd frontend && npx tsc --noEmit", "2. npm run frontend:build"],
+      "expected": "Both exit 0.",
+      "status": "pass",
+      "evidence": "tsc EXIT=0; Vite build succeeded (chunk-size warning is pre-existing Monaco bulk)."
+    }
+  ]
+}
