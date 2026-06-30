@@ -35,7 +35,7 @@ export default function App() {
       {/* ── Sidebar ── */}
       <aside className="flex w-[256px] shrink-0 flex-col gap-7 border-r border-line px-5 py-6">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-accent font-mono text-sm font-bold text-[#1a1205]">D</span>
+          <img src="/logo.png" alt="DevEasy" className="h-9 w-9 shrink-0 object-contain" />
           <span className="font-mono text-lg font-semibold tracking-tight">DevEasy</span>
         </div>
 
