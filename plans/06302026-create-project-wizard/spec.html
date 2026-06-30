@@ -59,11 +59,11 @@
     <header class="spec-hero">
       <div class="hero-topline">
         <p class="eyebrow">DevEasy Plan Spec</p>
-        <span class="status-pill status-pending">Pending Execution</span>
+        <span class="status-pill status-pending">In Progress</span>
       </div>
       <h1>Create New Project Wizard</h1>
       <dl class="meta-grid">
-        <div class="status-card"><dt>Status</dt><dd>Pending Execution</dd></div>
+        <div class="status-card"><dt>Status</dt><dd>In Progress</dd></div>
         <div><dt>Plan Folder</dt><dd>plans/06302026-create-project-wizard</dd></div>
         <div><dt>Size</dt><dd>Large</dd></div>
         <div><dt>Risk</dt><dd>Level 3</dd></div>
@@ -271,6 +271,17 @@
         <li><input type="checkbox" disabled> Subscription auth preserved — no <code>ANTHROPIC_API_KEY</code> introduced anywhere</li>
         <li><input type="checkbox" disabled> No regression: normal sessions, command gate, and existing project scan unchanged</li>
       </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="task-card">
+        <h3>Rev 1 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Executed T1–T6 in an isolated worktree (branch <code>feat/create-project-wizard</code>) across three parallel agents. Three execution-time deviations from the as-written spec, plus one added test.</p>
+        <p><strong>Reason (Execution deviation):</strong> (1) <strong>.gitignore bug fix.</strong> The repo's <code>.gitignore</code> had an unanchored <code>projects/</code> rule that also matched <code>src/controllers/projects/</code>, so the entire backend projects domain was gitignored and never committed — the worktree came up without it and did not type-check. Anchored the rule to <code>/projects/</code> (workspace <code>projects/</code> and the ignored <code>Vision</code>/<code>puzzlepulse</code> clones stay ignored; the source domain becomes trackable). The previously-untracked domain files (<code>ProjectsController</code>, <code>controllerResponses</code>, <code>ProjectError</code>, <code>ProjectScanService</code>) are now committed on this branch. (2) <strong>Seed-turn hidden.</strong> <code>WizardChat</code> now filters the technical <code>-i</code> gate-passing seed turn out of the visible transcript (the parser only stripped fenced blocks). (3) <strong>Real signatures.</strong> <code>ProjectModel.upsertByPath(name, path)</code> and <code>SessionModel.create(projectId, title)</code> are positional; <code>git init</code> uses <code>execFile</code> (arg-array, no shell). Error codes map: <code>PROJECT_NAME_INVALID</code>/<code>PROJECT_PATH_INVALID</code>→400, <code>PROJECT_PATH_OUTSIDE_ROOT</code>/<code>PROJECT_EXISTS</code>→403/409, <code>PROJECT_GIT_INIT_FAILED</code>→500.</p>
+        <p><strong>Added task (Rev 1):</strong> T2a — <code>src/services/PathGuard.test.ts</code> (10 tests, pure, no mocks) covering the §5.2 traversal-rejection paths the Done checklist calls for. Establishes the repo's first vitest test.</p>
+        <p><strong>Updated Done criteria:</strong> "PathGuard rejects names…" item is met by T2a (10/10 pass). Build gate met (backend + frontend <code>tsc</code> exit 0). Behavioral items (live wizard run, scaffold output, POST smoke test) tracked in <code>test-results.json</code> as <code>pending</code> for a human run against the running app — no computer-use agent was available to drive the full agentic flow headlessly.</p>
+      </article>
     </section>
   </main>
 </body>

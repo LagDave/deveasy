@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { ApiError } from "../api";
+import { CreateProjectWizard } from "../components/CreateProject/CreateProjectWizard";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Icon } from "../components/ui/Icon";
 import { Spinner } from "../components/ui/Spinner";
@@ -9,10 +11,12 @@ import { useProjects } from "../hooks/queries/useProjects";
 /**
  * Lists the project clones DevEasy found in projects/. Projects aren't "opened"
  * here — they appear automatically in the Sessions rail, where you start a session
- * against any of them. This view is the inventory of what DevEasy can see.
+ * against any of them. This view is the inventory of what DevEasy can see, plus the
+ * entry point for scaffolding a new project via the create wizard.
  */
 export function ProjectPicker() {
   const { data: projects, isLoading, error } = useProjects();
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   return (
     <div className="h-full overflow-y-auto px-8 py-7">
@@ -30,18 +34,31 @@ export function ProjectPicker() {
           title="No projects yet"
           hint={
             <>
-              Drop a git clone into the <code className="rounded bg-surface-2 px-1 py-0.5 text-xs">projects/</code> folder
-              — it appears here and in the Sessions rail automatically.
+              Create a new project below, or drop a git clone into the{" "}
+              <code className="rounded bg-surface-2 px-1 py-0.5 text-xs">projects/</code> folder — either appears
+              here and in the Sessions rail automatically.
             </>
+          }
+          action={
+            <button className="btn btn-primary" onClick={() => setWizardOpen(true)}>
+              <Icon name="add" size={15} />
+              Create new project
+            </button>
           }
         />
       )}
 
       {projects && projects.length > 0 && (
         <>
-          <p className="mb-4 max-w-3xl text-sm text-muted">
-            Start a session against any of these from the <span className="text-ink">Sessions</span> tab.
-          </p>
+          <div className="mb-4 flex max-w-3xl items-center justify-between gap-3">
+            <p className="m-0 text-sm text-muted">
+              Start a session against any of these from the <span className="text-ink">Sessions</span> tab.
+            </p>
+            <button className="btn btn-primary shrink-0" onClick={() => setWizardOpen(true)}>
+              <Icon name="add" size={15} />
+              Create new project
+            </button>
+          </div>
           <motion.ul
             variants={staggerContainer}
             initial="hidden"
@@ -66,6 +83,8 @@ export function ProjectPicker() {
           </motion.ul>
         </>
       )}
+
+      <CreateProjectWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
     </div>
   );
 }

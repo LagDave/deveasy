@@ -1,0 +1,122 @@
+{
+  "plan": "plans/06302026-create-project-wizard",
+  "generatedAt": "2026-06-30",
+  "status": "In Progress",
+  "items": [
+    {
+      "id": "T0",
+      "title": "Build gate — both trees typecheck clean",
+      "surface": "cli",
+      "precondition": "node_modules linked into the worktree",
+      "steps": [
+        "1. Backend: npx tsc -p tsconfig.json --noEmit",
+        "2. Frontend: cd frontend && npx tsc -b --noEmit"
+      ],
+      "expected": "Both exit 0 with no errors introduced by this change.",
+      "status": "pass",
+      "evidence": "Backend tsc exit 0; frontend tsc exit 0 (verified during execution).",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T2a",
+      "title": "PathGuard rejects traversal / separator names (unit test)",
+      "surface": "cli",
+      "precondition": "none",
+      "steps": ["1. npx vitest run src/services/PathGuard.test.ts"],
+      "expected": "All tests pass; names with .. / \\ and empty names throw ProjectError (PROJECT_PATH_INVALID), out-of-root paths throw PROJECT_PATH_OUTSIDE_ROOT.",
+      "status": "pass",
+      "evidence": "10 tests passed (Test Files 1 passed).",
+      "notes": "",
+      "waiver": ""
+    },
+    {
+      "id": "T1",
+      "title": "create-new-ts-project skill loads and asks via the JSON protocol",
+      "surface": "cli",
+      "precondition": "Skill at .claude/skills/create-new-ts-project/SKILL.md; a session running against any project",
+      "steps": [
+        "1. Confirm the skill appears in the Agent Manager list.",
+        "2. In a scratch session, invoke the skill.",
+        "3. Observe the assistant's first turn."
+      ],
+      "expected": "Skill is listed; first turn emits exactly one fenced ```deveasy-question block (the name confirmation), then waits. No AskUserQuestion tool use, no command-gate refusal.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Behavioral — run against the live app.",
+      "waiver": ""
+    },
+    {
+      "id": "T3",
+      "title": "POST /api/projects creates dir + git init and returns { project, sessionId }",
+      "surface": "api",
+      "precondition": "App running (npm run dev:all), Postgres up, migrations applied",
+      "steps": [
+        "1. curl -XPOST localhost:1234/api/projects -H 'Content-Type: application/json' -d '{\"name\":\"smoke-test\"}'",
+        "2. Inspect projects/smoke-test/ on disk",
+        "3. Repeat the same curl a second time"
+      ],
+      "expected": "1st call: 201 with { success:true, data:{ project:{id,name,path,...}, sessionId:<n> } }; projects/smoke-test/ exists with a .git directory and injected CLAUDE.md/.claude symlinks. 2nd call: 409 with error.code PROJECT_EXISTS.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Needs the running backend + database.",
+      "waiver": ""
+    },
+    {
+      "id": "T5",
+      "title": "Wizard renders choices as buttons and round-trips the selection",
+      "surface": "ui",
+      "precondition": "App running; logged-in Claude CLI (subscription)",
+      "steps": [
+        "1. Projects page → click 'Create new project'.",
+        "2. Type a name, click Create.",
+        "3. Wait for the first question to render as buttons (the technical seed turn must NOT be visible).",
+        "4. Click an option (e.g. the Microsoft-auth answer)."
+      ],
+      "expected": "The deveasy-question renders as clickable options (raw JSON hidden); clicking sends the answer and the conversation advances to the next question or scaffolding.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Behavioral — run against the live app.",
+      "waiver": ""
+    },
+    {
+      "id": "T5b",
+      "title": "Scaffold output is correct (Vision stack, optional MSAL, git init, no install, no secrets)",
+      "surface": "ui",
+      "precondition": "Completed wizard run with Microsoft auth = yes",
+      "steps": [
+        "1. Complete the wizard.",
+        "2. Inspect the generated projects/<slug>/ tree."
+      ],
+      "expected": "Backend (Express+Knex+TS) + frontend (React+Vite+TS+shadcn) packages present; MSAL scaffolding uses only AZURE_*/VITE_AZURE_* env placeholders (no real secrets); a .git exists; node_modules NOT installed; README documents the install/run next steps.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Behavioral — run against the live app.",
+      "waiver": ""
+    },
+    {
+      "id": "T6",
+      "title": "New project appears in the Projects list after completion",
+      "surface": "ui",
+      "precondition": "Completed wizard run",
+      "steps": ["1. On deveasy-done / close, observe the Projects list."],
+      "expected": "The new project appears in the list (the projects query was invalidated and re-scanned the git repo).",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Behavioral — run against the live app.",
+      "waiver": ""
+    },
+    {
+      "id": "SEC",
+      "title": "Subscription auth preserved — no ANTHROPIC_API_KEY introduced",
+      "surface": "cli",
+      "precondition": "none",
+      "steps": ["1. grep the diff for ANTHROPIC_API_KEY / new auth paths."],
+      "expected": "No API key is set or required; the wizard reuses the existing CLI pipeline that scrubs the key. No Agent SDK dependency added.",
+      "status": "pass",
+      "evidence": "No ANTHROPIC_API_KEY references added; no new dependencies; wizard reuses ClaudeProcessService + /ws/sessions unchanged.",
+      "notes": "",
+      "waiver": ""
+    }
+  ]
+}
