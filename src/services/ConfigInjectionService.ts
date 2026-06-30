@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import {
   GITIGNORE_BLOCK_END,
   GITIGNORE_BLOCK_START,
@@ -12,6 +14,7 @@ import { childLogger } from "../lib/logger";
 import { ProjectError } from "../controllers/projects/feature-utils/ProjectError";
 
 const log = childLogger({ module: "ConfigInjectionService" });
+const execFileAsync = promisify(execFile);
 
 interface InjectionTarget {
   /** Absolute path of the link to create inside the project. */
@@ -33,6 +36,7 @@ interface InjectionTarget {
 export class ConfigInjectionService {
   static async inject(projectPath: string): Promise<void> {
     await ConfigInjectionService.ensureSharedConfigExists();
+    await ConfigInjectionService.ensureGitBoundary(projectPath);
 
     const targets: InjectionTarget[] = [
       { linkPath: path.join(projectPath, "CLAUDE.md"), target: SHARED_CLAUDE_MD },
@@ -49,6 +53,29 @@ export class ConfigInjectionService {
 
     await ConfigInjectionService.ensureGitignoreBlock(projectPath);
     log.info({ projectPath }, "Injected shared config into project");
+  }
+
+  /**
+   * Make the project its own git boundary. Claude Code resolves the project root
+   * by walking up to the nearest `.git`; if the project folder isn't a repo (e.g. a
+   * folder holding separate backend/frontend repos), Claude would walk past it into
+   * the DevEasy repo and describe DevEasy instead of the project. A `git init` here
+   * stops that walk at the project. Idempotent and best-effort — a failure is logged,
+   * not fatal, so a session can still start.
+   */
+  private static async ensureGitBoundary(projectPath: string): Promise<void> {
+    try {
+      await fs.access(path.join(projectPath, ".git"));
+      return; // already a repo (or has a .git file) — nothing to do
+    } catch {
+      // no .git here
+    }
+    try {
+      await execFileAsync("git", ["init"], { cwd: projectPath });
+      log.info({ projectPath }, "git init: made project its own root so Claude stays scoped to it");
+    } catch (err) {
+      log.warn({ projectPath, err }, "Could not git init project root; sessions may read the parent repo");
+    }
   }
 
   private static async ensureSharedConfigExists(): Promise<void> {
