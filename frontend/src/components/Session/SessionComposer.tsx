@@ -30,6 +30,9 @@ interface SessionComposerProps {
 
 const MAX_ROWS_PX = 200;
 
+/** Built-in CLI actions always offered in the slash autocomplete (even pre-init). */
+const BUILTIN_SLASH = ["compact", "context", "clear"];
+
 export function SessionComposer({
   onSend,
   disabled,
@@ -43,6 +46,8 @@ export function SessionComposer({
   const [text, setText] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [slashDismissed, setSlashDismissed] = useState(false);
   const ref = useRef<HTMLTextAreaElement | null>(null);
 
   const trimmed = text.trim();
@@ -52,11 +57,13 @@ export function SessionComposer({
   const canSend = !disabled && trimmed.length > 0 && (Boolean(active) || isSlash);
 
   // Skill autocomplete: when the message is just a partial `/word` (no space yet),
-  // suggest matching slash commands.
+  // suggest matching slash commands. Built-in actions (compact/context/clear) are
+  // always offered alongside the session's own skills/slash commands.
   const slashMatch = text.match(/^\s*\/(\S*)$/);
+  const commandPool = Array.from(new Set([...BUILTIN_SLASH, ...slashCommands]));
   const suggestions =
-    slashMatch && slashCommands.length
-      ? slashCommands.filter((c) => c.toLowerCase().startsWith(slashMatch[1].toLowerCase())).slice(0, 8)
+    slashMatch && !slashDismissed
+      ? commandPool.filter((c) => c.toLowerCase().startsWith(slashMatch[1].toLowerCase())).slice(0, 8)
       : [];
 
   const grow = () => {
@@ -68,6 +75,8 @@ export function SessionComposer({
 
   const setText2 = (next: string) => {
     setText(next);
+    setActiveSuggestion(0);
+    setSlashDismissed(false);
     requestAnimationFrame(grow);
   };
 
@@ -95,6 +104,29 @@ export function SessionComposer({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Slash-command autocomplete navigation takes priority while it's open.
+    if (suggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveSuggestion((i) => (i + 1) % suggestions.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveSuggestion((i) => (i - 1 + suggestions.length) % suggestions.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        applySlash(suggestions[Math.min(activeSuggestion, suggestions.length - 1)]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSlashDismissed(true);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
@@ -117,20 +149,6 @@ export function SessionComposer({
   return (
     <div className="border-t border-line px-6 py-4">
       <div className="mx-auto max-w-3xl">
-        {/* Controls row: compact */}
-        <div className="mb-2 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onSend("/compact")}
-            disabled={disabled}
-            className="btn btn-ghost !px-2.5 !py-1 disabled:opacity-50"
-            title="Compact this conversation to free context"
-          >
-            <Icon name="quickfix" size={13} />
-            <span className="font-mono text-xs">/compact</span>
-          </button>
-        </div>
-
         <div className={`surface flex items-end gap-2 p-2 ${borderClass}`}>
           {/* Command picker / active-command indicator */}
           <div className="relative">
@@ -168,12 +186,15 @@ export function SessionComposer({
             {/* Skill / slash-command autocomplete */}
             {suggestions.length > 0 && (
               <div className="surface absolute bottom-full left-0 z-30 mb-2 max-h-60 w-60 overflow-y-auto p-1">
-                {suggestions.map((name) => (
+                {suggestions.map((name, i) => (
                   <button
                     key={name}
                     type="button"
+                    onMouseEnter={() => setActiveSuggestion(i)}
                     onClick={() => applySlash(name)}
-                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left hover:bg-surface-2"
+                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left hover:bg-surface-2 ${
+                      i === activeSuggestion ? "bg-surface-2" : ""
+                    }`}
                   >
                     <span className="font-mono text-xs text-accent">/{name}</span>
                   </button>

@@ -346,6 +346,12 @@
         <p><strong>Reason:</strong> User request: version in the dropdown entries too.</p>
         <p><strong>Constraint:</strong> a model's version is only known once it has run (from its init event), so unrun models show just the family — there is no reliable source for their version without running them. Files: <code>SessionComposer.tsx</code>.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 7 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Removed the standalone <code>/compact</code> button; <code>compact</code> (plus <code>context</code>/<code>clear</code>) is now offered through the <code>/</code> autocomplete, always present even before the init event. Added keyboard navigation to the autocomplete: Arrow Up/Down move the highlight, Enter/Tab accept, Escape dismisses; the active row is highlighted and mouse hover syncs it.</p>
+        <p><strong>Reason:</strong> User request: hide /compact inside the slash actions; make the autocomplete keyboard-navigable including compact.</p>
+        <p><strong>Files:</strong> <code>SessionComposer.tsx</code>.</p>
+      </article>
     </section>
   </main>
 </body>
