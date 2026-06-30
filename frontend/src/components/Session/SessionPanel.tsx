@@ -9,6 +9,7 @@ import {
 } from "../../hooks/queries/useSessionHistory";
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
+import type { WorkspaceTab } from "../CodeEditor/WorkspaceTabs";
 import { WizardChoice } from "../CreateProject/WizardChoice";
 import { buildSeedTurn, parseWizardQuestion } from "../CreateProject/wizardProtocol";
 import { EmptyState } from "../ui/EmptyState";
@@ -59,7 +60,15 @@ export function SessionPanel({
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [creatingProjectId, setCreatingProjectId] = useState<number | null>(null);
   const [editorProjectId, setEditorProjectId] = useState<number | null>(null);
+  const [editorTab, setEditorTab] = useState<WorkspaceTab>("files");
   const seededRef = useRef<Set<number>>(new Set());
+
+  // Open the editor takeover for a project, optionally on a specific tab (Repo/Terminal
+  // shortcuts from the sidebar). Defaults to Files, matching the plain folder button.
+  const openEditor = (projectId: number, tab: WorkspaceTab = "files") => {
+    setEditorTab(tab);
+    setEditorProjectId(projectId);
+  };
 
   // Open a session handed in from elsewhere (the create-project wizard).
   useEffect(() => {
@@ -132,6 +141,7 @@ export function SessionPanel({
         <CodeEditorView
           projectId={editorProjectId}
           projectName={editorProject?.name ?? `Project #${editorProjectId}`}
+          initialTab={editorTab}
           onBack={() => setEditorProjectId(null)}
         />
       </Suspense>
@@ -147,7 +157,7 @@ export function SessionPanel({
         creatingProjectId={creatingProjectId}
         onSelect={setActiveSessionId}
         onNewSession={onNewSession}
-        onOpenEditor={setEditorProjectId}
+        onOpenEditor={openEditor}
         onRename={onRename}
         onDelete={onDelete}
       />

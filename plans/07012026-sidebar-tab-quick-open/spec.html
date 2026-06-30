@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sidebar Tab Quick-Open Spec</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #ffffff;
+      --ink: #080808;
+      --muted: #5f5f5f;
+      --line: #d8d8d8;
+      --soft: #f5f5f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    .spec-shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0; }
+    .spec-hero, .spec-card, .task-card { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .spec-hero { border-color: var(--ink); padding: 32px; margin-bottom: 20px; }
+    .hero-topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .spec-card { padding: 28px; margin-top: 16px; }
+    .task-card { padding: 20px; background: var(--soft); margin-top: 12px; }
+    .eyebrow, dt { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
+    .eyebrow { margin: 0; }
+    .status-pill { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 0.78rem; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+    .status-card { border-color: var(--ink); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 840px; margin-bottom: 24px; font-size: clamp(2.25rem, 6vw, 5rem); line-height: 0.95; letter-spacing: 0; }
+    h2 { font-size: 1.35rem; letter-spacing: 0; }
+    h3 { font-size: 1rem; letter-spacing: 0; }
+    code { padding: 0.1rem 0.3rem; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); font-size: 0.92em; }
+    .meta-grid, .split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .meta-grid { margin: 0; }
+    .meta-grid div, .split-grid > div { border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    dd { margin: 4px 0 0; font-weight: 700; }
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+    .revision-entry { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+    .revision-entry:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+    @media (max-width: 640px) {
+      .spec-shell { width: min(100% - 20px, 1120px); padding: 24px 0; }
+      .spec-hero, .spec-card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec</p>
+        <span class="status-pill">Completed</span>
+      </div>
+      <h1>Sidebar Tab Quick-Open</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Completed</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/07012026-sidebar-tab-quick-open</dd></div>
+        <div><dt>Size</dt><dd>Small (3 files)</dd></div>
+        <div><dt>Risk</dt><dd>Level 2</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>Today a project header in the Sessions rail has only a folder button that opens the editor takeover on its default <strong>Files</strong> tab, plus a <code>+</code> for a new session. Reaching the <strong>Repo</strong> or <strong>Terminal</strong> tab means opening the takeover, then clicking across the tab strip. Adding per-tab shortcut icons on the project header gets the operator straight to the tab they want in one click.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>Each project header gains hover-revealed compact icon buttons: <strong>Files</strong> (folder), <strong>Repo</strong> (branch), <strong>Terminal</strong> (terminal), and <strong>+</strong> (new session), in that order. Clicking Repo or Terminal opens the editor takeover with that tab already active; Files keeps the current behavior. The buttons appear only on row hover (like the existing session rename/delete actions), so the resting header stays just the collapse chevron + project name + git line.</p>
+      <p><strong>Done when:</strong> hovering a project reveals the four icons; Repo opens the takeover on the Repo tab, Terminal on the Terminal tab, folder on Files; <code>+</code> still starts a session; collapse toggle and git line are unchanged.</p>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant Files</h3>
+      <ul>
+        <li><code>frontend/src/components/Session/SessionSidebar.tsx</code> - renders the project header + action buttons; gains the Repo/Terminal buttons and the hover-reveal layout. Calls <code>onOpenEditor</code>.</li>
+        <li><code>frontend/src/components/Session/SessionPanel.tsx</code> - owns <code>editorProjectId</code> state and renders <code>CodeEditorView</code>; must also track which tab to open and pass it down.</li>
+        <li><code>frontend/src/components/CodeEditor/CodeEditorView.tsx</code> - the takeover shell; holds the active-tab <code>useState&lt;WorkspaceTab&gt;</code> (default <code>"files"</code>). Must accept an optional <code>initialTab</code> to seed it.</li>
+        <li><code>frontend/src/components/CodeEditor/WorkspaceTabs.tsx</code> - exports the <code>WorkspaceTab</code> type (<code>"files" | "repo" | "prs" | "terminal"</code>) and the canonical icon-per-tab mapping. Read only — no change.</li>
+      </ul>
+      <h3>Patterns To Follow</h3>
+      <ul>
+        <li><strong>Icon names</strong> come from the same mapping <code>WorkspaceTabs</code> uses: <code>folder</code> (Files), <code>branch</code> (Repo), <code>terminal</code> (Terminal), <code>add</code> (new session). Do not invent new icon names.</li>
+        <li><strong>Hover-reveal action buttons</strong> mirror the existing <code>SessionRow</code> actions in the same file: a <code>group</code> on the row container and <code>hidden group-hover:flex</code> on the action cluster, with compact <code>grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink</code> buttons.</li>
+        <li><strong>Tab state stays UI state in the React tree</strong> (§15.2) — the requested initial tab is passed as a prop; it is not server state and is not mirrored into React Query or a new store (§15.4).</li>
+        <li>The collapse chevron + name toggle button stays as-is and remains its own click target, separate from the action cluster.</li>
+      </ul>
+      <p><strong>Reference file:</strong> <code>frontend/src/components/CodeEditor/WorkspaceTabs.tsx</code> - source of the tab ids and icon-per-tab mapping the new buttons must match.</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li>Reuse the existing <code>WorkspaceTab</code> type; import it, don't redeclare it.</li>
+            <li>Default behavior unchanged: folder opens Files, <code>+</code> opens a new session.</li>
+            <li>Action buttons reveal on row hover; resting header is chevron + name + git line only.</li>
+            <li>No <code>any</code> (§17.2); no <code>console.*</code> (§17.1); component stays lean (§13.2).</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No new dependencies; no new state library (§15.4).</li>
+            <li>Do not change the editor's tab strip, the tab bodies, or any API/hook.</li>
+            <li>Do not regress the collapse-toggle feature shipped in 0.1.1.</li>
+            <li>No drive-by refactor of unrelated sidebar code.</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out Of Scope</h3>
+      <ul>
+        <li>A PRs shortcut button (only Files/Repo/Terminal requested).</li>
+        <li>Remembering the last-used tab per project.</li>
+        <li>Deep-linking / URL routing to a tab.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 2 (Concern — a shared prop signature changes)</p>
+      <h3>Risks Identified</h3>
+      <ul>
+        <li><strong>Signature change to <code>onOpenEditor</code>.</strong> Adding an optional <code>tab</code> arg touches the prop type and the one call site. <strong>Mitigation:</strong> make the arg optional (<code>(projectId, tab?) =&gt; void</code>) so the existing folder call stays valid; TypeScript covers the rest.</li>
+        <li><strong>Initial tab must re-seed each open.</strong> <code>CodeEditorView</code> is conditionally rendered, so it remounts on each open and <code>useState(initialTab ?? "files")</code> re-seeds correctly. <strong>Mitigation:</strong> rely on the existing remount; do not add an effect that fights user tab clicks after open.</li>
+        <li><strong>Four icons in a 288px rail.</strong> <strong>Mitigation:</strong> hover-reveal + compact <code>h-6 w-6</code> buttons; the name truncates, the cluster is <code>shrink-0</code>.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> <code>onOpenEditor</code> has exactly two touch points — its type in <code>SessionSidebar</code> Props and the <code>onOpenEditor={setEditorProjectId}</code> wiring in <code>SessionPanel</code>. <code>CodeEditorView</code> is rendered only by <code>SessionPanel</code>. No backend, API, hook, or type-module change.</p>
+      <h3>Pushback</h3>
+      <ul><li>None material. Threading a one-shot initial tab as a prop is the minimal correct change; a router or shared store for a transient takeover would be over-engineering (§15.4).</li></ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <article class="task-card">
+        <h3>T1: CodeEditorView accepts an initial tab</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add optional <code>initialTab?: WorkspaceTab</code> to Props; seed <code>useState&lt;WorkspaceTab&gt;(initialTab ?? "files")</code>. No effect-based syncing.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/CodeEditor/CodeEditorView.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>none</dd></div>
+          <div><dt>Verify</dt><dd><code>npx tsc --noEmit</code></dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T2: SessionPanel tracks and passes the requested tab</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Add an <code>editorTab</code> state (<code>WorkspaceTab</code>, default <code>"files"</code>). Change <code>onOpenEditor</code> to <code>(projectId, tab = "files") =&gt; { setEditorProjectId(projectId); setEditorTab(tab); }</code> and pass <code>initialTab={editorTab}</code> to <code>CodeEditorView</code>.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/Session/SessionPanel.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>T1</dd></div>
+          <div><dt>Verify</dt><dd><code>npx tsc --noEmit</code></dd></div>
+        </dl>
+      </article>
+      <article class="task-card">
+        <h3>T3: Sidebar Repo/Terminal buttons + hover-reveal layout</h3>
+        <dl>
+          <div><dt>Do</dt><dd>Widen the <code>onOpenEditor</code> prop type to <code>(projectId: number, tab?: WorkspaceTab) =&gt; void</code>. Render Files/Repo/Terminal/+ as compact icon buttons in a <code>hidden group-hover:flex</code> cluster (add <code>group</code> to the header row). Repo calls <code>onOpenEditor(id, "repo")</code>, Terminal <code>onOpenEditor(id, "terminal")</code>, folder <code>onOpenEditor(id)</code>.</dd></div>
+          <div><dt>Files</dt><dd><code>frontend/src/components/Session/SessionSidebar.tsx</code></dd></div>
+          <div><dt>Depends on</dt><dd>T2</dd></div>
+          <div><dt>Verify</dt><dd><code>npx tsc --noEmit</code>; Manual: hover a project → 4 icons; Repo/Terminal open the right tab.</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>npx tsc --noEmit</code> - zero new errors</li>
+        <li><input type="checkbox" disabled> (Rev 2) Files, Repo, Terminal, + icons are always visible on each project header</li>
+        <li><input type="checkbox" disabled> Repo button opens the takeover on the Repo tab; Terminal on the Terminal tab; folder on Files</li>
+        <li><input type="checkbox" disabled> <code>+</code> still starts a new session; collapse toggle + git line unchanged</li>
+        <li><input type="checkbox" disabled> No <code>console.*</code> / no <code>any</code> added; <code>WorkspaceTab</code> imported, not redeclared</li>
+        <li><input type="checkbox" disabled> (Rev 2) A long project name truncates with an ellipsis; the icons stay in place and are not pushed off</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 2 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Dropped hover-reveal — the four action icons are now always visible. Removed the <code>opacity-0/pointer-events-none</code> gate (and the now-dead <code>group</code> class on the header row); the cluster is plain <code>flex shrink-0</code>. The project name keeps <code>flex-1 min-w-0</code> + <code>truncate</code>, so a long name shows an ellipsis while the icons always stay in place.</p>
+        <p><strong>Reason:</strong> User QA: for long project names the user wants the icons always shown with the title truncated, not gated behind hover. Supersedes the Rev 1 hover behavior (the no-shift goal still holds — always-visible icons can't shift on hover).</p>
+        <p><strong>Updated Done criteria:</strong> The hover-reveal Done item no longer applies; icons are always visible and the title truncates.</p>
+      </article>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-07-01</h3>
+        <p><strong>Change:</strong> The hover-revealed action cluster used <code>hidden group-hover:flex</code>, so it had zero width at rest and the project name reflowed when the icons appeared on hover. Switched to keeping the cluster in layout always and toggling visibility: <code>flex opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity</code>. Space is now reserved at rest (the name truncates to the same width whether hovered or not), so hover no longer shifts the layout. <code>pointer-events-none</code> keeps the invisible buttons unclickable until revealed.</p>
+        <p><strong>Reason:</strong> User QA: hovering a project header shifted the row layout.</p>
+        <p><strong>Updated Done criteria:</strong> Added the no-layout-shift-on-hover check to the Done list.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,78 @@
+{
+  "plan": "plans/07012026-sidebar-tab-quick-open",
+  "generatedAt": "2026-07-01",
+  "status": "Passed",
+  "items": [
+    {
+      "id": "T1",
+      "title": "The four action icons are always visible on each project header",
+      "surface": "ui",
+      "precondition": "DevEasy running; Sessions panel open; at least one project visible in the left rail.",
+      "steps": [
+        "1. Look at any project header in the rail."
+      ],
+      "expected": "folder (Files), branch (Repo), terminal (Terminal), and + (new session) icons are visible at all times to the right of the project name.",
+      "status": "pass",
+      "evidence": "Manually verified by user (dave) on 2026-07-01.",
+      "notes": ""
+    },
+    {
+      "id": "T2",
+      "title": "Repo button opens the takeover on the Repo tab",
+      "surface": "ui",
+      "precondition": "A project visible in the rail.",
+      "steps": [
+        "1. Hover the project header.",
+        "2. Click the branch (Repo) icon."
+      ],
+      "expected": "The editor takeover opens with the REPO tab already active (not Files).",
+      "status": "pass",
+      "evidence": "Manually verified by user (dave) on 2026-07-01.",
+      "notes": ""
+    },
+    {
+      "id": "T3",
+      "title": "Terminal button opens the takeover on the Terminal tab",
+      "surface": "ui",
+      "precondition": "A project visible in the rail.",
+      "steps": [
+        "1. Return to Sessions (back button) if in the editor.",
+        "2. Hover the project header.",
+        "3. Click the terminal icon."
+      ],
+      "expected": "The editor takeover opens with the TERMINAL tab already active.",
+      "status": "pass",
+      "evidence": "Manually verified by user (dave) on 2026-07-01.",
+      "notes": ""
+    },
+    {
+      "id": "T4",
+      "title": "Folder opens Files; + still starts a session; collapse unchanged",
+      "surface": "ui",
+      "precondition": "A project visible in the rail.",
+      "steps": [
+        "1. Hover the header and click the folder icon.",
+        "2. Go back, hover, click the + icon.",
+        "3. Click the chevron + name area."
+      ],
+      "expected": "Folder opens the takeover on FILES. + starts a new session. Clicking the chevron/name still collapses/expands the project (does not open the editor). None of the action buttons toggle collapse.",
+      "status": "pass",
+      "evidence": "Manually verified by user (dave) on 2026-07-01.",
+      "notes": ""
+    },
+    {
+      "id": "T5",
+      "title": "A long project name truncates; icons stay in place (Rev 2)",
+      "surface": "ui",
+      "precondition": "A project visible in the rail.",
+      "steps": [
+        "1. Find or create a project with a long name.",
+        "2. Observe the header row."
+      ],
+      "expected": "The long name shows an ellipsis (truncates); the four icons remain fully visible and are not pushed off the row.",
+      "status": "pass",
+      "evidence": "Manually verified by user (dave) on 2026-07-01.",
+      "notes": ""
+    }
+  ]
+}

@@ -2,6 +2,23 @@
 
 All notable changes to DevEasy are documented here.
 
+## [0.1.3] - July 2026
+
+### One-click workspace tab shortcuts on project headers
+
+Each project header in the Sessions rail now opens the editor takeover straight to the tab you want. The folder icon opens Files, plus new Repo and Terminal icons jump directly to those tabs, alongside the existing new-session (+) button.
+
+**Key Changes:**
+- `CodeEditorView` accepts an optional `initialTab` and seeds its active tab from it (the shell remounts per open, so it re-seeds each time).
+- `SessionPanel` tracks the requested tab and threads it down via a new `openEditor(projectId, tab)` helper; `onOpenEditor` gained an optional `tab` argument.
+- `SessionSidebar` renders Files (folder), Repo (branch), Terminal (terminal), and + (new session) as compact icon buttons; Repo/Terminal pass `"repo"`/`"terminal"`.
+- Icons are always visible; the project name truncates with an ellipsis so the icons stay in place for long names and never shift the row.
+
+**Commits:**
+- `frontend/src/components/CodeEditor/CodeEditorView.tsx` — `initialTab` prop seeds tab state.
+- `frontend/src/components/Session/SessionPanel.tsx` — `editorTab` state + `openEditor` helper, passes `initialTab`.
+- `frontend/src/components/Session/SessionSidebar.tsx` — Repo/Terminal/Files/+ icon buttons, always-visible with name truncation.
+
 ## [0.1.2] - July 2026
 
 ### Tabbed project workspace: REPO git desktop + persistent terminals

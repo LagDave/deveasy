@@ -4,6 +4,7 @@ import type { GitStatusFile } from "../../api/git";
 import type { Session, SessionRuntime } from "../../api/sessions";
 import { useGitStatus } from "../../hooks/queries/useGit";
 import type { Project } from "../../types";
+import type { WorkspaceTab } from "../CodeEditor/WorkspaceTabs";
 import { useConfirm } from "../ui/confirm";
 import { Icon } from "../ui/Icon";
 import { fadeUp, staggerContainer } from "../ui/motion";
@@ -45,7 +46,7 @@ interface Props {
   creatingProjectId: number | null;
   onSelect: (sessionId: number) => void;
   onNewSession: (projectId: number) => void;
-  onOpenEditor: (projectId: number) => void;
+  onOpenEditor: (projectId: number, tab?: WorkspaceTab) => void;
   onRename: (sessionId: number, title: string) => void;
   onDelete: (sessionId: number) => void;
 }
@@ -100,18 +101,32 @@ export function SessionSidebar(props: Props) {
                   <div className="flex shrink-0 items-center gap-0.5">
                     <button
                       onClick={() => onOpenEditor(project.id)}
-                      className="btn btn-ghost !px-2 !py-1.5"
-                      title={`Open code editor for ${project.name}`}
+                      className="grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink"
+                      title={`Open files for ${project.name}`}
                     >
-                      <Icon name="folder" size={16} />
+                      <Icon name="folder" size={14} />
+                    </button>
+                    <button
+                      onClick={() => onOpenEditor(project.id, "repo")}
+                      className="grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink"
+                      title={`Open repo for ${project.name}`}
+                    >
+                      <Icon name="branch" size={14} />
+                    </button>
+                    <button
+                      onClick={() => onOpenEditor(project.id, "terminal")}
+                      className="grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink"
+                      title={`Open terminal for ${project.name}`}
+                    >
+                      <Icon name="terminal" size={14} />
                     </button>
                     <button
                       onClick={() => onNewSession(project.id)}
                       disabled={creatingProjectId === project.id}
-                      className="btn btn-ghost !px-2 !py-1.5"
+                      className="grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink disabled:opacity-50"
                       title={`New session in ${project.name}`}
                     >
-                      <Icon name="add" size={16} />
+                      <Icon name="add" size={14} />
                     </button>
                   </div>
                 </div>

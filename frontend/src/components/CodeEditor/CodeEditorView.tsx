@@ -18,10 +18,12 @@ interface Props {
   projectId: number;
   projectName: string;
   onBack: () => void;
+  /** Tab to open on; the shell remounts per open, so this seeds the active tab each time. */
+  initialTab?: WorkspaceTab;
 }
 
-export function CodeEditorView({ projectId, projectName, onBack }: Props) {
-  const [tab, setTab] = useState<WorkspaceTab>("files");
+export function CodeEditorView({ projectId, projectName, onBack, initialTab }: Props) {
+  const [tab, setTab] = useState<WorkspaceTab>(initialTab ?? "files");
 
   return (
     <div className="flex h-full flex-col">
