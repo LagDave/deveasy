@@ -282,6 +282,12 @@
         <p><strong>Added task (Rev 1):</strong> T2a — <code>src/services/PathGuard.test.ts</code> (10 tests, pure, no mocks) covering the §5.2 traversal-rejection paths the Done checklist calls for. Establishes the repo's first vitest test.</p>
         <p><strong>Updated Done criteria:</strong> "PathGuard rejects names…" item is met by T2a (10/10 pass). Build gate met (backend + frontend <code>tsc</code> exit 0). Behavioral items (live wizard run, scaffold output, POST smoke test) tracked in <code>test-results.json</code> as <code>pending</code> for a human run against the running app — no computer-use agent was available to drive the full agentic flow headlessly.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 2 - 2026-06-30</h3>
+        <p><strong>Change:</strong> Minimized the skill-load output in the wizard chat. When the agent invokes the skill, the Skill tool returns the entire <code>SKILL.md</code> prefixed with <code>Base directory for this skill:</code>; <code>WizardChat</code> was rendering that whole wall of text as a chat bubble on the very first turn.</p>
+        <p><strong>Reason (User QA):</strong> "this is too much for an initial chat — should be minimized like 'Using skill'." <code>WizardChat</code> now collapses any skill-load text item to a compact <em>"Using create-new-ts-project skill"</em> chip, and excludes it from question detection so the example <code>deveasy-question</code> blocks embedded in the skill body can't trigger a bogus question.</p>
+        <p><strong>Files:</strong> <code>frontend/src/components/CreateProject/WizardChat.tsx</code>. Frontend <code>tsc</code> clean.</p>
+      </article>
     </section>
   </main>
 </body>

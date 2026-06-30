@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useSession } from "../../hooks/useSession";
 import { flattenEvents, type RenderItem } from "../Session/sessionEvents";
+import { Icon } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
 import { Spinner } from "../ui/Spinner";
 import { WizardChoice } from "./WizardChoice";
@@ -41,12 +42,17 @@ export function WizardChat({
   }, [isReady, projectName, send]);
 
   const items = useMemo(() => flattenEvents(events), [events]);
-  // Show the conversation, but never the technical gate-passing seed turn.
+  // Show the conversation, but never the technical gate-passing seed turn. The
+  // skill-load dump is kept (rendered as a compact chip, not a wall of text).
   const textItems = useMemo(
-    () => items.filter(isVisibleText).filter((it) => !(it.role === "user" && it.text.startsWith(SEED_PREFIX))),
+    () => items.filter(isVisibleText).filter((it) => !isSeedTurn(it)),
     [items],
   );
-  const lastAssistant = [...textItems].reverse().find((it) => it.role === "assistant");
+  // Detect the question/done off the last *real* assistant turn — skip the skill
+  // dump, whose embedded example blocks would otherwise trigger a bogus question.
+  const lastAssistant = [...textItems]
+    .reverse()
+    .find((it) => it.role === "assistant" && !isSkillLoad(it));
 
   const question = lastAssistant ? parseWizardQuestion(lastAssistant.text) : null;
   const done = lastAssistant ? parseWizardDone(lastAssistant.text) : null;
@@ -61,9 +67,13 @@ export function WizardChat({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 py-1">
-      {textItems.map((it) => (
-        <ChatBubble key={it.key} role={it.role} text={visibleText(it.text)} />
-      ))}
+      {textItems.map((it) =>
+        isSkillLoad(it) ? (
+          <SkillChip key={it.key} />
+        ) : (
+          <ChatBubble key={it.key} role={it.role} text={visibleText(it.text)} />
+        ),
+      )}
 
       {partialText && <ChatBubble role="assistant" text={visibleText(partialText)} />}
 
@@ -89,6 +99,10 @@ export function WizardChat({
 // can reliably recognize and hide it.
 const SEED_PREFIX = `-i Scaffold a new TypeScript project named`;
 
+// The Skill tool returns the whole SKILL.md prefixed with this line. Rendering it
+// raw floods the chat, so we collapse it to a one-line chip.
+const SKILL_LOAD_PREFIX = "Base directory for this skill:";
+
 function seedTurn(projectName: string): string {
   return `${SEED_PREFIX} "${projectName}". Invoke the create-new-ts-project skill and follow its wizard protocol exactly — ask me each question as a deveasy-question JSON block and wait for my answer.`;
 }
@@ -97,6 +111,26 @@ type TextItem = Extract<RenderItem, { kind: "text" }>;
 
 function isVisibleText(item: RenderItem): item is TextItem {
   return item.kind === "text";
+}
+
+function isSeedTurn(item: TextItem): boolean {
+  return item.role === "user" && item.text.startsWith(SEED_PREFIX);
+}
+
+function isSkillLoad(item: TextItem): boolean {
+  return item.text.trimStart().startsWith(SKILL_LOAD_PREFIX);
+}
+
+/** Compact stand-in for the skill-load dump. */
+function SkillChip() {
+  return (
+    <div className="flex justify-start">
+      <span className="surface-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs text-faint">
+        <Icon name="skill" size={13} />
+        Using create-new-ts-project skill
+      </span>
+    </div>
+  );
 }
 
 /** Hide the user's gate-passing seed turn and suppress fenced wizard blocks. */
