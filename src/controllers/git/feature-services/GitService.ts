@@ -104,6 +104,31 @@ export class GitService {
     return GitService.parseStatus(out);
   }
 
+  /** Local branches (recent first) + the current branch, for the picker. */
+  static async getBranches(projectId: number): Promise<{ current: string; branches: string[] }> {
+    const cwd = await GitService.resolveProjectPath(projectId);
+    const current = await GitService.getCurrentBranch(cwd);
+    const out = await GitService.runGit(cwd, [
+      "branch",
+      "--format=%(refname:short)",
+      "--sort=-committerdate",
+    ]);
+    const branches = out.split("\n").map((s) => s.trim()).filter(Boolean);
+    return { current, branches };
+  }
+
+  /** Switch branches. The target is validated against the real branch list so an
+   *  attacker can't smuggle extra argv into checkout (§5.2). */
+  static async checkout(projectId: number, branch: string): Promise<GitStatus> {
+    const { branches } = await GitService.getBranches(projectId);
+    if (!branches.includes(branch)) {
+      throw new GitError("GIT_BRANCH_NOT_FOUND", "Unknown branch.", { branch });
+    }
+    const cwd = await GitService.resolveProjectPath(projectId);
+    await GitService.runGit(cwd, ["checkout", branch]);
+    return GitService.getStatus(projectId);
+  }
+
   private static async getCurrentBranch(cwd: string): Promise<string> {
     const out = await GitService.runGit(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
     return out.trim() || "HEAD";

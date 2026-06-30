@@ -7,6 +7,7 @@ import type { Project } from "../../types";
 import { useConfirm } from "../ui/confirm";
 import { Icon } from "../ui/Icon";
 import { fadeUp, staggerContainer } from "../ui/motion";
+import { BranchPicker } from "./BranchPicker";
 
 /**
  * Left rail of the Sessions panel: every project is a group, its sessions listed
@@ -109,10 +110,7 @@ function ProjectGitInfo({ projectId }: { projectId: number }) {
 
   return (
     <div className="mt-1 flex items-center gap-2 pl-0.5 text-[10px] text-faint">
-      <span className="flex min-w-0 flex-1 items-center gap-1" title={data.branch}>
-        <Icon name="branch" size={11} className="shrink-0" />
-        <span className="truncate font-mono">{data.branch}</span>
-      </span>
+      <BranchPicker projectId={projectId} current={data.branch} />
       <span className="flex shrink-0 items-center gap-1.5 font-mono">
         {added > 0 && <span className="text-success" title={`${added} new`}>+{added}</span>}
         {modified > 0 && <span className="text-accent" title={`${modified} modified`}>~{modified}</span>}

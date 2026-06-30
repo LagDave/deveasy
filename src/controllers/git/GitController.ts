@@ -45,4 +45,32 @@ export class GitController {
       return handleGitError(res, error);
     }
   }
+
+  /** GET /api/git/branches?projectId= — local branches + current. */
+  static async branches(req: Request, res: Response): Promise<Response> {
+    try {
+      const projectId = requireProjectId(req);
+      return ok(res, await GitService.getBranches(projectId));
+    } catch (error) {
+      log.error({ err: error }, "git branches failed");
+      return handleGitError(res, error);
+    }
+  }
+
+  /** POST /api/git/checkout { projectId, branch } — switch branches. */
+  static async checkout(req: Request, res: Response): Promise<Response> {
+    try {
+      const body = (req.body ?? {}) as { projectId?: unknown; branch?: unknown };
+      const projectId = Number(body.projectId);
+      if (!Number.isInteger(projectId) || projectId <= 0) {
+        throw new GitError("GIT_NO_ACTIVE_PROJECT", "A valid projectId is required.");
+      }
+      const branch = typeof body.branch === "string" ? body.branch.trim() : "";
+      if (!branch) throw new GitError("GIT_BRANCH_INVALID", "A branch name is required.");
+      return ok(res, await GitService.checkout(projectId, branch));
+    } catch (error) {
+      log.error({ err: error }, "git checkout failed");
+      return handleGitError(res, error);
+    }
+  }
 }
