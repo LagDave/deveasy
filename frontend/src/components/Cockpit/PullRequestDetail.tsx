@@ -3,6 +3,7 @@ import type { AzureReviewerVote } from "../../api/azure";
 import { useAzurePullRequestDetail } from "../../hooks/queries/useAzure";
 import { EmptyState } from "../ui/EmptyState";
 import { Spinner } from "../ui/Spinner";
+import { Icon } from "../ui/Icon";
 import { prStatusPill, shortRef } from "./prStatus";
 
 interface Props {
@@ -25,7 +26,11 @@ export function PullRequestDetail({ pullRequestId }: Props) {
   if (pullRequestId === null) {
     return (
       <section className="surface flex items-center justify-center px-6 py-5">
-        <EmptyState icon="◈" title="No pull request selected" hint="Pick a PR from the list to see its detail." />
+        <EmptyState
+          icon={<Icon name="pullRequest" size={26} />}
+          title="No pull request selected"
+          hint="Pick a PR from the list to see its detail."
+        />
       </section>
     );
   }
@@ -42,7 +47,7 @@ export function PullRequestDetail({ pullRequestId }: Props) {
       <section className="surface px-6 py-5">
         {reconnect ? (
           <EmptyState
-            icon="⚠"
+            icon={<Icon name="error" size={26} />}
             title="Azure connection expired"
             hint="Your PAT is no longer valid. Re-enter it in Azure connection above to reload this PR."
           />
@@ -72,7 +77,10 @@ export function PullRequestDetail({ pullRequestId }: Props) {
       </header>
 
       <div>
-        <p className="eyebrow mb-2">Reviewers</p>
+        <p className="eyebrow mb-2 flex items-center gap-2">
+          <Icon name="agent" size={14} className="text-accent" />
+          Reviewers
+        </p>
         {pr.reviewers.length === 0 ? (
           <p className="text-sm text-faint">No reviewers.</p>
         ) : (
@@ -90,7 +98,10 @@ export function PullRequestDetail({ pullRequestId }: Props) {
       </div>
 
       <div>
-        <p className="eyebrow mb-2">Changed files</p>
+        <p className="eyebrow mb-2 flex items-center gap-2">
+          <Icon name="file" size={14} className="text-accent" />
+          Changed files
+        </p>
         {pr.changedFiles.length === 0 ? (
           <p className="text-sm text-faint">No changed files reported.</p>
         ) : (
@@ -106,7 +117,10 @@ export function PullRequestDetail({ pullRequestId }: Props) {
       </div>
 
       <div>
-        <p className="eyebrow mb-2">Threads</p>
+        <p className="eyebrow mb-2 flex items-center gap-2">
+          <Icon name="sessions" size={14} className="text-accent" />
+          Threads
+        </p>
         {pr.threads.length === 0 ? (
           <p className="text-sm text-faint">No comment threads.</p>
         ) : (

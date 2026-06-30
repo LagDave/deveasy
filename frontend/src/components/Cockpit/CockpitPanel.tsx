@@ -5,6 +5,7 @@ import { CreatePullRequestForm } from "./CreatePullRequestForm";
 import { GitPanel } from "./GitPanel";
 import { PullRequestDetail } from "./PullRequestDetail";
 import { PullRequestList } from "./PullRequestList";
+import { Icon } from "../ui/Icon";
 
 /**
  * The mountable Azure / Git cockpit for the active project. Composes the git panel,
@@ -31,12 +32,13 @@ export function CockpitPanel() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-line px-6 py-3">
+        <Icon name="cockpit" size={16} className="text-accent" />
         <span className="eyebrow">Cockpit</span>
         <span className="font-mono text-xs text-faint">Git &amp; pull requests</span>
         <span
           className={`ml-auto pill ${isConnected ? "pill-success" : "pill"}`}
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          <Icon name={isConnected ? "success" : "error"} size={12} />
           {status?.status ?? "loading"}
         </span>
       </div>

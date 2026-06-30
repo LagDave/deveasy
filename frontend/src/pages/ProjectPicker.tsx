@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ApiError } from "../api";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Icon } from "../components/ui/Icon";
 import { Spinner } from "../components/ui/Spinner";
 import { fadeUp, staggerContainer } from "../components/ui/motion";
 import { useActiveProject, useProjects, useSelectProject } from "../hooks/queries/useProjects";
@@ -34,7 +35,7 @@ export function ProjectPicker() {
 
       {!isLoading && !error && (!projects || projects.length === 0) && (
         <EmptyState
-          icon="◳"
+          icon={<Icon name="projects" size={26} />}
           title="No projects yet"
           hint={
             <>

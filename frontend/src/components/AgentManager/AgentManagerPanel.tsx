@@ -9,6 +9,7 @@ import {
 } from "../../hooks/queries/useAgentConfig";
 import { toast } from "../../lib/toast";
 import { EmptyState } from "../ui/EmptyState";
+import { Icon } from "../ui/Icon";
 import { Spinner } from "../ui/Spinner";
 import { AgentConfigEditor } from "./AgentConfigEditor";
 import { AgentConfigList } from "./AgentConfigList";
@@ -131,7 +132,7 @@ export function AgentManagerPanel() {
           ) : (
             <div className="flex-1 px-8 py-7">
               <EmptyState
-                icon="◈"
+                icon={<Icon name="agent" size={26} />}
                 title="Nothing selected"
                 hint="Select an agent, skill, or CLAUDE.md to edit — or create a new one."
               />

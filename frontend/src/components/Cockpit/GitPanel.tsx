@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ApiError } from "../../api";
 import { useGitHistory, useGitStatus } from "../../hooks/queries/useGit";
 import { Spinner } from "../ui/Spinner";
+import { Icon } from "../ui/Icon";
 import { fadeUp, staggerContainer } from "../ui/motion";
 
 const errorMessage = (err: unknown): string =>
@@ -14,7 +15,10 @@ export function GitPanel() {
 
   return (
     <section className="surface px-6 py-5">
-      <p className="eyebrow mb-3">Git</p>
+      <p className="eyebrow mb-3 flex items-center gap-2">
+        <Icon name="branch" size={14} className="text-accent" />
+        Git
+      </p>
 
       <div className="mb-5">
         {statusLoading && <Spinner label="Reading status" />}
@@ -22,9 +26,12 @@ export function GitPanel() {
         {status && (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="pill pill-accent">{status.branch}</span>
-              {status.ahead > 0 && <span className="pill">↑{status.ahead}</span>}
-              {status.behind > 0 && <span className="pill">↓{status.behind}</span>}
+              <span className="pill pill-accent">
+                <Icon name="branch" size={12} />
+                {status.branch}
+              </span>
+              {status.ahead > 0 && <span className="pill">ahead {status.ahead}</span>}
+              {status.behind > 0 && <span className="pill">behind {status.behind}</span>}
               <span className={`pill ${status.isClean ? "pill-success" : ""}`}>
                 {status.isClean ? "clean" : `${status.files.length} changed`}
               </span>
@@ -46,7 +53,10 @@ export function GitPanel() {
       </div>
 
       <div>
-        <p className="eyebrow mb-2">History</p>
+        <p className="eyebrow mb-2 flex items-center gap-2">
+          <Icon name="commit" size={14} className="text-accent" />
+          History
+        </p>
         {historyLoading && <Spinner label="Loading history" />}
         {historyError && <p className="text-sm text-danger">{errorMessage(historyError)}</p>}
         {history && history.commits.length === 0 && (

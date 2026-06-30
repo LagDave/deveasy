@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Session, SessionRuntime } from "../../api/sessions";
 import type { Project } from "../../types";
 import { useConfirm } from "../ui/confirm";
+import { Icon } from "../ui/Icon";
 import { fadeUp, staggerContainer } from "../ui/motion";
 
 /**
@@ -44,10 +45,10 @@ export function SessionSidebar(props: Props) {
                 <button
                   onClick={() => onNewSession(project.id)}
                   disabled={creatingProjectId === project.id}
-                  className="btn btn-ghost !px-2 !py-1 text-base leading-none"
+                  className="btn btn-ghost !px-2 !py-1.5"
                   title={`New session in ${project.name}`}
                 >
-                  +
+                  <Icon name="add" size={16} />
                 </button>
               </div>
 
@@ -136,14 +137,14 @@ function SessionRow({
             setEditing(true);
           }}
         >
-          ✎
+          <Icon name="rename" size={14} />
         </button>
         <button
           className="grid h-6 w-6 place-items-center rounded text-faint hover:bg-surface-3 hover:text-danger"
           title="Delete"
           onClick={() => void requestDelete()}
         >
-          ✕
+          <Icon name="delete" size={14} />
         </button>
       </div>
     </li>

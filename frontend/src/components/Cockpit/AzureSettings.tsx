@@ -3,6 +3,7 @@ import { ApiError } from "../../api";
 import type { AzureConnectionState } from "../../api/azure";
 import { useConnectAzure } from "../../hooks/queries/useAzure";
 import { toast } from "../../lib/toast";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   state: AzureConnectionState | undefined;
@@ -38,10 +39,14 @@ export function AzureSettings({ state, forceOpen }: Props) {
   return (
     <section className="surface px-6 py-5">
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <p className="eyebrow">Azure connection</p>
+        <p className="eyebrow flex items-center gap-2">
+          <Icon name="tool" size={14} className="text-accent" />
+          Azure connection
+        </p>
         <span
           className={`pill ${needsAttention ? "pill-danger" : state?.status === "connected" ? "pill-success" : ""}`}
         >
+          <Icon name={needsAttention ? "error" : state?.status === "connected" ? "success" : "tool"} size={12} />
           {state?.status ?? "loading"}
         </span>
         {needsAttention && (
@@ -86,6 +91,7 @@ export function AzureSettings({ state, forceOpen }: Props) {
         </label>
         <div className="sm:col-span-2">
           <button type="submit" className="btn btn-primary" disabled={connect.isPending}>
+            <Icon name="success" size={15} />
             {connect.isPending ? "Saving…" : "Save connection"}
           </button>
         </div>

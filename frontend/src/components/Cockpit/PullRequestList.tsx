@@ -3,6 +3,7 @@ import { ApiError } from "../../api";
 import { useAzurePullRequests } from "../../hooks/queries/useAzure";
 import { EmptyState } from "../ui/EmptyState";
 import { Spinner } from "../ui/Spinner";
+import { Icon } from "../ui/Icon";
 import { fadeUp, staggerContainer } from "../ui/motion";
 import { prStatusPill, shortRef } from "./prStatus";
 
@@ -24,10 +25,17 @@ export function PullRequestList({ enabled, selectedId, onSelect, onReconnect }: 
 
   return (
     <section className="surface flex flex-col px-5 py-4">
-      <p className="eyebrow mb-3">Pull requests</p>
+      <p className="eyebrow mb-3 flex items-center gap-2">
+        <Icon name="pullRequest" size={14} className="text-accent" />
+        Pull requests
+      </p>
 
       {!enabled && (
-        <EmptyState icon="◈" title="Not connected" hint="Connect Azure above to see pull requests." />
+        <EmptyState
+          icon={<Icon name="error" size={26} />}
+          title="Not connected"
+          hint="Connect Azure above to see pull requests."
+        />
       )}
       {enabled && isLoading && <Spinner label="Loading pull requests" />}
       {enabled && error && (
@@ -36,7 +44,11 @@ export function PullRequestList({ enabled, selectedId, onSelect, onReconnect }: 
         </p>
       )}
       {enabled && !isLoading && !error && pullRequests && pullRequests.length === 0 && (
-        <EmptyState icon="◌" title="No active pull requests" hint="New PRs will appear here." />
+        <EmptyState
+          icon={<Icon name="pullRequest" size={26} />}
+          title="No active pull requests"
+          hint="New PRs will appear here."
+        />
       )}
       {enabled && pullRequests && pullRequests.length > 0 && (
         <motion.ul

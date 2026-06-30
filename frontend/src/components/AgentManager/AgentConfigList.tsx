@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import type { ConfigListing, ConfigSummary, ConfigType } from "../../api/agentConfig";
+import { Icon, type IconName } from "../ui/Icon";
 import { fadeUp, staggerContainer } from "../ui/motion";
 
 interface Props {
@@ -39,7 +40,7 @@ export function AgentConfigList({ listing, selected, onSelect, onCreate }: Props
 
   return (
     <div className="flex w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-line px-5 py-5">
-      <Group label="Agents" onCreate={() => onCreate("agent")}>
+      <Group label="Agents" icon="agent" onCreate={() => onCreate("agent")}>
         {listing.agents.length === 0 ? (
           <p className="text-sm text-muted">No subagents yet.</p>
         ) : (
@@ -47,7 +48,7 @@ export function AgentConfigList({ listing, selected, onSelect, onCreate }: Props
         )}
       </Group>
 
-      <Group label="Skills" onCreate={() => onCreate("skill")}>
+      <Group label="Skills" icon="skill" onCreate={() => onCreate("skill")}>
         {listing.skills.length === 0 ? (
           <p className="text-sm text-muted">No skills yet.</p>
         ) : (
@@ -55,7 +56,7 @@ export function AgentConfigList({ listing, selected, onSelect, onCreate }: Props
         )}
       </Group>
 
-      <Group label="CLAUDE.md">
+      <Group label="CLAUDE.md" icon="file">
         {listing.claudemd ? (
           <ItemList>{renderItem(listing.claudemd)}</ItemList>
         ) : (
@@ -68,20 +69,30 @@ export function AgentConfigList({ listing, selected, onSelect, onCreate }: Props
 
 function Group({
   label,
+  icon,
   onCreate,
   children,
 }: {
   label: string;
+  icon: IconName;
   onCreate?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <section className="flex flex-col gap-2.5">
       <header className="flex items-center justify-between">
-        <span className="eyebrow">{label}</span>
+        <span className="eyebrow flex items-center gap-1.5">
+          <Icon name={icon} size={14} />
+          {label}
+        </span>
         {onCreate ? (
-          <button type="button" className="btn btn-ghost px-2 py-1" onClick={onCreate}>
-            + New
+          <button
+            type="button"
+            className="btn btn-ghost flex items-center gap-1 px-2 py-1"
+            onClick={onCreate}
+          >
+            <Icon name="add" size={14} />
+            New
           </button>
         ) : null}
       </header>

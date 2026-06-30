@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import type { ConfigDocument, ConfigType, Frontmatter } from "../../api/agentConfig";
 import { useConfirm } from "../ui/confirm";
+import { Icon } from "../ui/Icon";
 import { fadeUp } from "../ui/motion";
 import { Spinner } from "../ui/Spinner";
 
@@ -138,16 +139,23 @@ export function AgentConfigEditor({
       </label>
 
       <div className="flex items-center gap-3">
-        <button type="button" className="btn btn-primary" onClick={submit} disabled={isSaving}>
+        <button
+          type="button"
+          className="btn btn-primary flex items-center gap-1.5"
+          onClick={submit}
+          disabled={isSaving}
+        >
+          <Icon name="success" size={16} />
           {isSaving ? "Saving…" : "Save & commit"}
         </button>
         {canDelete ? (
           <button
             type="button"
-            className="btn btn-danger"
+            className="btn btn-danger flex items-center gap-1.5"
             onClick={() => void confirmDelete()}
             disabled={isDeleting}
           >
+            <Icon name="delete" size={16} />
             {isDeleting ? "Deleting…" : "Delete"}
           </button>
         ) : null}

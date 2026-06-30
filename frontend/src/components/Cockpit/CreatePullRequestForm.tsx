@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ApiError } from "../../api";
 import { useCreateAzurePullRequest } from "../../hooks/queries/useAzure";
 import { toast } from "../../lib/toast";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   disabled: boolean;
@@ -39,7 +40,10 @@ export function CreatePullRequestForm({ disabled, onReconnect }: Props) {
 
   return (
     <section className="surface px-6 py-5">
-      <p className="eyebrow mb-4">Create pull request</p>
+      <p className="eyebrow mb-4 flex items-center gap-2">
+        <Icon name="pullRequest" size={14} className="text-accent" />
+        Create pull request
+      </p>
       <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">Source branch</span>
@@ -75,6 +79,7 @@ export function CreatePullRequestForm({ disabled, onReconnect }: Props) {
         </label>
         <div className="sm:col-span-2">
           <button type="submit" className="btn btn-primary" disabled={disabled || create.isPending}>
+            <Icon name="add" size={15} />
             {create.isPending ? "Creating…" : "Create PR"}
           </button>
         </div>

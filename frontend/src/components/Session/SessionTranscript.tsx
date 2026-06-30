@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SessionEvent } from "../../hooks/useSession";
 import { EmptyState } from "../ui/EmptyState";
+import { Icon } from "../ui/Icon";
 import { Spinner } from "../ui/Spinner";
 import { staggerContainer } from "../ui/motion";
 import { SessionMessage } from "./SessionMessage";
@@ -34,7 +35,7 @@ export function SessionTranscript({ events, thinking }: { events: SessionEvent[]
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {meaningfulCount(items) === 0 && !thinking && (
           <EmptyState
-            icon="▤"
+            icon={<Icon name="sessions" size={26} />}
             title="Say something to start"
             hint="Your message runs against the active project on your Claude subscription."
           />

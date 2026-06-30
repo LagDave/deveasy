@@ -11,6 +11,7 @@ import {
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
 import { EmptyState } from "../ui/EmptyState";
+import { Icon } from "../ui/Icon";
 import { Spinner } from "../ui/Spinner";
 import { SessionComposer } from "./SessionComposer";
 import { SessionSidebar } from "./SessionSidebar";
@@ -105,6 +106,7 @@ export function SessionPanel() {
                     onClick={() => stopSession.mutate(activeSessionId)}
                     title="End this session's process"
                   >
+                    <Icon name="close" size={15} />
                     End session
                   </button>
                 )}
@@ -126,7 +128,7 @@ export function SessionPanel() {
         ) : (
           <div className="flex-1 px-8 py-7">
             <EmptyState
-              icon="▤"
+              icon={<Icon name="sessions" size={26} />}
               title="Pick or start a session"
               hint="Choose a session from the left, or hit + next to any project to start a new one."
             />

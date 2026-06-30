@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AgentManagerPanel } from "./components/AgentManager/AgentManagerPanel";
 import { CockpitPanel } from "./components/Cockpit/CockpitPanel";
 import { SessionPanel } from "./components/Session/SessionPanel";
+import { Icon, type IconName } from "./components/ui/Icon";
 import { panelSwap } from "./components/ui/motion";
 import { useActiveProject } from "./hooks/queries/useProjects";
 import { ProjectPicker } from "./pages/ProjectPicker";
@@ -12,16 +13,16 @@ type SectionId = "projects" | "sessions" | "cockpit" | "agents";
 interface Section {
   id: SectionId;
   label: string;
-  glyph: string;
+  icon: IconName;
   blurb: string;
   render: () => React.ReactNode;
 }
 
 const SECTIONS: Section[] = [
-  { id: "projects", label: "Projects", glyph: "◳", blurb: "Workspace", render: () => <ProjectPicker /> },
-  { id: "sessions", label: "Sessions", glyph: "▤", blurb: "Chat with Claude", render: () => <SessionPanel /> },
-  { id: "cockpit", label: "Cockpit", glyph: "◈", blurb: "Git & pull requests", render: () => <CockpitPanel /> },
-  { id: "agents", label: "Agents", glyph: "✦", blurb: "Shared config", render: () => <AgentManagerPanel /> },
+  { id: "projects", label: "Projects", icon: "projects", blurb: "Workspace", render: () => <ProjectPicker /> },
+  { id: "sessions", label: "Sessions", icon: "sessions", blurb: "Chat with Claude", render: () => <SessionPanel /> },
+  { id: "cockpit", label: "Cockpit", icon: "cockpit", blurb: "Git & pull requests", render: () => <CockpitPanel /> },
+  { id: "agents", label: "Agents", icon: "agents", blurb: "Shared config", render: () => <AgentManagerPanel /> },
 ];
 
 export default function App() {
@@ -57,8 +58,8 @@ export default function App() {
                     className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-accent"
                   />
                 )}
-                <span className={`font-mono text-base ${isActive ? "text-accent" : "text-faint group-hover:text-muted"}`}>
-                  {s.glyph}
+                <span className={isActive ? "text-accent" : "text-faint group-hover:text-muted"}>
+                  <Icon name={s.icon} size={18} />
                 </span>
                 <span className="text-sm font-medium">{s.label}</span>
               </button>

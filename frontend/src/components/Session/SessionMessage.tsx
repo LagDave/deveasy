@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { Icon, type IconName } from "../ui/Icon";
 import { Markdown } from "../ui/Markdown";
 import { fadeUp } from "../ui/motion";
 import type { RenderItem } from "./sessionEvents";
@@ -31,13 +32,14 @@ export function SessionMessage({ item }: { item: RenderItem }) {
   }
 
   if (item.kind === "tool_use") {
-    return <ToolCard label={`⚙ ${item.name}`} body={stringifyInput(item.input)} tone="use" />;
+    return <ToolCard icon="tool" label={item.name} body={stringifyInput(item.input)} tone="use" />;
   }
 
   if (item.kind === "tool_result") {
     return (
       <ToolCard
-        label={item.isError ? "⚠ tool result · error" : "↳ tool result"}
+        icon={item.isError ? "error" : "toolResult"}
+        label={item.isError ? "tool result · error" : "tool result"}
         body={item.content}
         tone={item.isError ? "error" : "result"}
       />
@@ -67,17 +69,29 @@ function stringifyInput(input: unknown): string {
   }
 }
 
-function ToolCard({ label, body, tone }: { label: string; body: string; tone: "use" | "result" | "error" }) {
+function ToolCard({
+  icon,
+  label,
+  body,
+  tone,
+}: {
+  icon: IconName;
+  label: string;
+  body: string;
+  tone: "use" | "result" | "error";
+}) {
   const [open, setOpen] = useState(false);
-  const accent =
-    tone === "error" ? "text-danger" : tone === "use" ? "text-accent" : "text-success";
+  const accent = tone === "error" ? "text-danger" : tone === "use" ? "text-accent" : "text-success";
   return (
     <motion.div variants={fadeUp} className="surface-2 overflow-hidden rounded-lg">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-2 px-3.5 py-2 text-left"
       >
-        <span className={`font-mono text-xs font-semibold ${accent}`}>{label}</span>
+        <span className={`flex items-center gap-2 font-mono text-xs font-semibold ${accent}`}>
+          <Icon name={icon} size={14} />
+          {label}
+        </span>
         <span className="font-mono text-xs text-faint">{open ? "hide" : "show"}</span>
       </button>
       {open && body && (
