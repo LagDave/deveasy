@@ -47,6 +47,13 @@ function buildWsUrl(sessionId: number): string {
 /** Map a persisted message row into a stream-event for uniform rendering. */
 function historyToEvents(messages: SessionMessage[]): SessionEvent[] {
   return messages.map((m) => {
+    // User turns are persisted as { text } with no `type` — rebuild the proper
+    // user event so they render as messages (not get bucketed as system noise).
+    if (m.event_type === "user_turn") {
+      const c = m.content as { text?: unknown } | null;
+      const text = c && typeof c.text === "string" ? c.text : "";
+      return { type: "user", message: { role: "user", content: [{ type: "text", text }] } };
+    }
     if (m.content && typeof m.content === "object") {
       return m.content as SessionEvent;
     }
