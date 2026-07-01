@@ -1,8 +1,5 @@
-import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { childLogger } from "../lib/logger";
+import { oauthHeaders, readClaudeOAuthToken } from "./claudeOAuth";
 
 const log = childLogger({ module: "ClaudeUsageService" });
 
@@ -19,8 +16,6 @@ const log = childLogger({ module: "ClaudeUsageService" });
  */
 
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
-const OAUTH_BETA = "oauth-2025-04-20";
-const KEYCHAIN_SERVICE = "Claude Code-credentials";
 const REQUEST_TIMEOUT_MS = 8_000;
 /** Serve a cached value for this long before refetching. */
 const CACHE_TTL_MS = 90_000;
@@ -75,7 +70,7 @@ export class ClaudeUsageService {
   }
 
   private static async fetchLimits(): Promise<UsageLimits> {
-    const token = this.readToken();
+    const token = readClaudeOAuthToken();
     if (!token) {
       log.warn("No OAuth token found (keychain/credentials file); usage unavailable");
       return this.unavailable();
@@ -85,14 +80,7 @@ export class ClaudeUsageService {
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     let res: Response;
     try {
-      res = await fetch(USAGE_URL, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "anthropic-beta": OAUTH_BETA,
-          "User-Agent": "deveasy/0.1 (usage-meter)",
-        },
-        signal: controller.signal,
-      });
+      res = await fetch(USAGE_URL, { headers: oauthHeaders(token), signal: controller.signal });
     } finally {
       clearTimeout(timer);
     }
@@ -130,45 +118,6 @@ export class ClaudeUsageService {
     const utilization = typeof w.utilization === "number" ? w.utilization : null;
     if (utilization === null) return null;
     return { utilization, resetsAt: typeof w.resets_at === "string" ? w.resets_at : null };
-  }
-
-  /**
-   * Read the OAuth access token. macOS keeps it in the keychain; other platforms
-   * use the plaintext credentials file. The token stays in this module.
-   */
-  private static readToken(): string | null {
-    const fromKeychain = process.platform === "darwin" ? this.readKeychain() : null;
-    const rawJson = fromKeychain ?? this.readCredentialsFile();
-    if (!rawJson) return null;
-    try {
-      const parsed = JSON.parse(rawJson) as Record<string, unknown>;
-      const oauth = (parsed.claudeAiOauth ?? parsed) as Record<string, unknown>;
-      const token = oauth.accessToken;
-      return typeof token === "string" && token ? token : null;
-    } catch {
-      return null;
-    }
-  }
-
-  private static readKeychain(): string | null {
-    try {
-      const out = spawnSync("security", ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"], {
-        encoding: "utf8",
-        timeout: REQUEST_TIMEOUT_MS,
-      });
-      if (out.status === 0 && out.stdout) return out.stdout.trim();
-    } catch {
-      // fall through to the file
-    }
-    return null;
-  }
-
-  private static readCredentialsFile(): string | null {
-    try {
-      return readFileSync(join(homedir(), ".claude", ".credentials.json"), "utf8");
-    } catch {
-      return null;
-    }
   }
 }
 

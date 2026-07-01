@@ -18,13 +18,19 @@ export class SessionsController {
   /** POST /api/sessions { projectId, title? } — create a session for a project. */
   static async create(req: Request, res: Response): Promise<Response> {
     try {
-      const body = (req.body ?? {}) as { projectId?: unknown; title?: unknown; model?: unknown };
+      const body = (req.body ?? {}) as {
+        projectId?: unknown;
+        title?: unknown;
+        model?: unknown;
+        effort?: unknown;
+      };
       const projectId = Number(body.projectId);
       if (!Number.isInteger(projectId) || projectId <= 0) {
         throw new SessionError("SESSION_INPUT_INVALID", "A valid projectId is required.");
       }
       const title = typeof body.title === "string" ? body.title : null;
       const model = typeof body.model === "string" && body.model.trim() ? body.model.trim() : null;
+      const effort = typeof body.effort === "string" && body.effort.trim() ? body.effort.trim() : null;
 
       const project = await ProjectModel.findById(projectId);
       if (!project) {
@@ -43,8 +49,8 @@ export class SessionsController {
         log.warn({ projectId, path: project.path }, "Project has its own config; skipped injection");
       }
 
-      const session = await SessionModel.create(projectId, title, model);
-      log.info({ sessionId: session.id, projectId, model }, "Session created");
+      const session = await SessionModel.create(projectId, title, model, effort);
+      log.info({ sessionId: session.id, projectId, model, effort }, "Session created");
       return ok(res, { session }, 201);
     } catch (error) {
       return handleSessionError(res, error);

@@ -38,8 +38,9 @@ export async function createSession(
   projectId: number,
   title?: string,
   model?: string | null,
+  effort?: string | null,
 ): Promise<Session> {
-  const data = await apiPost<{ session: Session }>("/api/sessions", { projectId, title, model });
+  const data = await apiPost<{ session: Session }>("/api/sessions", { projectId, title, model, effort });
   return data.session;
 }
 

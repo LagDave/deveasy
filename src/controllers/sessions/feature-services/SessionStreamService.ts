@@ -17,7 +17,8 @@ export type RuntimeState = "working" | "idle";
 
 type ClientCommand =
   | { type: "user_turn"; text: string }
-  | { type: "set_model"; model: string | null };
+  | { type: "set_model"; model: string | null }
+  | { type: "set_effort"; effort: string | null };
 
 /** Live capabilities of a session, captured from the CLI `init` event. */
 interface Capabilities {
@@ -39,6 +40,8 @@ interface Runtime {
   cliSessionId: string;
   /** Currently selected model (null = CLI default). */
   model: string | null;
+  /** Currently selected thinking effort (null = CLI default). */
+  effort: string | null;
   /** True once a turn has been sent — i.e. the CLI has a conversation to --resume. */
   hasConversation: boolean;
   /** Latest capabilities from the init event, replayed to late-attaching sockets. */
@@ -100,6 +103,7 @@ export class SessionStreamService {
         projectPath: project.path,
         cliSessionId,
         model: session.model,
+        effort: session.effort,
         hasConversation: false,
         capabilities: null,
         context: null,
@@ -109,6 +113,7 @@ export class SessionStreamService {
       await SessionModel.setCliSessionId(sessionId, cliSessionId);
       ClaudeProcessService.start(sessionId, project.path, this.handlersFor(sessionId), {
         model: session.model,
+        effort: session.effort,
         cliSessionId,
       });
       log.info({ sessionId }, "Session process started");
@@ -126,7 +131,13 @@ export class SessionStreamService {
     });
 
     // Tell the client the current state so a reattach to a busy session shows it.
-    this.safeSend(ws, { type: "ready", sessionId, state: runtime.state, model: runtime.model });
+    this.safeSend(ws, {
+      type: "ready",
+      sessionId,
+      state: runtime.state,
+      model: runtime.model,
+      effort: runtime.effort,
+    });
     // Replay known capabilities/context to a socket that attached after init fired.
     if (runtime.capabilities) {
       this.safeSend(ws, { type: "capabilities", sessionId, ...runtime.capabilities });
@@ -153,34 +164,49 @@ export class SessionStreamService {
    * the conversation context carries over. Only allowed when idle — never mid-turn.
    */
   static async setModel(sessionId: number, model: string | null): Promise<void> {
-    const runtime = this.runtimes.get(sessionId);
-    if (!runtime) {
-      throw new SessionError("SESSION_NOT_LIVE", "Session is not live.", { sessionId });
-    }
-    if (runtime.state !== "idle") {
-      throw new SessionError(
-        "SESSION_BUSY",
-        "Finish the current turn before switching models.",
-        { sessionId },
-      );
-    }
+    const runtime = this.requireIdleRuntime(sessionId, "switching models");
     runtime.model = model;
     await SessionModel.setModel(sessionId, model);
+    await this.restartRuntime(sessionId, runtime);
+    log.info({ sessionId, model }, "Session model switched");
+  }
 
-    // Resume only when the CLI actually has a conversation under this id; resuming
-    // an unused id fails with "No conversation found". Before the first turn there
-    // is nothing to preserve, so start fresh under a new id instead.
-    let resume = runtime.hasConversation;
+  /** Switch the session's thinking effort; restarts the process like a model switch. */
+  static async setEffort(sessionId: number, effort: string | null): Promise<void> {
+    const runtime = this.requireIdleRuntime(sessionId, "changing effort");
+    runtime.effort = effort;
+    await SessionModel.setEffort(sessionId, effort);
+    await this.restartRuntime(sessionId, runtime);
+    log.info({ sessionId, effort }, "Session effort switched");
+  }
+
+  /** Get a live runtime, requiring it to be idle (no switch mid-turn). */
+  private static requireIdleRuntime(sessionId: number, action: string): Runtime {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) throw new SessionError("SESSION_NOT_LIVE", "Session is not live.", { sessionId });
+    if (runtime.state !== "idle") {
+      throw new SessionError("SESSION_BUSY", `Finish the current turn before ${action}.`, { sessionId });
+    }
+    return runtime;
+  }
+
+  /**
+   * Restart the session's process with the runtime's current model + effort. Resumes
+   * only when a conversation exists; resuming an unused id fails with "No conversation
+   * found", so before the first turn it starts fresh under a new id.
+   */
+  private static async restartRuntime(sessionId: number, runtime: Runtime): Promise<void> {
+    const resume = runtime.hasConversation;
     if (!resume) {
       runtime.cliSessionId = ClaudeProcessService.newCliSessionId();
       await SessionModel.setCliSessionId(sessionId, runtime.cliSessionId);
     }
     ClaudeProcessService.restart(sessionId, runtime.projectPath, this.handlersFor(sessionId), {
-      model,
+      model: runtime.model,
+      effort: runtime.effort,
       cliSessionId: runtime.cliSessionId,
       resume,
     });
-    log.info({ sessionId, model, resume }, "Session model switched");
   }
 
   /** Explicitly end a session: kill the process (triggers cleanup) and mark closed. */
@@ -212,6 +238,17 @@ export class SessionStreamService {
         const message =
           err instanceof SessionError ? err.message : "Could not switch model.";
         log.error({ sessionId, err }, "set_model failed");
+        this.safeSend(ws, { type: "error", message });
+      }
+      return;
+    }
+
+    if (command.type === "set_effort") {
+      try {
+        await this.setEffort(sessionId, command.effort ?? null);
+      } catch (err) {
+        const message = err instanceof SessionError ? err.message : "Could not change effort.";
+        log.error({ sessionId, err }, "set_effort failed");
         this.safeSend(ws, { type: "error", message });
       }
       return;

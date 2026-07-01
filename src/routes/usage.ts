@@ -8,5 +8,6 @@ import { UsageController } from "../controllers/usage/UsageController";
 const router = express.Router();
 
 router.get("/limits", UsageController.getLimits);
+router.get("/models", UsageController.getModels);
 
 export default router;

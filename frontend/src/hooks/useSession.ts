@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionMessage } from "../api/sessions";
 import { getSessionMessages } from "../api/sessions";
-import { prettyModel, setLastModel } from "../utils/modelLabels";
+import { prettyModel, setLastEffort, setLastModel } from "../utils/modelLabels";
 
 /**
  * Owns the live WebSocket connection for a session (Constitution §14.3): connects,
@@ -32,12 +32,16 @@ interface UseSessionResult {
   selectedModel: string | null;
   /** The resolved versioned model from the CLI init event (e.g. claude-opus-4-8); null until the model next runs. */
   resolvedModel: string | null;
+  /** The selected thinking effort (low/medium/high/xhigh/max) or null=CLI default. */
+  selectedEffort: string | null;
   /** Slash commands / skills available this session (autocomplete source). */
   slashCommands: string[];
   /** Context-window usage for the current session, or null until a result arrives. */
   context: { used: number; window: number } | null;
   /** Switch the session's model — restarts the CLI resumed, preserving context. */
   setModel: (model: string | null) => void;
+  /** Change the session's thinking effort — restarts the CLI resumed. */
+  setEffort: (effort: string | null) => void;
 }
 
 /** Pull a text delta out of a partial `stream_event`, if present. */
@@ -80,6 +84,7 @@ export function useSession(sessionId: number | null): UseSessionResult {
   const [partialText, setPartialText] = useState("");
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [resolvedModel, setResolvedModel] = useState<string | null>(null);
+  const [selectedEffort, setSelectedEffort] = useState<string | null>(null);
   const [slashCommands, setSlashCommands] = useState<string[]>([]);
   const [context, setContext] = useState<{ used: number; window: number } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -97,6 +102,7 @@ export function useSession(sessionId: number | null): UseSessionResult {
     setPartialText("");
     setSelectedModel(null);
     setResolvedModel(null);
+    setSelectedEffort(null);
     setSlashCommands([]);
     setContext(null);
     pendingSwitchRef.current = false;
@@ -142,9 +148,12 @@ export function useSession(sessionId: number | null): UseSessionResult {
         setIsReady(true);
         // Reattaching to a session that's mid-turn should show "responding".
         setStreaming(parsed.state === "working");
-        // ready carries the stored selection (alias or null), not a resolved version.
+        // ready carries the stored selection (model id + effort), not resolved versions.
         if (typeof parsed.model === "string" || parsed.model === null) {
           setSelectedModel(typeof parsed.model === "string" ? parsed.model : null);
+        }
+        if (typeof parsed.effort === "string" || parsed.effort === null) {
+          setSelectedEffort(typeof parsed.effort === "string" ? parsed.effort : null);
         }
         return;
       }
@@ -226,6 +235,14 @@ export function useSession(sessionId: number | null): UseSessionResult {
     setLastModel(next);
   }, []);
 
+  const setEffort = useCallback((next: string | null) => {
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "set_effort", effort: next }));
+    setSelectedEffort(next);
+    setLastEffort(next);
+  }, []);
+
   return {
     events,
     status,
@@ -235,8 +252,10 @@ export function useSession(sessionId: number | null): UseSessionResult {
     partialText,
     selectedModel,
     resolvedModel,
+    selectedEffort,
     slashCommands,
     context,
     setModel,
+    setEffort,
   };
 }

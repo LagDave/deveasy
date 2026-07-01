@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { ClaudeModelsService } from "../../services/ClaudeModelsService";
 import { ClaudeUsageService } from "../../services/ClaudeUsageService";
 import { handleUsageError, ok } from "./feature-utils/controllerResponses";
 
@@ -13,6 +14,16 @@ export class UsageController {
     try {
       const limits = await ClaudeUsageService.getLimits();
       return ok(res, { limits });
+    } catch (error) {
+      return handleUsageError(res, error);
+    }
+  }
+
+  /** GET /api/usage/models — the models available to the subscription, with versions. */
+  static async getModels(_req: Request, res: Response): Promise<Response> {
+    try {
+      const catalog = await ClaudeModelsService.getModels();
+      return ok(res, { catalog });
     } catch (error) {
       return handleUsageError(res, error);
     }

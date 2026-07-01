@@ -68,6 +68,7 @@ interface LiveProcess {
  */
 export interface StartOpts {
   model?: string | null;
+  effort?: string | null;
   cliSessionId: string;
   resume?: boolean;
 }
@@ -162,7 +163,14 @@ export class ClaudeProcessService {
     const entry: LiveProcess = { child, stdoutBuffer: "", handlers };
     this.live.set(sessionId, entry);
     log.info(
-      { sessionId, pid: child.pid, projectPath, model: opts.model ?? null, resume: Boolean(opts.resume) },
+      {
+        sessionId,
+        pid: child.pid,
+        projectPath,
+        model: opts.model ?? null,
+        effort: opts.effort ?? null,
+        resume: Boolean(opts.resume),
+      },
       "Claude process started",
     );
 
@@ -202,6 +210,7 @@ export class ClaudeProcessService {
   private static buildArgs(opts: StartOpts): string[] {
     const args: string[] = [...CLI_ARGS];
     if (opts.model) args.push("--model", opts.model);
+    if (opts.effort) args.push("--effort", opts.effort);
     args.push(opts.resume ? "--resume" : "--session-id", opts.cliSessionId);
     return args;
   }

@@ -9,7 +9,7 @@ import {
 } from "../../hooks/queries/useSessionHistory";
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
-import { getLastModel } from "../../utils/modelLabels";
+import { getLastEffort, getLastModel } from "../../utils/modelLabels";
 import type { WorkspaceTab } from "../CodeEditor/WorkspaceTabs";
 import { WizardChoice } from "../CreateProject/WizardChoice";
 import { buildSeedTurn, parseWizardQuestion } from "../CreateProject/wizardProtocol";
@@ -92,8 +92,21 @@ export function SessionPanel({
     });
   };
 
-  const { events, status, send, isReady, streaming, partialText, selectedModel, resolvedModel, slashCommands, context, setModel } =
-    useSession(activeSessionId);
+  const {
+    events,
+    status,
+    send,
+    isReady,
+    streaming,
+    partialText,
+    selectedModel,
+    resolvedModel,
+    selectedEffort,
+    slashCommands,
+    context,
+    setModel,
+    setEffort,
+  } = useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
 
   // Seed the create-project session's opening turn once the CLI process is ready
@@ -122,9 +135,9 @@ export function SessionPanel({
 
   const onNewSession = (projectId: number) => {
     setCreatingProjectId(projectId);
-    // New sessions open on the last model the operator picked (their default).
+    // New sessions open on the last model + effort the operator picked (their default).
     createSession.mutate(
-      { projectId, model: getLastModel() },
+      { projectId, model: getLastModel(), effort: getLastEffort() },
       {
         onSuccess: (session) => setActiveSessionId(session.id),
         onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not start a session"),
@@ -188,9 +201,11 @@ export function SessionPanel({
               disabled={status !== "open" || streaming}
               selectedModel={selectedModel}
               resolvedModel={resolvedModel}
+              selectedEffort={selectedEffort}
               slashCommands={slashCommands}
               context={context}
               onSetModel={setModel}
+              onSetEffort={setEffort}
               hint={
                 status !== "open"
                   ? "Connecting to the session…"

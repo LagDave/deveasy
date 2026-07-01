@@ -352,6 +352,13 @@
         <p><strong>Reason:</strong> User request: hide /compact inside the slash actions; make the autocomplete keyboard-navigable including compact.</p>
         <p><strong>Files:</strong> <code>SessionComposer.tsx</code>.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 8 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Real model catalog + thinking-effort control, laid out before Send (model · effort · context). (1) New <code>GET /api/usage/models</code> reads the Anthropic <code>/v1/models</code> endpoint with the server-side OAuth token; the picker shows the latest per family with versions plus a "More models" expander. (2) New <code>--effort</code> control (low/medium/high/xhigh/max) with a picker that reflects the active model's supported levels (hidden when the model has no effort support, e.g. Haiku); switching effort restarts the CLI like a model switch. (3) Effort persists as a default for new sessions (localStorage) alongside model; new <code>effort</code> column on <code>sessions</code> (migration 0006).</p>
+        <p><strong>Reason:</strong> User request: show all models with versions from the API, add the thinking-capability control, and put the model/effort/context status before Send (Claude Code's status-bar layout).</p>
+        <p><strong>Verification:</strong> <code>/api/usage/models</code> returns 10 models with versions + per-model effort support (no token in payload); <code>--effort low --model sonnet --session-id</code> spawns cleanly (init sonnet, result OK). Shared OAuth token reader extracted to <code>claudeOAuth.ts</code> (used by usage + models services).</p>
+        <p><strong>Files:</strong> BE — <code>claudeOAuth.ts</code>, <code>ClaudeModelsService.ts</code>, <code>ClaudeUsageService.ts</code>, <code>UsageController.ts</code>, <code>routes/usage.ts</code>, <code>0006_session_effort.ts</code>, <code>SessionModel.ts</code>, <code>ClaudeProcessService.ts</code>, <code>SessionStreamService.ts</code>, <code>SessionsController.ts</code>. FE — <code>types/models.ts</code>, <code>api/models.ts</code>, <code>useModelsQueries.ts</code>, <code>modelLabels.ts</code>, <code>ModelPicker.tsx</code>, <code>EffortPicker.tsx</code>, <code>SessionComposer.tsx</code>, <code>useSession.ts</code>, <code>SessionPanel.tsx</code>, <code>api/sessions.ts</code>, <code>useSessionHistory.ts</code>.</p>
+      </article>
     </section>
   </main>
 </body>
