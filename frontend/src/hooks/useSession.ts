@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionMessage } from "../api/sessions";
 import { getSessionMessages } from "../api/sessions";
-import { prettyModel, setLastEffort, setLastModel } from "../utils/modelLabels";
+import { effortLabel, prettyModel, setLastEffort, setLastModel } from "../utils/modelLabels";
 
 /**
  * Owns the live WebSocket connection for a session (Constitution §14.3): connects,
@@ -88,8 +88,6 @@ export function useSession(sessionId: number | null): UseSessionResult {
   const [slashCommands, setSlashCommands] = useState<string[]>([]);
   const [context, setContext] = useState<{ used: number; window: number } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  /** True between a model switch and the next resolved init — gates the switch notice. */
-  const pendingSwitchRef = useRef(false);
 
   // Load persisted history once per session, then open the live stream.
   useEffect(() => {
@@ -105,7 +103,6 @@ export function useSession(sessionId: number | null): UseSessionResult {
     setSelectedEffort(null);
     setSlashCommands([]);
     setContext(null);
-    pendingSwitchRef.current = false;
     setStatus("connecting");
 
     getSessionMessages(sessionId)
@@ -127,15 +124,10 @@ export function useSession(sessionId: number | null): UseSessionResult {
       setIsReady(false);
       setStreaming(false);
     };
-    // Record the resolved versioned model; if it lands right after a switch, drop a
-    // one-line in-chat notice ("Switched to Opus 4.8") with the version.
+    // Record the resolved versioned model (drives the pill's version once it runs).
+    // The switch notice is emitted immediately in setModel, not here.
     const this_resolveModel = (resolved: string) => {
       setResolvedModel(resolved);
-      if (pendingSwitchRef.current) {
-        pendingSwitchRef.current = false;
-        const label = prettyModel(resolved) ?? resolved;
-        setEvents((prev) => [...prev, { type: "notice", text: `Switched to ${label}` }]);
-      }
     };
     ws.onmessage = (ev) => {
       let parsed: SessionEvent;
@@ -227,12 +219,12 @@ export function useSession(sessionId: number | null): UseSessionResult {
     const ws = socketRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: "set_model", model: next }));
-    // Reflect the choice immediately (pill + picker check); the versioned notice
-    // follows once the model actually runs and reports its resolved name.
+    // Reflect the choice immediately: pill + picker check, and the in-chat notice —
+    // the selection id already carries the version, so no need to wait for the run.
     setSelectedModel(next);
-    pendingSwitchRef.current = true;
-    // Remember it as the default for new sessions.
-    setLastModel(next);
+    setLastModel(next); // remember as the default for new sessions
+    const label = prettyModel(next) ?? next;
+    if (label) setEvents((prev) => [...prev, { type: "notice", text: `Switched to ${label}` }]);
   }, []);
 
   const setEffort = useCallback((next: string | null) => {
@@ -241,6 +233,9 @@ export function useSession(sessionId: number | null): UseSessionResult {
     ws.send(JSON.stringify({ type: "set_effort", effort: next }));
     setSelectedEffort(next);
     setLastEffort(next);
+    if (next) {
+      setEvents((prev) => [...prev, { type: "notice", text: `Effort: ${effortLabel(next)}` }]);
+    }
   }, []);
 
   return {
