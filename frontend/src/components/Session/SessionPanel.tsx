@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "../../api";
 import { useProjects } from "../../hooks/queries/useProjects";
@@ -246,11 +247,20 @@ export function SessionPanel({
                 hint={status !== "open" ? "Connecting to the session…" : undefined}
               />
             </div>
-            {showBrowser && (
-              <div className="absolute inset-y-0 right-0 z-20 flex w-[60%] min-w-[480px] flex-col border-l border-line bg-[#0b0b0b] shadow-2xl">
-                <BrowserView sessionId={activeSessionId} onClose={() => setShowBrowser(false)} />
-              </div>
-            )}
+            <AnimatePresence>
+              {showBrowser && (
+                <motion.div
+                  key="browser-pane"
+                  initial={{ x: "100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "100%" }}
+                  transition={{ type: "spring", stiffness: 340, damping: 36 }}
+                  className="absolute inset-y-0 right-0 z-20 flex w-[60%] min-w-[480px] flex-col border-l border-line bg-[#0b0b0b] shadow-2xl"
+                >
+                  <BrowserView sessionId={activeSessionId} onClose={() => setShowBrowser(false)} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         ) : (
           <div className="flex-1 px-8 py-7">

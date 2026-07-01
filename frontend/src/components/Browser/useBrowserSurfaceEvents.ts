@@ -80,10 +80,8 @@ export function useBrowserSurfaceEvents({ surfaceRef, sendInput }: Options): voi
       const { x, y } = toPage(e.clientX, e.clientY);
       sendInput({ type: "mouseup", x, y, button: mapButton(e.button) });
     };
-    const onClick = (e: MouseEvent) => {
-      const { x, y } = toPage(e.clientX, e.clientY);
-      sendInput({ type: "click", x, y, button: mapButton(e.button) });
-    };
+    // No separate "click" — mousedown + mouseup already compose one click in the
+    // page. Sending click too would double it (select-then-deselect on toggles).
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const { x, y } = toPage(e.clientX, e.clientY);
@@ -108,7 +106,6 @@ export function useBrowserSurfaceEvents({ surfaceRef, sendInput }: Options): voi
     el.addEventListener("mousemove", onMouseMove);
     el.addEventListener("mousedown", onMouseDown);
     el.addEventListener("mouseup", onMouseUp);
-    el.addEventListener("click", onClick);
     el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("contextmenu", onContextMenu);
     el.addEventListener("keydown", onKeyDown);
@@ -119,7 +116,6 @@ export function useBrowserSurfaceEvents({ surfaceRef, sendInput }: Options): voi
       el.removeEventListener("mousemove", onMouseMove);
       el.removeEventListener("mousedown", onMouseDown);
       el.removeEventListener("mouseup", onMouseUp);
-      el.removeEventListener("click", onClick);
       el.removeEventListener("wheel", onWheel);
       el.removeEventListener("contextmenu", onContextMenu);
       el.removeEventListener("keydown", onKeyDown);

@@ -58,9 +58,11 @@ export function BrowserView({ sessionId, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  const handleClose = () => {
-    closeBrowser.mutate(undefined, { onSettled: onClose });
-  };
+  // Hide the pane but leave the browser running server-side — reopening reattaches
+  // (detach never kills, § persistence). This is the everyday dismiss.
+  const handleHide = () => onClose();
+  // Explicitly kill Chromium and reclaim its memory, then collapse the pane.
+  const handleCloseAndFree = () => closeBrowser.mutate(undefined, { onSettled: onClose });
 
   // Grab the human lock by nudging the pointer — a no-op input that claims control.
   const takeControl = () => sendInput({ type: "mousemove", x: 0, y: 0 });
@@ -74,7 +76,7 @@ export function BrowserView({ sessionId, onClose }: Props) {
         onNew={() => newTab.mutate()}
       />
 
-      <div className="flex items-center gap-2 border-b border-line px-3 py-1.5">
+      <div className="flex items-center gap-2.5 border-b border-line px-3 py-2">
         <form
           className="min-w-0 flex-1"
           onSubmit={(e) => {
@@ -90,18 +92,27 @@ export function BrowserView({ sessionId, onClose }: Props) {
             placeholder={connState === "open" ? "Enter a URL and press Enter" : "Connecting…"}
             spellCheck={false}
             autoComplete="off"
-            className="w-full rounded border border-line bg-surface-2 px-2 py-1 font-mono text-xs text-ink outline-none placeholder:text-faint focus:border-accent"
+            className="w-full rounded-md border border-line bg-surface-2 px-3 py-1.5 font-mono text-xs text-ink outline-none placeholder:text-faint focus:border-accent"
           />
         </form>
         <ControllerIndicator controller={controller} onTakeControl={takeControl} />
         <button
           type="button"
-          onClick={handleClose}
-          title="Close browser and free memory"
-          aria-label="Close browser"
-          className="grid h-6 w-6 shrink-0 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink"
+          onClick={handleCloseAndFree}
+          title="Close browser & free memory"
+          aria-label="Close browser and free memory"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink"
         >
-          <Icon name="close" size={14} />
+          <Icon name="delete" size={15} />
+        </button>
+        <button
+          type="button"
+          onClick={handleHide}
+          title="Hide browser (keeps running)"
+          aria-label="Hide browser"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded text-faint hover:bg-surface-3 hover:text-ink"
+        >
+          <Icon name="close" size={16} />
         </button>
       </div>
 

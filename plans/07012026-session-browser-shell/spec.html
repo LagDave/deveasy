@@ -298,6 +298,19 @@
         </ul>
         <p><strong>Updated Done criteria:</strong> Layer 1 re-verified (typecheck, 98 tests, frontend build). Layer 2 (<code>test-results.json</code>) still pending a live run — the address bar, typing, and click accuracy now need hands-on confirmation.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 3 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Interaction + UX fixes after live-testing the overlay (navigation now works).</p>
+        <p><strong>Reason:</strong> User QA — clicks didn't register, the pane couldn't be hidden, and the top bar was cramped.</p>
+        <ul>
+          <li><strong>Clicks landed twice:</strong> a real click fires mousedown → mouseup → click; the surface sent all three, and the backend turned both <code>mouseup</code> and the separate <code>click</code> into full clicks → select-then-deselect on toggles (e.g. reCAPTCHA grids). Dropped the redundant client-side <code>click</code>; mousedown/mouseup compose one clean click.</li>
+          <li><strong>Hide vs close split:</strong> the × was killing Chromium (freeing memory) <em>and</em> collapsing. Now × <strong>hides</strong> the pane (browser keeps running server-side; reopening reattaches), and a separate trash button does <strong>close &amp; free memory</strong>.</li>
+          <li><strong>Slide animation:</strong> the pane slides in/out from the right (framer-motion <code>AnimatePresence</code>).</li>
+          <li><strong>Top bar</strong> given more padding/height; address input enlarged.</li>
+          <li><strong>Navigation errors</strong> now surface the real reason to the operator (was a generic "Navigation failed.").</li>
+        </ul>
+        <p><strong>Updated Done criteria:</strong> Layer 1 re-verified (frontend build clean). Layer 2 still needs hands-on confirmation of click accuracy, typing, hide/show, and the slide-in/out.</p>
+      </article>
     </section>
 
     <section class="spec-card" id="done">
