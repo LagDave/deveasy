@@ -316,6 +316,15 @@
         <p><strong>Change:</strong> A freshly-launched browser opens to a home page (<code>google.com</code>) instead of <code>about:blank</code>.</p>
         <p><strong>Reason:</strong> User request — a blank browser is a dead end; open somewhere useful. New constant <code>BROWSER_HOME_URL</code>; the home load is fire-and-forget in <code>BrowserProcessService.launch()</code>, so opening stays instant and only new launches navigate (reattaching keeps the current page).</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 5 - 2026-07-02</h3>
+        <p><strong>Change:</strong> The address bar + tab strip populate on connect, and the pane auto-slides-in when the agent drives the browser.</p>
+        <p><strong>Reason:</strong> User QA — a loaded page showed an empty address bar / no tab, and the pane stayed hidden when the agent opened the browser.</p>
+        <ul>
+          <li><strong>Replay chrome state on attach:</strong> <code>attach()</code> replayed only the last frame, so a (re)connect had no URL/tab list until the next navigation. It now also replays the current URL + tabs + controller, so the address bar and the current tab populate immediately.</li>
+          <li><strong>Auto-reveal:</strong> <code>SessionPanel</code> watches the live session stream for a browser MCP tool call (<code>mcp__deveasy-browser__*</code>) and slides the pane in, so the operator watches the agent drive without opening it manually. Live turns only — history backfill never auto-opens.</li>
+        </ul>
+      </article>
     </section>
 
     <section class="spec-card" id="done">

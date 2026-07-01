@@ -8,7 +8,7 @@ import {
   useDeleteSession,
   useRenameSession,
 } from "../../hooks/queries/useSessionHistory";
-import { useSession } from "../../hooks/useSession";
+import { useSession, type SessionEvent } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
 import { getLastEffort, getLastModel } from "../../utils/modelLabels";
 import { BrowserView } from "../Browser/BrowserView";
@@ -41,6 +41,17 @@ const STATUS_PILL: Record<string, string> = {
   closed: "pill",
   error: "pill-danger",
 };
+
+/** True if an event is an assistant turn that called a browser (MCP) tool. */
+function isBrowserToolEvent(event: SessionEvent): boolean {
+  if (event.type !== "assistant") return false;
+  const content = (event.message as { content?: unknown } | undefined)?.content;
+  if (!Array.isArray(content)) return false;
+  return content.some((block) => {
+    const b = block as { type?: unknown; name?: unknown };
+    return b.type === "tool_use" && typeof b.name === "string" && b.name.includes("browser");
+  });
+}
 
 /**
  * Sessions panel: a project-grouped session rail on the left, the live
@@ -122,6 +133,24 @@ export function SessionPanel({
     clearQueue,
   } = useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
+
+  // Auto-reveal the browser pane when the agent drives it: the MCP tool call arrives
+  // in the live session stream, so slide the pane in for the operator to watch. Only
+  // live turns trigger it (streaming) — never the history backfill on session load.
+  const browserScanRef = useRef(0);
+  useEffect(() => {
+    if (!streaming) {
+      browserScanRef.current = events.length;
+      return;
+    }
+    for (let i = browserScanRef.current; i < events.length; i++) {
+      if (isBrowserToolEvent(events[i])) {
+        setShowBrowser(true);
+        break;
+      }
+    }
+    browserScanRef.current = events.length;
+  }, [events, streaming]);
 
   // Seed the create-project session's opening turn once the CLI process is ready
   // (isReady, not just ws-open — the backend wires its message handler and starts

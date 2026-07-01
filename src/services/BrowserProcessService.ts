@@ -149,6 +149,9 @@ export class BrowserProcessService {
     entry.subscribers.add(subscriber);
     this.touch(sessionId);
     if (entry.lastFrame) subscriber.onFrame(entry.lastFrame);
+    // Replay the current URL + tab list (and controller) so the address bar and tab
+    // strip populate immediately on (re)connect — not only on the next navigation.
+    this.replayState(subscriber, entry);
     if (!entry.screencasting) void this.startScreencast(entry);
     return () => {
       entry.subscribers.delete(subscriber);
@@ -417,6 +420,14 @@ export class BrowserProcessService {
         // ignore — a broken subscriber is dropped on its own WS close
       }
     }
+  }
+
+  /** Send the current chrome state (url + tabs + controller) to one newly-attached viewer. */
+  private static replayState(subscriber: BrowserFrameSubscriber, entry: LiveBrowser): void {
+    const tab = entry.tabs.find((t) => t.id === entry.activeTabId);
+    if (!tab) return;
+    subscriber.onEvent?.({ type: "navigate", url: tab.page.url(), title: "", tabs: this.tabInfos(entry) });
+    if (entry.controller) subscriber.onEvent?.({ type: "controller", controller: entry.controller });
   }
 
   private static broadcastNav(entry: LiveBrowser, tab: LiveTab): void {
