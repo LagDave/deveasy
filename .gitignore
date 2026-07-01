@@ -10,6 +10,10 @@ frontend/dist/
 # Anchored to repo root so it does NOT also ignore src/controllers/projects/.
 /projects/
 
+# DevEasy runtime state — per-session browser profiles and MCP config files
+# (plans/07012026-session-browser-shell). Anchored to repo root.
+/.deveasy-state/
+
 # Env / secrets
 .env
 .env.local

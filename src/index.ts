@@ -11,6 +11,10 @@ import { logger } from "./lib/logger";
 import { registerRoutes } from "./routes";
 import { attachSessionWebSocket } from "./ws/sessionWebSocket";
 import { attachTerminalWebSocket } from "./ws/terminalWebSocket";
+import { attachBrowserWebSocket } from "./ws/browserWebSocket";
+import { attachBrowserMcp } from "./mcp/browserMcpServer";
+import { BrowserProcessService } from "./services/BrowserProcessService";
+import { SessionModel } from "./models/SessionModel";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -32,6 +36,9 @@ function createApiApp(): express.Express {
   });
 
   registerRoutes(app);
+  // MCP endpoint (/mcp/browser) — mounted before the frontend fallback. Speaks the
+  // MCP protocol, not the REST envelope, same as the /ws relays.
+  attachBrowserMcp(app);
   return app;
 }
 
@@ -39,7 +46,7 @@ function createApiApp(): express.Express {
 function mountBuiltFrontend(app: express.Express): void {
   const spaDir = path.join(REPO_ROOT, "frontend", "dist");
   app.use(express.static(spaDir));
-  app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(spaDir, "index.html")));
+  app.get(/^(?!\/api|\/mcp).*/, (_req, res) => res.sendFile(path.join(spaDir, "index.html")));
 }
 
 /**
@@ -69,6 +76,16 @@ async function mountViteFrontend(app: express.Express, server: http.Server): Pro
   }
 }
 
+/** Startup reconciliation: wipe browser profiles whose session no longer exists. */
+async function reconcileBrowserProfiles(): Promise<void> {
+  try {
+    const sessions = await SessionModel.listAll();
+    await BrowserProcessService.gcOrphanProfiles(new Set(sessions.map((s) => s.id)));
+  } catch (err) {
+    logger.warn({ err }, "Browser profile GC skipped");
+  }
+}
+
 async function main(): Promise<void> {
   const config = loadConfig(); // throws on invalid config before we bind a port
   const app = createApiApp();
@@ -78,6 +95,10 @@ async function main(): Promise<void> {
   // with Vite's HMR ws).
   attachSessionWebSocket(server);
   attachTerminalWebSocket(server);
+  attachBrowserWebSocket(server);
+
+  // Reconcile browser profiles on boot: drop dirs left by deleted sessions / crashes.
+  void reconcileBrowserProfiles();
 
   // Frontend is mounted AFTER the API routes so /api always wins.
   if (isProduction) mountBuiltFrontend(app);

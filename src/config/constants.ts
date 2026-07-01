@@ -28,3 +28,28 @@ export const INJECTED_RELATIVE_PATHS = [
   ".claude/skills",
   ".claude/agents",
 ] as const;
+
+/**
+ * Session browser shell — one persistent Playwright Chromium per session
+ * (plans/07012026-session-browser-shell). Values named here, not scattered (§4.2).
+ */
+/** Hard cap on simultaneously live browsers (heavier than PTYs, so lower than MAX_TERMINALS). */
+export const MAX_BROWSERS = 4;
+/** Suspend a browser (kill process, keep profile) after this long idle with no viewer. */
+export const BROWSER_IDLE_MS = 15 * 60 * 1000;
+/** How often the idle sweep runs. */
+export const BROWSER_EVICTION_INTERVAL_MS = 60 * 1000;
+/** Durable per-session Chromium profiles (login survives reload + restart). DevEasy-managed, gitignored. */
+export const BROWSER_PROFILES_DIR = path.join(REPO_ROOT, ".deveasy-state", "browser-profiles");
+/** In-process MCP endpoint the CLI is pointed at via --mcp-config (not under /api). */
+export const BROWSER_MCP_PATH = "/mcp/browser";
+/** Per-session --mcp-config files DevEasy writes at CLI spawn. DevEasy-managed, gitignored. */
+export const BROWSER_MCP_CONFIG_DIR = path.join(REPO_ROOT, ".deveasy-state", "mcp-configs");
+/** Default viewport / screencast geometry. */
+export const BROWSER_DEFAULT_VIEWPORT = { width: 1280, height: 800 } as const;
+/** JPEG quality for the CDP screencast (1-100); lower trims bandwidth. */
+export const BROWSER_SCREENCAST_QUALITY = 60;
+/** After the operator interacts, agent tool calls are refused for this grace window (input-contention lock). */
+export const BROWSER_HUMAN_CONTROL_GRACE_MS = 5000;
+/** Default navigation/action timeout for agent semantic tools. */
+export const BROWSER_ACTION_TIMEOUT_MS = 30 * 1000;

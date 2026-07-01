@@ -19,6 +19,7 @@
     "postinstall": "node scripts/fix-node-pty.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "gray-matter": "^4.0.3",
@@ -30,6 +31,7 @@
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "pino-pretty": "^13.0.0",
+    "playwright": "^1.61.1",
     "ws": "^8.18.0",
     "zod": "^3.24.1"
   },

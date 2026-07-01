@@ -6,6 +6,7 @@ import editorRoutes from "./editor";
 import azureRoutes from "./azure";
 import agentConfigRoutes from "./agentConfig";
 import terminalRoutes from "./terminal";
+import browserRoutes from "./browser";
 import usageRoutes from "./usage";
 
 /**
@@ -14,6 +15,7 @@ import usageRoutes from "./usage";
 export function registerRoutes(app: Express): void {
   app.use("/api/projects", projectRoutes);
   // <deveasy:routes> — additional feature routers are mounted below this marker.
+  app.use("/api/browser", browserRoutes);
   app.use("/api/sessions", sessionRoutes);
   app.use("/api/git", gitRoutes);
   app.use("/api/editor", editorRoutes);

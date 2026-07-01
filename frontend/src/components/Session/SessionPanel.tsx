@@ -10,6 +10,7 @@ import {
 import { useSession } from "../../hooks/useSession";
 import { toast } from "../../lib/toast";
 import { getLastEffort, getLastModel } from "../../utils/modelLabels";
+import { BrowserView } from "../Browser/BrowserView";
 import type { WorkspaceTab } from "../CodeEditor/WorkspaceTabs";
 import { WizardChoice } from "../CreateProject/WizardChoice";
 import { buildSeedTurn, parseWizardQuestion } from "../CreateProject/wizardProtocol";
@@ -62,6 +63,8 @@ export function SessionPanel({
   const [creatingProjectId, setCreatingProjectId] = useState<number | null>(null);
   const [editorProjectId, setEditorProjectId] = useState<number | null>(null);
   const [editorTab, setEditorTab] = useState<WorkspaceTab>("files");
+  // Per-session browser shell: hidden by default, lazily launched when toggled on.
+  const [showBrowser, setShowBrowser] = useState(false);
   const seededRef = useRef<Set<number>>(new Set());
 
   // Open the editor takeover for a project, optionally on a specific tab (Repo/Terminal
@@ -75,6 +78,12 @@ export function SessionPanel({
   useEffect(() => {
     if (openSession && openSession.id !== activeSessionId) setActiveSessionId(openSession.id);
   }, [openSession, activeSessionId]);
+
+  // Collapse the browser pane when switching sessions — it's a per-session surface,
+  // so the operator re-opens it for whichever session they land on.
+  useEffect(() => {
+    setShowBrowser(false);
+  }, [activeSessionId]);
 
   const onRename = (sessionId: number, title: string) => {
     renameSession.mutate(
@@ -182,43 +191,66 @@ export function SessionPanel({
         onDelete={onDelete}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1">
         {activeSessionId ? (
           <>
-            <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-3">
-              <span className="truncate font-mono text-sm text-muted">
-                {activeSession?.title ?? "New Session"}
-              </span>
-              {(streaming || status !== "open") && (
-                <span className={`pill ${STATUS_PILL[status] ?? "pill"}`}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                  {streaming ? "responding" : status}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-3">
+                <span className="truncate font-mono text-sm text-muted">
+                  {activeSession?.title ?? "New Session"}
                 </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  {(streaming || status !== "open") && (
+                    <span className={`pill ${STATUS_PILL[status] ?? "pill"}`}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {streaming ? "responding" : status}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowBrowser((v) => !v)}
+                    title={showBrowser ? "Hide browser" : "Open browser"}
+                    aria-label={showBrowser ? "Hide browser" : "Open browser"}
+                    aria-pressed={showBrowser}
+                    className={`grid h-7 w-7 place-items-center rounded border transition-colors ${
+                      showBrowser
+                        ? "border-accent bg-surface-2 text-accent"
+                        : "border-line text-muted hover:bg-surface-2 hover:text-ink"
+                    }`}
+                  >
+                    <Icon name="browser" size={15} />
+                  </button>
+                </div>
+              </div>
+              <SessionTranscript key={activeSessionId} events={events} thinking={streaming} partialText={partialText} />
+              {wizardQuestion && status === "open" && (
+                <div className="border-t border-line px-6 py-3">
+                  <WizardChoice key={wizardQuestion.id} question={wizardQuestion} onSubmit={send} />
+                </div>
               )}
+              <SessionComposer
+                onSend={send}
+                disabled={status !== "open"}
+                busy={streaming}
+                selectedModel={selectedModel}
+                resolvedModel={resolvedModel}
+                selectedEffort={selectedEffort}
+                slashCommands={slashCommands}
+                context={context}
+                onSetModel={setModel}
+                onSetEffort={setEffort}
+                queue={queue}
+                onUpdateQueued={updateQueued}
+                onRemoveQueued={removeQueued}
+                onClearQueue={clearQueue}
+                hint={status !== "open" ? "Connecting to the session…" : undefined}
+              />
             </div>
-            <SessionTranscript key={activeSessionId} events={events} thinking={streaming} partialText={partialText} />
-            {wizardQuestion && status === "open" && (
-              <div className="border-t border-line px-6 py-3">
-                <WizardChoice key={wizardQuestion.id} question={wizardQuestion} onSubmit={send} />
+            {showBrowser && (
+              <div className="flex min-w-0 flex-1 flex-col border-l border-line">
+                <BrowserView sessionId={activeSessionId} onClose={() => setShowBrowser(false)} />
               </div>
             )}
-            <SessionComposer
-              onSend={send}
-              disabled={status !== "open"}
-              busy={streaming}
-              selectedModel={selectedModel}
-              resolvedModel={resolvedModel}
-              selectedEffort={selectedEffort}
-              slashCommands={slashCommands}
-              context={context}
-              onSetModel={setModel}
-              onSetEffort={setEffort}
-              queue={queue}
-              onUpdateQueued={updateQueued}
-              onRemoveQueued={removeQueued}
-              onClearQueue={clearQueue}
-              hint={status !== "open" ? "Connecting to the session…" : undefined}
-            />
           </>
         ) : (
           <div className="flex-1 px-8 py-7">

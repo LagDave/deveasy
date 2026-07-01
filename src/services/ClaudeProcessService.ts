@@ -1,6 +1,11 @@
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { loadConfig } from "../config";
+import { BROWSER_MCP_CONFIG_DIR, BROWSER_MCP_PATH } from "../config/constants";
 import { childLogger } from "../lib/logger";
+import { issueBrowserMcpToken, revokeBrowserMcpToken } from "../mcp/browserMcpTokens";
 import { resolveExecutable } from "../utils/platform";
 
 const log = childLogger({ module: "ClaudeProcessService" });
@@ -59,6 +64,8 @@ interface LiveProcess {
   child: ChildProcessWithoutNullStreams;
   stdoutBuffer: string;
   handlers: SessionHandlers;
+  /** Path to this session's --mcp-config file, cleaned up on teardown. */
+  mcpConfigPath: string | null;
 }
 
 /**
@@ -145,9 +152,18 @@ export class ClaudeProcessService {
       );
     }
 
+    // Best-effort: point the CLI at the in-process browser MCP server. A write
+    // failure must never block the session — it just means no browser tools.
+    let mcpConfigPath: string | null = null;
+    try {
+      mcpConfigPath = this.writeMcpConfig(sessionId);
+    } catch (err) {
+      log.warn({ sessionId, err }, "Failed to write browser MCP config; continuing without browser tools");
+    }
+
     let child: ChildProcessWithoutNullStreams;
     try {
-      child = spawn(resolveExecutable(CLI_COMMAND), this.buildArgs(opts), {
+      child = spawn(resolveExecutable(CLI_COMMAND), this.buildArgs(opts, mcpConfigPath), {
         cwd: projectPath,
         env: this.buildChildEnv(),
         stdio: ["pipe", "pipe", "pipe"],
@@ -160,7 +176,7 @@ export class ClaudeProcessService {
       );
     }
 
-    const entry: LiveProcess = { child, stdoutBuffer: "", handlers };
+    const entry: LiveProcess = { child, stdoutBuffer: "", handlers, mcpConfigPath };
     this.live.set(sessionId, entry);
     log.info(
       {
@@ -206,13 +222,37 @@ export class ClaudeProcessService {
     this.start(sessionId, projectPath, handlers, opts);
   }
 
-  /** Build the CLI argv: base streaming args + optional model + session id/resume. */
-  private static buildArgs(opts: StartOpts): string[] {
+  /** Build the CLI argv: base streaming args + optional model + MCP config + session id/resume. */
+  private static buildArgs(opts: StartOpts, mcpConfigPath?: string | null): string[] {
     const args: string[] = [...CLI_ARGS];
     if (opts.model) args.push("--model", opts.model);
     if (opts.effort) args.push("--effort", opts.effort);
+    if (mcpConfigPath) args.push("--mcp-config", mcpConfigPath);
     args.push(opts.resume ? "--resume" : "--session-id", opts.cliSessionId);
     return args;
+  }
+
+  /**
+   * Write this session's --mcp-config, pointing the CLI at the in-process browser
+   * MCP server over loopback with a freshly issued per-session token in the headers
+   * (§5.4). Returns the file path for cleanup on teardown.
+   */
+  private static writeMcpConfig(sessionId: number): string {
+    const token = issueBrowserMcpToken(sessionId);
+    const { port } = loadConfig();
+    const config = {
+      mcpServers: {
+        "deveasy-browser": {
+          type: "http",
+          url: `http://127.0.0.1:${port}${BROWSER_MCP_PATH}`,
+          headers: { "x-deveasy-session": String(sessionId), "x-deveasy-token": token },
+        },
+      },
+    };
+    mkdirSync(BROWSER_MCP_CONFIG_DIR, { recursive: true });
+    const configPath = path.join(BROWSER_MCP_CONFIG_DIR, `${sessionId}.json`);
+    writeFileSync(configPath, JSON.stringify(config), "utf8");
+    return configPath;
   }
 
   /** Write a user turn to the process stdin as a stream-json line. */
@@ -354,6 +394,14 @@ export class ClaudeProcessService {
       log.warn({ sessionId, err }, "Failed to kill child process");
     }
     this.live.delete(sessionId);
+    revokeBrowserMcpToken(sessionId);
+    if (entry.mcpConfigPath) {
+      try {
+        rmSync(entry.mcpConfigPath, { force: true });
+      } catch (err) {
+        log.warn({ sessionId, err }, "Failed to remove MCP config file");
+      }
+    }
     log.info({ sessionId, pid: entry.child.pid }, "Claude process stopped");
   }
 

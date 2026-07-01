@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Session Browser Shell Spec</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #ffffff;
+      --ink: #080808;
+      --muted: #5f5f5f;
+      --line: #d8d8d8;
+      --soft: #f5f5f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    .spec-shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0; }
+    .spec-hero, .spec-card, .task-card { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .spec-hero { border-color: var(--ink); padding: 32px; margin-bottom: 20px; }
+    .hero-topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .spec-card { padding: 28px; margin-top: 16px; }
+    .task-card { padding: 20px; background: var(--soft); margin-top: 14px; }
+    .eyebrow, dt { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
+    .eyebrow { margin: 0; }
+    .status-pill { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 0.78rem; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+    .status-card { border-color: var(--ink); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 840px; margin-bottom: 24px; font-size: clamp(2.25rem, 6vw, 4.25rem); line-height: 0.95; letter-spacing: 0; }
+    h2 { font-size: 1.35rem; letter-spacing: 0; }
+    h3 { font-size: 1rem; letter-spacing: 0; }
+    code { padding: 0.1rem 0.3rem; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); font-size: 0.92em; }
+    .meta-grid, .split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .meta-grid { margin: 0; }
+    .meta-grid div, .split-grid > div { border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    dd { margin: 4px 0 0; font-weight: 700; }
+    .task-card dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+    .task-card dt { padding-top: 2px; }
+    .task-card dd { font-weight: 400; margin: 0; }
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+    .note { border-left: 3px solid var(--ink); padding: 4px 0 4px 14px; margin: 12px 0; }
+    ul { margin: 8px 0; }
+    li { margin: 4px 0; }
+    @media (max-width: 640px) {
+      .spec-shell { width: min(100% - 20px, 1120px); padding: 24px 0; }
+      .spec-hero, .spec-card { padding: 20px; }
+      .task-card dl { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec</p>
+        <span class="status-pill status-completed">Completed</span>
+      </div>
+      <h1>Session Browser Shell</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Completed</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/07012026-session-browser-shell</dd></div>
+        <div><dt>Size</dt><dd>Large</dd></div>
+        <div><dt>Risk</dt><dd>Level 3</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>DevEasy today gives an agent session a terminal but no eyes. A per-session, persistent browser lets the operator log in once (session survives refresh) and watch the agent drive that same page live — extending the app from terminal use to a visual view of what the agent is working on. Testing web flows, filling forms, and reproducing UI bugs currently happen blind; this closes that gap.</p>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>A browser shell scoped to a DevEasy session, shown side-by-side with that session's chat. One persistent Chromium per session (login/cookies survive reload and DevEasy restart), streamed to a canvas the operator can click and type into, with tabs. The <em>same</em> Chromium is driven by the agent through a custom in-process MCP server exposing semantic tools (navigate / click / type / read page / tab control). Done when: the operator opens a browser in a session, logs into a site, reloads DevEasy and is still logged in; the agent navigates and interacts via MCP tools while the operator watches; a manual close frees the Chromium's memory but keeps the login; deleting the session closes the Chromium and wipes its profile; and an idle browser self-suspends.</p>
+      <div class="note">
+        <p><strong>Decisions locked (grill, 2026-07-01):</strong> Scope = per <strong>session</strong> (not project) so each agent's browser is isolated and rides alongside its chat. Layout = <strong>one session at a time</strong>; the active session's panel splits into chat + browser (the panel only ever mounts one <code>activeSessionId</code>). Agent control = <strong>custom MCP server</strong>. Engine = <strong>Playwright</strong> (bundled Chromium). Tool model = <strong>semantic</strong> (selectors + accessibility tree). v1 includes <strong>tabs</strong>, <strong>idle eviction</strong>, and an <strong>input-contention lock</strong>.</p>
+      </div>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Three-state lifecycle (the core model)</h3>
+      <ul>
+        <li><strong>Close / suspend</strong> — kill the Chromium process, reclaim ~250MB RAM. <em>Profile dir stays.</em> Reopen re-launches against the same profile, login intact. This is the "manually closeable that frees memory" ask. Mirrors <code>POST /api/sessions/:id/stop</code>.</li>
+        <li><strong>Delete session</strong> — close the browser <em>and wipe the profile dir</em>. Login gone. Hooks into <code>SessionsController.remove</code> next to the existing <code>SessionStreamService.stop</code> call.</li>
+        <li><strong>Server restart / crash</strong> — process dies (in-memory registry cleared), profile dir survives on disk. Browser comes back "closed but re-openable." A startup GC reaps profile dirs with no matching session.</li>
+      </ul>
+      <h3>Relevant files (existing — reference analogs & touch points)</h3>
+      <ul>
+        <li><code>src/services/TerminalProcessService.ts</code> - <strong>primary backend analog.</strong> Process registry keyed by id, detach-≠-kill, scrollback replay, <code>MAX_TERMINALS</code> cap, signal reaping. <code>BrowserProcessService</code> mirrors its shape (screencast last-frame replaces text scrollback).</li>
+        <li><code>src/ws/terminalWebSocket.ts</code> - WS relay analog: <code>noServer</code> upgrade claiming one path, attach/detach, JSON frames. <code>browserWebSocket.ts</code> mirrors it.</li>
+        <li><code>src/services/ClaudeProcessService.ts:150</code> - CLI spawn. <code>buildArgs</code> (~line 210) and <code>buildChildEnv</code> (~line 289) are where the per-session <code>--mcp-config</code> and env are added.</li>
+        <li><code>src/controllers/sessions/SessionsController.ts:123</code> - <code>remove()</code>; add browser close+wipe beside <code>SessionStreamService.stop</code> (line 129). <code>stop()</code> at line 87 is the close-only analog.</li>
+        <li><code>src/index.ts:79-80</code> - WS relays attached here; add <code>attachBrowserWebSocket(server)</code>. <strong>Line 42</strong> SPA fallback <code>/^(?!\/api).*/</code> must also exclude <code>/mcp</code>.</li>
+        <li><code>src/routes/index.ts:16</code> - <code>&lt;deveasy:routes&gt;</code> marker; mount <code>/api/browser</code> here.</li>
+        <li><code>src/controllers/gbp-automation/</code> - REST reference triad (§6.1): thin controller, <code>feature-utils/controllerResponses.ts</code> (ok/fail/handleError), typed error.</li>
+        <li><code>src/config/constants.ts</code> - add <code>BROWSER_PROFILES_DIR</code>, <code>MAX_BROWSERS</code>, <code>BROWSER_IDLE_MS</code>, <code>BROWSER_MCP_PATH</code> (§4.2 — no magic values).</li>
+        <li><code>frontend/src/hooks/useTerminalSocket.ts</code> - <strong>primary frontend analog</strong> for <code>useBrowserSocket</code> (owns the WS + render surface, forwards input/resize).</li>
+        <li><code>frontend/src/components/CodeEditor/TerminalTab.tsx</code>, <code>terminal/TerminalInstance.tsx</code> - render-surface + tab-strip analog.</li>
+        <li><code>frontend/src/components/Session/SessionPanel.tsx:171-234</code> - the split point; the browser pane mounts beside the transcript for the active session.</li>
+        <li><code>frontend/src/api/index.ts</code> - the only HTTP client (§12.1, §14.2); <code>api/browser.ts</code> is thin typed fns over it.</li>
+      </ul>
+      <h3>Patterns to follow</h3>
+      <ul>
+        <li><strong>Backend service registry:</strong> mirror <code>TerminalProcessService</code> exactly — static <code>Map</code>, typed <code>BrowserError</code> (§8.3), signal reaping, attach returns a detach fn that never kills.</li>
+        <li><strong>REST surface:</strong> mirror <code>gbp-automation/</code> — thin controller → <code>feature-services/</code>, <code>ok()/fail()/handleBrowserError()</code> in <code>feature-utils/</code>, <code>{ success, data, error }</code> envelope (§8.1). Input validated at the boundary (§11.2, §5.2).</li>
+        <li><strong>Protocol surfaces are envelope exceptions:</strong> the WS relay and the MCP endpoint speak their own protocols, not <code>{success,data,error}</code> — same accepted deviation as the existing <code>/ws/*</code> relays. Everything under <code>/api/browser</code> keeps the envelope.</li>
+        <li><strong>Frontend:</strong> mirror <code>useTerminalSocket</code> + the <code>api/</code> triad (§12.1, §14.2, §14.3, §15.1). No raw fetch, data-fetching in hooks, server state via React Query.</li>
+        <li><strong>Logging:</strong> <code>childLogger({ module })</code>, Pino only (§9.1).</li>
+      </ul>
+      <p><strong>Reference files:</strong> <code>src/services/TerminalProcessService.ts</code> (service/registry), <code>src/controllers/gbp-automation/</code> (REST shape), <code>frontend/src/hooks/useTerminalSocket.ts</code> (client). The MCP server has <strong>no in-repo analog</strong> (zero MCP exists today) — structure it as a clean single-purpose module using <code>@modelcontextprotocol/sdk</code>'s Streamable-HTTP transport, tools defined declaratively.</p>
+      <h3>Agent-control architecture (MCP)</h3>
+      <ul>
+        <li>DevEasy hosts <strong>one in-process MCP server over Streamable HTTP</strong>, mounted at <code>/mcp/browser</code> on the existing Express server (no new port). It is co-located with <code>BrowserProcessService</code>, so tool calls drive the Playwright pages directly — no cross-process hop.</li>
+        <li>On spawn, <code>ClaudeProcessService</code> writes a per-session MCP config and passes <code>--mcp-config &lt;file&gt;</code>. The config points at <code>http://127.0.0.1:&lt;port&gt;/mcp/browser</code> and carries the DevEasy <code>sessionId</code> + a generated per-session token in headers.</li>
+        <li>The MCP server resolves <code>sessionId</code> → browser from the registry, validates the token (§5.4), lazily launches the Chromium on first tool call, and executes semantic actions. Agent tool calls appear in the session transcript automatically (they are <code>tool_use</code> events in the existing CLI stream), so "watch it alongside chat" needs no extra wiring.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li>Mirror <code>TerminalProcessService</code> for the registry/lifecycle and <code>gbp-automation/</code> for the REST surface (§6.1).</li>
+            <li>Persist profiles per session on disk; login survives reload <em>and</em> DevEasy restart.</li>
+            <li>Human WS input and agent MCP tool calls drive the <em>same</em> Chromium via the one registry.</li>
+            <li>Enforce the input-contention lock server-side in <code>BrowserProcessService</code> (§5.4) — the single chokepoint both paths pass through.</li>
+            <li>Bind/guard the MCP endpoint: localhost only + per-session token validated on every call (§5.2, §5.4). Token generated, never hardcoded (§5.1).</li>
+            <li>Cap concurrent browsers and idle-evict; keep the constants in <code>config/</code> (§4.2).</li>
+            <li>Reap Chromium process trees on SIGINT/SIGTERM/SIGBREAK (Windows-safe teardown).</li>
+            <li>Keep every new file within size tiers, &lt;800 hard ceiling (§2.4/§13.1); split into <code>feature-services/</code>/<code>feature-utils/</code> if a service grows.</li>
+            <li>Tests for the service, MCP tool handlers, and REST controller (§20.1, §20.2).</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>No real <code>&lt;iframe&gt;</code> to live sites (framing is blocked by X-Frame-Options/CSP) — pixel screencast only.</li>
+            <li>No DB tables — browsers are in-memory processes like terminals; profiles are the only durable state.</li>
+            <li>Do not weaken the API-key scrub in the CLI child env (subscription auth must hold).</li>
+            <li>Do not route <code>/api/browser</code> responses outside the <code>{success,data,error}</code> envelope.</li>
+            <li>Do not write profiles into the user's project dir (they are session-scoped, not project-scoped, and must not be git-injected).</li>
+            <li>No new frontend dependency — screencast renders to a native <code>&lt;canvas&gt;</code>/<code>&lt;img&gt;</code>.</li>
+            <li>No drive-by refactors of the terminal or session code (§ Refactoring Rule).</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out of scope (v2)</h3>
+      <ul>
+        <li>Multiple sessions' browsers tiled on screen at once (panel is one-session-at-a-time).</li>
+        <li>Coordinate/vision-based agent tools (semantic only in v1).</li>
+        <li>Browser extensions, downloads manager, devtools passthrough, per-tab profiles.</li>
+        <li>Moving profiles to an OS app-data dir (v1 uses a DevEasy-managed state dir under the repo root).</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 (Structural Risk) — new heavy dependency, a net-new MCP subsystem, a new WS surface, and a change to the CLI spawn path that every session flows through.</p>
+      <h3>Risks identified</h3>
+      <ul>
+        <li><strong>CLI support for HTTP MCP servers is version-dependent.</strong> The installed <code>claude</code> CLI may not accept <code>--mcp-config</code> with a <code>"type":"http"</code> server + headers. <strong>Mitigation:</strong> verify against the installed CLI first (T5 gate); fall back to SSE transport, then to a thin stdio MCP shim that proxies to <code>/api/browser</code>. The stdio shim converges on the REST surface (T3), which is built regardless — so T3 de-risks the whole MCP bet.</li>
+        <li><strong>Dependency weight.</strong> Playwright bundles ~300MB Chromium; <code>@modelcontextprotocol/sdk</code> is new (§4.4). <strong>Mitigation:</strong> justify both in the spec; Chromium fetch mirrors the existing <code>node-pty</code> postinstall step; pin versions.</li>
+        <li><strong>Chromium RAM.</strong> Two live sessions ≈ 500MB of browsers alone. <strong>Mitigation:</strong> <code>MAX_BROWSERS</code> cap with a typed <code>BROWSER_LIMIT_REACHED</code> error (mirrors <code>TERMINAL_LIMIT_REACHED</code>) + idle eviction.</li>
+        <li><strong>MCP endpoint drives a browser.</strong> The server binds all interfaces (<code>server.listen(config.port)</code>, index.ts:86, no host), so <code>/mcp/browser</code> would be LAN-reachable. <strong>Mitigation:</strong> require the per-session token on every MCP call and reject non-loopback origins; recommend a follow-up to bind <code>127.0.0.1</code> globally.</li>
+        <li><strong>SPA fallback swallows <code>/mcp</code>.</strong> Production fallback <code>/^(?!\/api).*/</code> (index.ts:42) returns index.html for <code>/mcp/browser</code>. <strong>Mitigation:</strong> register MCP before the fallback (it already runs in <code>registerRoutes</code> before <code>mountBuiltFrontend</code>) <em>and</em> widen the exclusion to <code>/^(?!\/api|\/mcp).*/</code>.</li>
+        <li><strong>Windows process-tree teardown.</strong> A plain <code>.kill()</code> may orphan <code>chrome.exe</code> children. <strong>Mitigation:</strong> prefer Playwright <code>context.close()</code>; fall back to <code>taskkill /pid X /T /F</code> on win32; reap on all shutdown signals.</li>
+        <li><strong>Input contention.</strong> Human click mid-agent-action breaks a test. <strong>Mitigation:</strong> soft lock — human interaction sets <code>controller=human</code> for a grace window; agent tool calls during it return a typed <code>BROWSER_HUMAN_DRIVING</code> the agent can retry; UI shows who's driving with a "take control" affordance.</li>
+        <li><strong>Screencast bandwidth/CPU.</strong> <strong>Mitigation:</strong> screencast only while a viewer is attached (start on attach, stop on detach); JPEG quality + max frame rate as tuned constants.</li>
+        <li><strong>Orphaned profile dirs</strong> after a crash. <strong>Mitigation:</strong> startup GC of profile dirs with no matching session; wipe-on-delete.</li>
+      </ul>
+      <p><strong>Blast radius (existing code touched):</strong> <code>ClaudeProcessService</code> (spawn args + env — flows through <em>every</em> session; additive, guarded), <code>SessionsController.remove</code> (one added call), <code>src/index.ts</code> (WS attach + fallback regex), <code>src/routes/index.ts</code> (one mount), <code>src/config/constants.ts</code> (additive), <code>frontend SessionPanel.tsx</code> (layout split), <code>package.json</code> ×2 (deps), repo <code>.gitignore</code> (state dir). Everything else is new files.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li><strong>You chose MCP over my recommended skill+REST path.</strong> MCP is genuinely the better agent UX (native tools vs shelling out), so this is a defensible call — but it is net-new architecture with a CLI-version dependency, which is why this is Level 3 not Level 2. I have de-risked it by making the REST surface (T3) load-bearing on its own (the UI needs it) and the MCP fallback substrate — so if HTTP MCP proves unsupported, we lose native-tool ergonomics, not the feature.</li>
+        <li><strong>Recommended alternative if T5 verification fails:</strong> ship v1 with the browser fully functional for the human plus the REST API, and expose agent control through a stdio MCP shim (or the injected skill) rather than blocking the release on HTTP MCP.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <p class="eyebrow">Large / 7 tasks — parallelizable in waves. Wave 1: T1. Wave 2 (parallel): T2, T3, T4. Wave 3: T5 (after T4). Wave 4 (parallel, after T2/T3): T6, T7.</p>
+
+      <article class="task-card">
+        <h3>T1: BrowserProcessService — registry, lifecycle, lock</h3>
+        <dl>
+          <dt>Do</dt><dd>Playwright persistent-context Chromium per <code>sessionId</code>; tabs = pages; last-frame buffer replaces scrollback; subscriber set with attach-returns-detach (never kills); <code>MAX_BROWSERS</code> cap + <code>BROWSER_LIMIT_REACHED</code>; idle eviction timer (suspend: kill process, keep profile); close (free RAM) vs. deleteAndWipe (close + rm profile); controller lock (<code>agent|human|null</code> + grace window); typed <code>BrowserError</code> (§8.3); signal reaping incl. win32 <code>taskkill /T</code>. Add constants to <code>config/constants.ts</code> (§4.2).</dd>
+          <dt>Files</dt><dd><code>src/services/BrowserProcessService.ts</code>, <code>src/services/feature-utils/BrowserError.ts</code> (or inline), <code>src/config/constants.ts</code>, <code>src/services/__tests__/BrowserProcessService.test.ts</code></dd>
+          <dt>Depends on</dt><dd>none</dd>
+          <dt>Verify</dt><dd><code>npm test</code> (lifecycle: create/attach/detach/close/deleteAndWipe/cap/lock); <code>npm run typecheck</code></dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T2: /ws/browser relay + screencast pipe</h3>
+        <dl>
+          <dt>Do</dt><dd>Mirror <code>terminalWebSocket.ts</code>: claim <code>/ws/browser</code> via <code>noServer</code> upgrade; read <code>sessionId</code>; attach (replay last frame). Start CDP <code>Page.startScreencast</code> on attach, stop on detach; frames (JPEG, tuned quality/fps) → client. Client → PTY-equivalent: mouse/keyboard/scroll → Playwright/CDP <code>Input.dispatch*</code>, acquiring the human side of the lock. Wire <code>attachBrowserWebSocket(server)</code> in <code>index.ts</code>.</dd>
+          <dt>Files</dt><dd><code>src/ws/browserWebSocket.ts</code>, <code>src/index.ts</code> (attach call), <code>src/ws/__tests__/browserWebSocket.test.ts</code></dd>
+          <dt>Depends on</dt><dd>T1</dd>
+          <dt>Verify</dt><dd><code>npm test</code>; manual: frames stream to a scratch client, clicks land</dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T3: /api/browser REST controller + routes + delete hook</h3>
+        <dl>
+          <dt>Do</dt><dd>Mirror <code>gbp-automation/</code> (§6.1, §8): endpoints to list/open/close browsers, list/open/close/activate tabs, read status (incl. controller + login-present). <code>ok()/fail()/handleBrowserError()</code> in <code>feature-utils/</code>. Validate input at the boundary (§11.2, §5.2). Mount at the <code>&lt;deveasy:routes&gt;</code> marker in <code>routes/index.ts</code>. Add <code>BrowserProcessService.closeAndWipe(sessionId)</code> call into <code>SessionsController.remove</code> beside <code>SessionStreamService.stop</code>.</dd>
+          <dt>Files</dt><dd><code>src/controllers/browser/BrowserController.ts</code>, <code>src/controllers/browser/feature-utils/controllerResponses.ts</code>, <code>src/routes/browser.ts</code>, <code>src/routes/index.ts</code>, <code>src/controllers/sessions/SessionsController.ts</code>, <code>src/controllers/browser/__tests__/BrowserController.test.ts</code></dd>
+          <dt>Depends on</dt><dd>T1</dd>
+          <dt>Verify</dt><dd><code>npm test</code> (contract + error paths, §20.2); <code>curl</code> open/close/tab/delete round-trip</dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T4: Browser MCP server (semantic tools)</h3>
+        <dl>
+          <dt>Do</dt><dd>In-process MCP over Streamable HTTP at <code>/mcp/browser</code> (<code>@modelcontextprotocol/sdk</code>). Resolve <code>sessionId</code> + validate token from headers (§5.4); reject non-loopback. Semantic tools: <code>browser_navigate</code>, <code>browser_click</code>, <code>browser_type</code>, <code>browser_read_page</code> (a11y/DOM snapshot), <code>browser_new_tab</code>, <code>browser_close_tab</code>, <code>browser_list_tabs</code>, <code>browser_wait_for</code>. Each lazily ensures the browser, acquires the agent side of the lock (returns <code>BROWSER_HUMAN_DRIVING</code> when held). Widen SPA fallback to exclude <code>/mcp</code> (index.ts:42).</dd>
+          <dt>Files</dt><dd><code>src/mcp/browserMcpServer.ts</code>, <code>src/mcp/tools/*.ts</code>, <code>src/index.ts</code> (mount + fallback regex), <code>src/mcp/__tests__/browserMcpServer.test.ts</code></dd>
+          <dt>Depends on</dt><dd>T1</dd>
+          <dt>Verify</dt><dd><code>npm test</code> (tool handlers, token reject, lock); manual MCP handshake + a tool call</dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T5: CLI spawn wiring — inject --mcp-config</h3>
+        <dl>
+          <dt>Do</dt><dd><strong>First: verify the installed <code>claude</code> CLI accepts an HTTP MCP server via <code>--mcp-config</code></strong> (risk gate; if not, SSE → stdio-shim fallback and note in Revision Log). Write a per-session MCP config file with the loopback URL + <code>sessionId</code> + generated token; pass <code>--mcp-config &lt;file&gt;</code> from <code>buildArgs</code>; store the token in the registry; clean up the config file on session end. Keep the API-key scrub intact.</dd>
+          <dt>Files</dt><dd><code>src/services/ClaudeProcessService.ts</code>, <code>src/services/__tests__/ClaudeProcessService.test.ts</code></dd>
+          <dt>Depends on</dt><dd>T4</dd>
+          <dt>Verify</dt><dd><code>npm test</code>; manual: a session's agent lists + calls the browser tools</dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T6: Frontend — useBrowserSocket + BrowserView</h3>
+        <dl>
+          <dt>Do</dt><dd>Mirror <code>useTerminalSocket</code>: hook owns the <code>/ws/browser</code> WS + a <code>&lt;canvas&gt;</code>/<code>&lt;img&gt;</code> screencast surface; forwards mouse/keyboard/scroll + viewport resize; renders incoming frames. <code>BrowserView</code> component: tab strip (add/close/switch), address bar, open/close-(free-memory) controls, and a controller-lock indicator with "take control." No raw fetch (§14.2); no new dep.</dd>
+          <dt>Files</dt><dd><code>frontend/src/hooks/useBrowserSocket.ts</code>, <code>frontend/src/components/Browser/BrowserView.tsx</code>, <code>frontend/src/components/Browser/BrowserTabStrip.tsx</code></dd>
+          <dt>Depends on</dt><dd>T2 (WS protocol), T3 (tab/open/close REST)</dd>
+          <dt>Verify</dt><dd><code>npm --prefix frontend run build</code>; manual: view renders, input lands, tabs switch</dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T7: Frontend — api/browser + React Query + SessionPanel split</h3>
+        <dl>
+          <dt>Do</dt><dd><code>api/browser.ts</code> thin typed fns over <code>api/index.ts</code> (§12.1); React Query hooks in <code>hooks/queries/</code> (§14.3, §15.1). Splice <code>BrowserView</code> into <code>SessionPanel</code> as a side-by-side pane for the active session with a show/hide toggle; keep chat fully usable when hidden. Mutations invalidate queries on open/close/tab change.</dd>
+          <dt>Files</dt><dd><code>frontend/src/api/browser.ts</code>, <code>frontend/src/hooks/queries/useBrowserQueries.ts</code>, <code>frontend/src/components/Session/SessionPanel.tsx</code></dd>
+          <dt>Depends on</dt><dd>T3, T6</dd>
+          <dt>Verify</dt><dd><code>npm --prefix frontend run build</code>; manual: open browser beside chat, agent action shows in both transcript and screencast</dd>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="deps">
+      <h2>Dependencies to add (§4.4)</h2>
+      <ul>
+        <li><code>playwright</code> (backend <code>dependencies</code>) — bundled Chromium, persistent context, CDP screencast. Pinned. Chromium fetched on install (mirrors the <code>node-pty</code> postinstall pattern).</li>
+        <li><code>@modelcontextprotocol/sdk</code> (backend <code>dependencies</code>) — the MCP server + Streamable-HTTP transport. Pinned.</li>
+        <li>No frontend dependency added.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="revision-log">
+      <h2>Revision Log</h2>
+      <article class="revision-entry">
+        <h3>Rev 1 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Executed the full plan (T1–T7). All backend + frontend tasks implemented; 98 backend unit tests pass, backend typecheck and frontend build clean.</p>
+        <p><strong>Reason:</strong> Execution deviation — implementation-time findings that refined the spec:</p>
+        <ul>
+          <li><strong>T5 gate resolved favorably:</strong> the installed CLI (2.1.197) supports <code>--mcp-config</code> with an HTTP transport + headers, so the primary in-process HTTP MCP design shipped — no SSE/stdio fallback needed.</li>
+          <li><strong>Session id is a <code>number</code></strong> across the codebase; the browser registry, routes, and MCP config were keyed to match (not string as loosely implied).</li>
+          <li><strong>MCP SDK is ESM-only</strong> while the backend is CommonJS with <code>moduleResolution: node</code>. Loaded the SDK via <code>require()</code> against a minimal typed shim rather than a project-wide tsconfig change (avoided a Level-3 blast-radius edit).</li>
+          <li><strong>Playwright 1.61 removed <code>page.accessibility</code></strong>; the agent page readout uses <code>locator("body").ariaSnapshot()</code> (the modern semantic snapshot).</li>
+          <li><strong>Two files added beyond the task list</strong> for single-responsibility: <code>src/services/BrowserActionService.ts</code> (semantic actions split from the registry, §2.1) and <code>frontend/src/components/Browser/useBrowserSurfaceEvents.ts</code> (native-event wiring split from BrowserView, §13.2). Per-session tokens live in <code>src/mcp/browserMcpTokens.ts</code>.</li>
+          <li><strong>State dir:</strong> profiles + MCP config files live under <code>/.deveasy-state/</code> (added to <code>.gitignore</code>).</li>
+        </ul>
+        <p><strong>Updated Done criteria:</strong> Layer 1 met (build, typecheck, 98 tests). Behavioral acceptance (Layer 2, <code>test-results.json</code>) is generated and <em>pending</em> a live run — it needs a running app with a real Chromium and a live MCP handshake, and the Windows item needs Windows hardware. <code>-d</code> stays blocked until those pass or are waived.</p>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>npm test</code> and <code>npm --prefix frontend run build</code> pass</li>
+        <li><input type="checkbox" disabled> <code>npm run typecheck</code> — zero errors from this work</li>
+        <li><input type="checkbox" disabled> Manual: open a browser in a session, log into a site, reload DevEasy → still logged in</li>
+        <li><input type="checkbox" disabled> Manual: agent navigates/clicks/types via MCP tools while the operator watches the same page</li>
+        <li><input type="checkbox" disabled> Manual: "close" frees the Chromium (RAM drops) but the profile/login is kept; reopen restores login</li>
+        <li><input type="checkbox" disabled> Manual: deleting the session closes the Chromium and wipes its profile dir</li>
+        <li><input type="checkbox" disabled> Manual: an idle browser self-suspends after <code>BROWSER_IDLE_MS</code></li>
+        <li><input type="checkbox" disabled> Manual: multiple tabs open/switch/close; input-contention lock shows who's driving</li>
+        <li><input type="checkbox" disabled> Manual (Windows): closing DevEasy leaves no orphaned <code>chrome.exe</code>; login persists across restart</li>
+        <li><input type="checkbox" disabled> MCP endpoint rejects calls without the per-session token; <code>/mcp/browser</code> not swallowed by the SPA fallback</li>
+        <li><input type="checkbox" disabled> No regressions in terminal or session streaming</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

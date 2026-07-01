@@ -1,0 +1,145 @@
+{
+  "plan": "plans/07012026-session-browser-shell",
+  "generatedAt": "2026-07-01",
+  "status": "Not Run",
+  "items": [
+    {
+      "id": "T1",
+      "title": "Persistent login survives reload",
+      "surface": "ui",
+      "precondition": "DevEasy running; a session open.",
+      "steps": [
+        "1. In the session, toggle the Browser pane on.",
+        "2. Navigate to a site with a login and sign in.",
+        "3. Reload the DevEasy browser tab (full page refresh).",
+        "4. Re-open the Browser pane for the same session."
+      ],
+      "expected": "The site is still logged in — the persistent Chromium profile survived the reload and the WS reattached.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T2",
+      "title": "Agent drives the same browser via MCP tools",
+      "surface": "ui",
+      "precondition": "Browser pane open for the active session.",
+      "steps": [
+        "1. Ask the agent in chat to navigate to a URL and click/read an element.",
+        "2. Watch the screencast while the agent acts.",
+        "3. Confirm the agent's tool calls appear in the transcript."
+      ],
+      "expected": "The agent's browser_navigate/click/type/read_page actions drive the same Chromium shown in the pane; results are visible live and tool calls show in chat.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Requires a live claude session performing the MCP handshake against /mcp/browser."
+    },
+    {
+      "id": "T3",
+      "title": "Close frees memory but keeps login",
+      "surface": "ui",
+      "precondition": "A logged-in browser open for the session.",
+      "steps": [
+        "1. Note the Chromium process RSS (e.g. via Activity Monitor / Task Manager).",
+        "2. Click the pane's close (×) button.",
+        "3. Confirm the Chromium process exits (RAM reclaimed).",
+        "4. Re-open the browser for the same session."
+      ],
+      "expected": "Close terminates the Chromium process (memory freed); re-opening re-launches against the kept profile and the login is still present.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T4",
+      "title": "Deleting the session closes + wipes the browser",
+      "surface": "ui",
+      "precondition": "A browser open (or suspended) for a session with a profile on disk.",
+      "steps": [
+        "1. Note the profile dir at .deveasy-state/browser-profiles/<sessionId>.",
+        "2. Delete the session from the sidebar.",
+        "3. Inspect the process list and the profile dir."
+      ],
+      "expected": "The session's Chromium is closed and .deveasy-state/browser-profiles/<sessionId> is removed (SessionsController.remove -> closeAndWipe).",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T5",
+      "title": "Idle browser self-suspends",
+      "surface": "ui",
+      "precondition": "A browser open with no viewer attached and no agent activity.",
+      "steps": [
+        "1. Open a browser, then close the pane (detach the viewer) — or leave it untouched.",
+        "2. Wait past BROWSER_IDLE_MS (15 min) with no activity.",
+        "3. Check the process list."
+      ],
+      "expected": "The idle Chromium is suspended (process killed, ~250MB reclaimed); the profile is kept so re-opening restores state.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Timing check — lower BROWSER_IDLE_MS temporarily to verify faster."
+    },
+    {
+      "id": "T6",
+      "title": "Tabs + input-contention lock",
+      "surface": "ui",
+      "precondition": "Browser pane open.",
+      "steps": [
+        "1. Open a new tab, switch between tabs, close a tab.",
+        "2. While the agent is mid-action, click in the screencast.",
+        "3. Observe the controller indicator and the agent's next action."
+      ],
+      "expected": "Tabs open/switch/close correctly; the indicator shows who is driving; an agent tool call during the human grace window returns BROWSER_HUMAN_DRIVING (agent yields to the operator).",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T7",
+      "title": "Windows: clean teardown + persistence",
+      "surface": "cli",
+      "precondition": "DevEasy running on Windows with an open browser.",
+      "steps": [
+        "1. Open a browser and log into a site.",
+        "2. Quit DevEasy (Ctrl+C / close).",
+        "3. Check Task Manager for stray chrome.exe.",
+        "4. Restart DevEasy and re-open the browser."
+      ],
+      "expected": "No orphaned chrome.exe after quit; login persists across restart. (macOS cannot verify this — Windows hardware run required.)",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Cannot be run from macOS; deferred to a Windows run (same pattern as the windows-native-support plan)."
+    },
+    {
+      "id": "T8",
+      "title": "MCP endpoint is guarded and not swallowed by the SPA",
+      "surface": "api",
+      "precondition": "DevEasy running.",
+      "steps": [
+        "1. POST /mcp/browser with no/invalid x-deveasy-token -> expect 403.",
+        "2. POST /mcp/browser from a non-loopback origin -> expect 403.",
+        "3. Confirm /mcp/browser is NOT served the SPA index.html (production build)."
+      ],
+      "expected": "Unauthorized MCP calls are refused (403); /mcp/* is excluded from the SPA fallback. (Auth-gate logic is also covered by Layer 1 unit tests in src/mcp/__tests__.)",
+      "status": "pending",
+      "evidence": "",
+      "notes": "authorizeMcpRequest + token store are unit-tested; this item is the end-to-end HTTP assertion."
+    },
+    {
+      "id": "T9",
+      "title": "No regression in terminal or session streaming",
+      "surface": "ui",
+      "precondition": "DevEasy running.",
+      "steps": [
+        "1. Open a terminal in a project and run a command.",
+        "2. Start a session and send a turn; confirm streaming.",
+        "3. Confirm /ws/terminal and /ws/sessions still work alongside /ws/browser."
+      ],
+      "expected": "Terminal and session streaming behave exactly as before; the new /ws/browser relay coexists.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    }
+  ]
+}

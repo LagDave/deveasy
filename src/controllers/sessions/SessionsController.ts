@@ -3,6 +3,7 @@ import { childLogger } from "../../lib/logger";
 import { ProjectModel } from "../../models/ProjectModel";
 import { SessionMessageModel } from "../../models/SessionMessageModel";
 import { SessionModel } from "../../models/SessionModel";
+import { BrowserProcessService } from "../../services/BrowserProcessService";
 import { ConfigInjectionService } from "../../services/ConfigInjectionService";
 import { SessionStreamService } from "./feature-services/SessionStreamService";
 import { handleSessionError, ok } from "./feature-utils/controllerResponses";
@@ -128,6 +129,7 @@ export class SessionsController {
       }
       SessionStreamService.stop(sessionId); // no-op if not live
       await SessionModel.delete(sessionId); // session_messages cascade
+      await BrowserProcessService.closeAndWipe(sessionId); // close + wipe the session's browser profile; no-op if none
       log.info({ sessionId }, "Session deleted");
       return ok(res, { sessionId });
     } catch (error) {
