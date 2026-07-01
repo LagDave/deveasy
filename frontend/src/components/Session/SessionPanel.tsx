@@ -106,6 +106,10 @@ export function SessionPanel({
     context,
     setModel,
     setEffort,
+    queue,
+    updateQueued,
+    removeQueued,
+    clearQueue,
   } = useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
 
@@ -183,12 +187,14 @@ export function SessionPanel({
           <>
             <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-3">
               <span className="truncate font-mono text-sm text-muted">
-                {activeSession?.title ?? `Session #${activeSessionId}`}
+                {activeSession?.title ?? "New Session"}
               </span>
-              <span className={`pill ${STATUS_PILL[status] ?? "pill"}`}>
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {streaming ? "responding" : status}
-              </span>
+              {(streaming || status !== "open") && (
+                <span className={`pill ${STATUS_PILL[status] ?? "pill"}`}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {streaming ? "responding" : status}
+                </span>
+              )}
             </div>
             <SessionTranscript key={activeSessionId} events={events} thinking={streaming} partialText={partialText} />
             {wizardQuestion && status === "open" && (
@@ -198,7 +204,8 @@ export function SessionPanel({
             )}
             <SessionComposer
               onSend={send}
-              disabled={status !== "open" || streaming}
+              disabled={status !== "open"}
+              busy={streaming}
               selectedModel={selectedModel}
               resolvedModel={resolvedModel}
               selectedEffort={selectedEffort}
@@ -206,13 +213,11 @@ export function SessionPanel({
               context={context}
               onSetModel={setModel}
               onSetEffort={setEffort}
-              hint={
-                status !== "open"
-                  ? "Connecting to the session…"
-                  : streaming
-                    ? "Claude is responding…"
-                    : "Enter to send · Shift+Enter for a new line"
-              }
+              queue={queue}
+              onUpdateQueued={updateQueued}
+              onRemoveQueued={removeQueued}
+              onClearQueue={clearQueue}
+              hint={status !== "open" ? "Connecting to the session…" : undefined}
             />
           </>
         ) : (

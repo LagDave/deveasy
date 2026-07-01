@@ -17,7 +17,17 @@ export interface SessionEvent {
 
 export type ConnectionStatus = "connecting" | "open" | "closed" | "error";
 
+/** A message waiting to auto-send when the current turn finishes. */
+export interface QueueItem {
+  id: number;
+  text: string;
+}
+
 const WS_BASE_PATH = "/ws/sessions";
+/** Context fullness at which we warn the operator (one-time notice). */
+const WARN_PCT = 0.8;
+/** Context fullness at which we auto-run /compact once (when idle). */
+const AUTO_COMPACT_PCT = 0.9;
 
 interface UseSessionResult {
   events: SessionEvent[];
@@ -42,6 +52,14 @@ interface UseSessionResult {
   setModel: (model: string | null) => void;
   /** Change the session's thinking effort — restarts the CLI resumed. */
   setEffort: (effort: string | null) => void;
+  /** Messages queued to auto-send when the current turn completes (FIFO). */
+  queue: QueueItem[];
+  /** Edit a queued message's text. */
+  updateQueued: (id: number, text: string) => void;
+  /** Remove a queued message. */
+  removeQueued: (id: number) => void;
+  /** Clear the whole queue. */
+  clearQueue: () => void;
 }
 
 /** Pull a text delta out of a partial `stream_event`, if present. */
@@ -87,7 +105,18 @@ export function useSession(sessionId: number | null): UseSessionResult {
   const [selectedEffort, setSelectedEffort] = useState<string | null>(null);
   const [slashCommands, setSlashCommands] = useState<string[]>([]);
   const [context, setContext] = useState<{ used: number; window: number } | null>(null);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
+  const idRef = useRef(0);
+  /** Mirror of `streaming` for stable callbacks (avoids stale-closure in send). */
+  const streamingRef = useRef(false);
+  /** One-time flags so the warn notice / auto-compact fire once per crossing. */
+  const warnedRef = useRef(false);
+  const autoCompactedRef = useRef(false);
+
+  useEffect(() => {
+    streamingRef.current = streaming;
+  }, [streaming]);
 
   // Load persisted history once per session, then open the live stream.
   useEffect(() => {
@@ -103,6 +132,9 @@ export function useSession(sessionId: number | null): UseSessionResult {
     setSelectedEffort(null);
     setSlashCommands([]);
     setContext(null);
+    setQueue([]);
+    warnedRef.current = false;
+    autoCompactedRef.current = false;
     setStatus("connecting");
 
     getSessionMessages(sessionId)
@@ -164,6 +196,18 @@ export function useSession(sessionId: number | null): UseSessionResult {
       if (parsed.type === "context") {
         if (typeof parsed.used === "number" && typeof parsed.window === "number") {
           setContext({ used: parsed.used, window: parsed.window });
+          const pct = parsed.window > 0 ? parsed.used / parsed.window : 0;
+          if (pct < WARN_PCT) {
+            // Back to healthy — re-arm both the warning and auto-compact.
+            warnedRef.current = false;
+            autoCompactedRef.current = false;
+          } else if (pct < AUTO_COMPACT_PCT && !warnedRef.current) {
+            warnedRef.current = true;
+            setEvents((prev) => [
+              ...prev,
+              { type: "notice", text: `Context ${Math.round(pct * 100)}% — getting full; /compact to free space` },
+            ]);
+          }
         }
         return;
       }
@@ -203,7 +247,8 @@ export function useSession(sessionId: number | null): UseSessionResult {
     };
   }, [sessionId]);
 
-  const send = useCallback((text: string) => {
+  /** Send a turn to the CLI right now (used when idle and to drain the queue). */
+  const sendRaw = useCallback((text: string) => {
     const ws = socketRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: "user_turn", text }));
@@ -214,6 +259,49 @@ export function useSession(sessionId: number | null): UseSessionResult {
       { type: "user", message: { role: "user", content: [{ type: "text", text }] } },
     ]);
   }, []);
+
+  /** Public send: sends now when idle, otherwise queues to auto-send after the turn. */
+  const send = useCallback(
+    (text: string) => {
+      if (streamingRef.current) {
+        setQueue((q) => [...q, { id: (idRef.current += 1), text }]);
+        return;
+      }
+      sendRaw(text);
+    },
+    [sendRaw],
+  );
+
+  const updateQueued = useCallback((id: number, text: string) => {
+    setQueue((q) => q.map((it) => (it.id === id ? { ...it, text } : it)));
+  }, []);
+  const removeQueued = useCallback((id: number) => {
+    setQueue((q) => q.filter((it) => it.id !== id));
+  }, []);
+  const clearQueue = useCallback(() => setQueue([]), []);
+
+  // When idle: auto-compact if context is critical (frees space first), else drain
+  // the next queued message. One send per idle transition keeps turns sequential.
+  useEffect(() => {
+    if (status !== "open" || streaming) return;
+    if (context && context.window > 0) {
+      const pct = context.used / context.window;
+      if (pct >= AUTO_COMPACT_PCT && !autoCompactedRef.current) {
+        autoCompactedRef.current = true;
+        setEvents((prev) => [
+          ...prev,
+          { type: "notice", text: `Context ${Math.round(pct * 100)}% — auto-compacting` },
+        ]);
+        sendRaw("/compact");
+        return;
+      }
+    }
+    if (queue.length > 0) {
+      const next = queue[0];
+      setQueue((q) => q.slice(1));
+      sendRaw(next.text);
+    }
+  }, [status, streaming, context, queue, sendRaw]);
 
   const setModel = useCallback((next: string | null) => {
     const ws = socketRef.current;
@@ -252,5 +340,9 @@ export function useSession(sessionId: number | null): UseSessionResult {
     context,
     setModel,
     setEffort,
+    queue,
+    updateQueued,
+    removeQueued,
+    clearQueue,
   };
 }

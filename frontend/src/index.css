@@ -134,10 +134,9 @@
   }
 
   .surface {
-    background: color-mix(in oklab, var(--color-surface) 88%, transparent);
+    background: var(--color-surface);
     border: 1px solid var(--color-line);
     border-radius: var(--radius);
-    backdrop-filter: blur(8px);
   }
   .surface-2 {
     background: var(--color-surface-2);

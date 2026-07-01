@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
+import type { QueueItem } from "../../hooks/useSession";
 import { useModels } from "../../hooks/queries/useModelsQueries";
 import { activeModel, EFFORT_LEVELS } from "../../utils/modelLabels";
 import { Icon } from "../ui/Icon";
 import { COMMAND_PRESETS, parseCommand } from "./chatCommands";
 import { ContextRing } from "./ContextRing";
 import { EffortPicker } from "./EffortPicker";
+import { MessageQueue } from "./MessageQueue";
 import { ModelPicker } from "./ModelPicker";
 
 /**
@@ -16,7 +18,10 @@ import { ModelPicker } from "./ModelPicker";
  */
 interface SessionComposerProps {
   onSend: (text: string) => void;
+  /** Connection gate — true when the socket isn't open (blocks typing/sending). */
   disabled: boolean;
+  /** A turn is in progress — typing is allowed, but Send becomes Queue. */
+  busy: boolean;
   hint?: string;
   /** Selected model id (or null=CLI default) — drives the picker check. */
   selectedModel: string | null;
@@ -32,6 +37,11 @@ interface SessionComposerProps {
   onSetModel: (model: string | null) => void;
   /** Change the session thinking effort; only honored when idle. */
   onSetEffort: (effort: string | null) => void;
+  /** Queued messages waiting to auto-send after the current turn. */
+  queue: QueueItem[];
+  onUpdateQueued: (id: number, text: string) => void;
+  onRemoveQueued: (id: number) => void;
+  onClearQueue: () => void;
 }
 
 const MAX_ROWS_PX = 200;
@@ -42,6 +52,7 @@ const BUILTIN_SLASH = ["compact", "context", "clear"];
 export function SessionComposer({
   onSend,
   disabled,
+  busy,
   hint,
   selectedModel,
   resolvedModel,
@@ -50,6 +61,10 @@ export function SessionComposer({
   context,
   onSetModel,
   onSetEffort,
+  queue,
+  onUpdateQueued,
+  onRemoveQueued,
+  onClearQueue,
 }: SessionComposerProps) {
   const [text, setText] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -221,29 +236,41 @@ export function SessionComposer({
             onChange={(e) => setText2(e.target.value)}
             onKeyDown={onKeyDown}
             disabled={disabled}
-            placeholder={disabled ? "Waiting for the session…" : "Message Claude…  (/ for skills)"}
+            placeholder={
+              disabled
+                ? "Waiting for the session…"
+                : busy
+                  ? "Queue a message…  (sends after this turn)"
+                  : "Message Claude…  (/ for skills)"
+            }
             rows={1}
             className="max-h-[200px] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed text-ink outline-none placeholder:text-faint disabled:opacity-60"
           />
 
-          {/* Model · effort · context — the status controls before Send */}
+          {/* Model · effort · context · queue — the status controls before Send */}
           <ModelPicker
             catalog={catalog}
             selectedModel={selectedModel}
             resolvedModel={resolvedModel}
-            disabled={disabled}
+            disabled={disabled || busy}
             onSelect={onSetModel}
           />
           <EffortPicker
             levels={effortLevels}
             selectedEffort={selectedEffort}
-            disabled={disabled}
+            disabled={disabled || busy}
             onSelect={onSetEffort}
           />
           {ctxWindow > 0 && <ContextRing used={ctxUsed} window={ctxWindow} />}
+          <MessageQueue
+            items={queue}
+            onUpdate={onUpdateQueued}
+            onRemove={onRemoveQueued}
+            onClear={onClearQueue}
+          />
 
           <button onClick={submit} disabled={!canSend} className="btn btn-primary">
-            Send
+            {busy ? "Queue" : "Send"}
           </button>
         </div>
         <p className={`eyebrow mt-2 px-1 ${missingCommand ? "!text-danger" : ""}`}>
@@ -251,7 +278,9 @@ export function SessionComposer({
             ? (hint ?? "Waiting for the session…")
             : missingCommand
               ? "Start with a valid command, or / for a skill"
-              : (hint ?? "Enter to send · Shift+Enter for a new line")}
+              : busy
+                ? "Enter to queue · auto-sends after this turn"
+                : (hint ?? "Enter to send · Shift+Enter for a new line")}
         </p>
       </div>
     </div>

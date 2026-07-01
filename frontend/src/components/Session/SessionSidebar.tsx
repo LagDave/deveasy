@@ -199,7 +199,7 @@ function SessionRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const confirm = useConfirm();
-  const label = session.title ?? `Session #${session.id}`;
+  const label = session.title ?? "New Session";
   const runtime = session.runtime ?? null;
 
   const requestDelete = async () => {
@@ -271,17 +271,29 @@ function SessionRow({
 }
 
 function RuntimeDot({ runtime }: { runtime: SessionRuntime }) {
-  if (runtime === null) return <span className="h-2 w-2 shrink-0 rounded-full bg-faint" />;
-  if (runtime === "idle") return <span className="h-2 w-2 shrink-0 rounded-full bg-success" />;
+  // Fixed-width, centered slot so the title never shifts between states.
+  const slot = "flex h-2 w-4 shrink-0 justify-center";
+  if (runtime === null)
+    return (
+      <span className={`${slot} items-center`}>
+        <span className="h-2 w-2 rounded-full bg-faint" />
+      </span>
+    );
+  if (runtime === "idle")
+    return (
+      <span className={`${slot} items-center`}>
+        <span className="h-2 w-2 rounded-full bg-success" />
+      </span>
+    );
   // working: a subtle "typing" indicator — three amber dots bouncing in sequence.
   return (
-    <span className="flex shrink-0 items-end gap-0.5" aria-label="working">
+    <span className={`${slot} items-end gap-0.5`} aria-label="working">
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="h-1.5 w-1.5 rounded-full bg-accent"
-          animate={{ y: [0, -3, 0], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 }}
+          className="h-[3px] w-[3px] rounded-full bg-accent"
+          animate={{ y: [0, -1.5, 0], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.45, repeat: Infinity, ease: "easeInOut", delay: i * 0.075 }}
         />
       ))}
     </span>

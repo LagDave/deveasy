@@ -359,6 +359,13 @@
         <p><strong>Verification:</strong> <code>/api/usage/models</code> returns 10 models with versions + per-model effort support (no token in payload); <code>--effort low --model sonnet --session-id</code> spawns cleanly (init sonnet, result OK). Shared OAuth token reader extracted to <code>claudeOAuth.ts</code> (used by usage + models services).</p>
         <p><strong>Files:</strong> BE — <code>claudeOAuth.ts</code>, <code>ClaudeModelsService.ts</code>, <code>ClaudeUsageService.ts</code>, <code>UsageController.ts</code>, <code>routes/usage.ts</code>, <code>0006_session_effort.ts</code>, <code>SessionModel.ts</code>, <code>ClaudeProcessService.ts</code>, <code>SessionStreamService.ts</code>, <code>SessionsController.ts</code>. FE — <code>types/models.ts</code>, <code>api/models.ts</code>, <code>useModelsQueries.ts</code>, <code>modelLabels.ts</code>, <code>ModelPicker.tsx</code>, <code>EffortPicker.tsx</code>, <code>SessionComposer.tsx</code>, <code>useSession.ts</code>, <code>SessionPanel.tsx</code>, <code>api/sessions.ts</code>, <code>useSessionHistory.ts</code>.</p>
       </article>
+      <article class="task-card">
+        <h3>Rev 9 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Two features. (1) <strong>Auto-compact</strong>: a one-time warn notice at 80% context and, when idle, an automatic <code>/compact</code> at 90% (fires once per crossing; re-arms after context drops below 80%). (2) <strong>Message queue</strong>: you can type and send while a turn is streaming — messages queue and auto-send FIFO when the turn completes; auto-compact takes priority over the queue when context is critical. UI: a circular count badge before Send; clicking opens an animated popover where each queued message is editable and removable, with Clear. Send becomes "Queue" while busy; the composer stays typeable during a turn.</p>
+        <p><strong>Reason:</strong> User request: warn + auto-trigger compaction, and message queuing (type while responding; auto-send next).</p>
+        <p><strong>Note:</strong> Queue + auto-compact are client-side in <code>useSession</code>; verified by typecheck + reasoning, not headless pixel test. Auto-compact relies on the earlier context-count fix (Rev tail) being accurate.</p>
+        <p><strong>Files:</strong> <code>useSession.ts</code> (queue + drain-on-idle + warn/auto-compact), new <code>MessageQueue.tsx</code>, <code>SessionComposer.tsx</code> (busy vs disabled, Queue button, badge), <code>SessionPanel.tsx</code>.</p>
+      </article>
     </section>
   </main>
 </body>
