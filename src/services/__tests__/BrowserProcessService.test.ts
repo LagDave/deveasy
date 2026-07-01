@@ -16,6 +16,7 @@ function makePage() {
     url: () => "about:blank",
     title: () => Promise.resolve("Blank"),
     on: vi.fn(),
+    goto: vi.fn().mockResolvedValue(undefined),
     mainFrame: () => ({}),
     close: vi.fn().mockResolvedValue(undefined),
     bringToFront: vi.fn().mockResolvedValue(undefined),

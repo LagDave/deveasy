@@ -53,3 +53,5 @@ export const BROWSER_SCREENCAST_QUALITY = 60;
 export const BROWSER_HUMAN_CONTROL_GRACE_MS = 5000;
 /** Default navigation/action timeout for agent semantic tools. */
 export const BROWSER_ACTION_TIMEOUT_MS = 30 * 1000;
+/** Page a freshly-launched browser opens to, so it isn't a blank void. */
+export const BROWSER_HOME_URL = "https://www.google.com";

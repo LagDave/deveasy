@@ -311,6 +311,11 @@
         </ul>
         <p><strong>Updated Done criteria:</strong> Layer 1 re-verified (frontend build clean). Layer 2 still needs hands-on confirmation of click accuracy, typing, hide/show, and the slide-in/out.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 4 - 2026-07-01</h3>
+        <p><strong>Change:</strong> A freshly-launched browser opens to a home page (<code>google.com</code>) instead of <code>about:blank</code>.</p>
+        <p><strong>Reason:</strong> User request — a blank browser is a dead end; open somewhere useful. New constant <code>BROWSER_HOME_URL</code>; the home load is fire-and-forget in <code>BrowserProcessService.launch()</code>, so opening stays instant and only new launches navigate (reattaching keeps the current page).</p>
+      </article>
     </section>
 
     <section class="spec-card" id="done">

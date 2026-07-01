@@ -3,8 +3,10 @@ import { mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { chromium, type BrowserContext, type CDPSession, type Page } from "playwright";
 import {
+  BROWSER_ACTION_TIMEOUT_MS,
   BROWSER_DEFAULT_VIEWPORT,
   BROWSER_EVICTION_INTERVAL_MS,
+  BROWSER_HOME_URL,
   BROWSER_HUMAN_CONTROL_GRACE_MS,
   BROWSER_IDLE_MS,
   BROWSER_PROFILES_DIR,
@@ -335,6 +337,12 @@ export class BrowserProcessService {
     const tab = this.wireTab(entry, first);
     entry.tabs.push(tab);
     entry.activeTabId = tab.id;
+    // Open the home page in the background so a fresh browser isn't a blank void.
+    // Fire-and-forget: ensureForSession returns immediately and the screencast shows
+    // the page load. Only new launches navigate — reattaching keeps the current page.
+    void first
+      .goto(BROWSER_HOME_URL, { waitUntil: "domcontentloaded", timeout: BROWSER_ACTION_TIMEOUT_MS })
+      .catch((err) => log.warn({ sessionId, err }, "Home-page navigation failed"));
     return entry;
   }
 
