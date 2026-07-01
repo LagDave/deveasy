@@ -95,13 +95,23 @@ async function dispatchInput(sessionId: number, event: BrowserInputEvent): Promi
   }
 }
 
-/** Navigate as the operator (address bar); surface a friendly error back to the client. */
+/**
+ * Navigate as the operator (address bar). Surfaces the real reason back to the
+ * client — this is a local single-operator tool, so the actual navigation error
+ * (DNS, timeout, refused) is useful to the operator, not an internal leak.
+ */
 async function humanNavigate(ws: WebSocket, sessionId: number, url: string): Promise<void> {
   try {
     await BrowserActionService.navigate(sessionId, url, "human");
   } catch (err) {
-    log.warn({ sessionId, err }, "Browser navigate failed");
-    send(ws, { type: "error", message: err instanceof BrowserError ? err.message : "Navigation failed." });
+    log.warn({ sessionId, url, err }, "Browser navigate failed");
+    const message =
+      err instanceof BrowserError
+        ? err.message
+        : err instanceof Error
+          ? `Navigation failed: ${err.message.split("\n")[0]}`
+          : "Navigation failed.";
+    send(ws, { type: "error", message });
   }
 }
 

@@ -106,6 +106,7 @@ export function useBrowserSocket(sessionId: number): UseBrowserSocket {
         const img = frameImgRef.current;
         if (img) img.src = `data:image/jpeg;base64,${msg.data}`;
       } else if (msg.type === "navigate") {
+        setErrorMessage(null); // a successful navigation clears any prior error banner
         if (typeof msg.url === "string") setUrl(msg.url);
         if (typeof msg.title === "string") setTitle(msg.title);
         setTabs(parseTabs(msg.tabs));
