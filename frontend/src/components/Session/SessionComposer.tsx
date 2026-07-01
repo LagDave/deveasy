@@ -62,6 +62,10 @@ export function SessionComposer({
   const active = activeModel(models, selectedModel, resolvedModel);
   // Effort levels for the active model; unknown model -> offer all; unsupported -> none.
   const effortLevels = active ? (active.effortSupported ? active.efforts : []) : [...EFFORT_LEVELS];
+  // Context ring: use live usage once a turn has run; otherwise seed the window from
+  // the selected model's max so the ring shows at 0% from the start.
+  const ctxWindow = context?.window ?? active?.contextWindow ?? 0;
+  const ctxUsed = context?.used ?? 0;
 
   const trimmed = text.trim();
   const command = parseCommand(trimmed).command;
@@ -236,7 +240,7 @@ export function SessionComposer({
             disabled={disabled}
             onSelect={onSetEffort}
           />
-          {context && context.window > 0 && <ContextRing used={context.used} window={context.window} />}
+          {ctxWindow > 0 && <ContextRing used={ctxUsed} window={ctxWindow} />}
 
           <button onClick={submit} disabled={!canSend} className="btn btn-primary">
             Send
