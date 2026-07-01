@@ -1,7 +1,7 @@
 import { BROWSER_ACTION_TIMEOUT_MS } from "../config/constants";
 import { childLogger } from "../lib/logger";
 import { BrowserError } from "./BrowserError";
-import { BrowserProcessService } from "./BrowserProcessService";
+import { BrowserProcessService, type ControllerKind } from "./BrowserProcessService";
 
 const log = childLogger({ module: "BrowserActionService" });
 
@@ -39,9 +39,16 @@ function normalizeUrl(raw: string): string {
  * BROWSER_HUMAN_DRIVING. All actions target the session's active tab.
  */
 export class BrowserActionService {
-  static async navigate(sessionId: number, url: string): Promise<PageReadout> {
+  /**
+   * Navigate the active tab. `who` decides which side of the control lock is
+   * acquired — the MCP tools navigate as "agent"; the operator's address bar
+   * navigates as "human" (so it is never refused by BROWSER_HUMAN_DRIVING).
+   */
+  static async navigate(sessionId: number, url: string, who: ControllerKind = "agent"): Promise<PageReadout> {
     const target = normalizeUrl(url);
-    const page = this.beginAction(sessionId);
+    BrowserProcessService.acquireControl(sessionId, who);
+    BrowserProcessService.touch(sessionId);
+    const page = BrowserProcessService.activePage(sessionId);
     await page.goto(target, { waitUntil: "domcontentloaded", timeout: BROWSER_ACTION_TIMEOUT_MS });
     return this.readout(sessionId);
   }

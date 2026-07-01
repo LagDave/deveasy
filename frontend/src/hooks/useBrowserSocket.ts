@@ -40,7 +40,8 @@ export interface UseBrowserSocket {
   /** Last error message pushed by the server, if any. */
   errorMessage: string | null;
   sendInput: (event: BrowserInputEvent) => void;
-  sendResize: (width: number, height: number) => void;
+  /** Navigate the active tab as the operator (address bar). */
+  sendNavigate: (url: string) => void;
 }
 
 function buildWsUrl(sessionId: number): string {
@@ -129,9 +130,9 @@ export function useBrowserSocket(sessionId: number): UseBrowserSocket {
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "input", event }));
   }, []);
 
-  const sendResize = useCallback((width: number, height: number) => {
+  const sendNavigate = useCallback((url: string) => {
     const ws = wsRef.current;
-    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "resize", width, height }));
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "navigate", url }));
   }, []);
 
   return {
@@ -143,6 +144,6 @@ export function useBrowserSocket(sessionId: number): UseBrowserSocket {
     connState,
     errorMessage,
     sendInput,
-    sendResize,
+    sendNavigate,
   };
 }

@@ -1,6 +1,8 @@
 import type { Server } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { childLogger } from "../lib/logger";
+import { BrowserActionService } from "../services/BrowserActionService";
+import { BrowserError } from "../services/BrowserError";
 import { BrowserProcessService, type BrowserInputEvent } from "../services/BrowserProcessService";
 
 const log = childLogger({ module: "browserWebSocket" });
@@ -64,7 +66,7 @@ async function attachSocket(ws: WebSocket, sessionId: number): Promise<void> {
   log.info({ sessionId }, "Browser WS connection accepted");
 
   ws.on("message", (raw) => {
-    let msg: { type?: string; event?: unknown; width?: unknown; height?: unknown };
+    let msg: { type?: string; event?: unknown; url?: unknown; width?: unknown; height?: unknown };
     try {
       msg = JSON.parse(raw.toString()) as typeof msg;
     } catch {
@@ -72,6 +74,8 @@ async function attachSocket(ws: WebSocket, sessionId: number): Promise<void> {
     }
     if (msg.type === "input" && msg.event) {
       void dispatchInput(sessionId, msg.event as BrowserInputEvent);
+    } else if (msg.type === "navigate" && typeof msg.url === "string") {
+      void humanNavigate(ws, sessionId, msg.url);
     } else if (msg.type === "resize" && typeof msg.width === "number" && typeof msg.height === "number") {
       void BrowserProcessService.resize(sessionId, msg.width, msg.height);
     }
@@ -88,6 +92,16 @@ async function dispatchInput(sessionId: number, event: BrowserInputEvent): Promi
     await BrowserProcessService.dispatchInput(sessionId, event);
   } catch (err) {
     log.warn({ sessionId, err }, "Browser input dispatch failed");
+  }
+}
+
+/** Navigate as the operator (address bar); surface a friendly error back to the client. */
+async function humanNavigate(ws: WebSocket, sessionId: number, url: string): Promise<void> {
+  try {
+    await BrowserActionService.navigate(sessionId, url, "human");
+  } catch (err) {
+    log.warn({ sessionId, err }, "Browser navigate failed");
+    send(ws, { type: "error", message: err instanceof BrowserError ? err.message : "Navigation failed." });
   }
 }
 

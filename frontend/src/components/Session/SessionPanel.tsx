@@ -191,7 +191,7 @@ export function SessionPanel({
         onDelete={onDelete}
       />
 
-      <div className="flex min-w-0 flex-1">
+      <div className="relative flex min-w-0 flex-1">
         {activeSessionId ? (
           <>
             <div className="flex min-w-0 flex-1 flex-col">
@@ -247,7 +247,7 @@ export function SessionPanel({
               />
             </div>
             {showBrowser && (
-              <div className="flex min-w-0 flex-1 flex-col border-l border-line">
+              <div className="absolute inset-y-0 right-0 z-20 flex w-[60%] min-w-[480px] flex-col border-l border-line bg-[#0b0b0b] shadow-2xl">
                 <BrowserView sessionId={activeSessionId} onClose={() => setShowBrowser(false)} />
               </div>
             )}

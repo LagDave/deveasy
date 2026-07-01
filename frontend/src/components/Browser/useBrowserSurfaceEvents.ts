@@ -4,17 +4,20 @@ import type { BrowserButton, BrowserInputEvent } from "../../hooks/useBrowserSoc
 /**
  * Wires native pointer/keyboard/wheel listeners on the screencast surface and maps
  * them into remote-page coordinates + protocol events. Kept out of BrowserView so
- * the component stays a lean renderer (§13.2). Frames are the page viewport at a
- * fixed logical size (PAGE_W×PAGE_H); the <img> is shown at an arbitrary CSS size,
- * so every pointer coordinate is scaled back to page pixels.
+ * the component stays a lean renderer (§13.2).
+ *
+ * Frames are the page viewport at a FIXED logical size (PAGE_W×PAGE_H) — the server
+ * never resizes it — and the <img> is shown object-contain, so pointer coordinates
+ * are mapped through the letterboxed content rect (scale + centering offset), not the
+ * raw element rect.
  *
  * Keyboard listeners live on the surface element itself (not window), so they only
- * fire while the surface is focused/hovered — typing in the chat composer is never
- * hijacked. Printable characters go out as {type:"text"} via beforeinput; named
- * non-printable keys (Enter, Backspace, Tab, arrows…) go as keydown/keyup.
+ * fire while it's focused — typing in the chat composer is never hijacked. Printable
+ * characters are sent as {type:"text"}; named non-printable keys and shortcuts go as
+ * keydown/keyup.
  */
 
-/** Logical page viewport the server renders frames at. */
+/** Logical page viewport the server renders frames at (fixed; matches the screencast size). */
 const PAGE_W = 1280;
 const PAGE_H = 800;
 
@@ -33,19 +36,23 @@ function clamp(value: number, max: number): number {
 interface Options {
   surfaceRef: React.RefObject<HTMLElement | null>;
   sendInput: (event: BrowserInputEvent) => void;
-  sendResize: (width: number, height: number) => void;
 }
 
-export function useBrowserSurfaceEvents({ surfaceRef, sendInput, sendResize }: Options): void {
+export function useBrowserSurfaceEvents({ surfaceRef, sendInput }: Options): void {
   useEffect(() => {
     const el = surfaceRef.current;
     if (!el) return;
 
-    // Map a pointer event's client coords into page pixels off the element's rect.
+    // Map client coords -> page pixels through the object-contain content rect: the
+    // image is letterboxed inside the element, so account for the scale and centering.
     const toPage = (clientX: number, clientY: number): { x: number; y: number } => {
       const rect = el.getBoundingClientRect();
-      const x = rect.width > 0 ? (clientX - rect.left) * (PAGE_W / rect.width) : 0;
-      const y = rect.height > 0 ? (clientY - rect.top) * (PAGE_H / rect.height) : 0;
+      if (rect.width === 0 || rect.height === 0) return { x: 0, y: 0 };
+      const scale = Math.min(rect.width / PAGE_W, rect.height / PAGE_H);
+      const offX = (rect.width - PAGE_W * scale) / 2;
+      const offY = (rect.height - PAGE_H * scale) / 2;
+      const x = (clientX - rect.left - offX) / scale;
+      const y = (clientY - rect.top - offY) / scale;
       return { x: Math.round(clamp(x, PAGE_W)), y: Math.round(clamp(y, PAGE_H)) };
     };
 
@@ -84,24 +91,18 @@ export function useBrowserSurfaceEvents({ surfaceRef, sendInput, sendResize }: O
     };
     const onContextMenu = (e: Event) => e.preventDefault();
 
-    // Only named non-printable keys go through keydown/keyup; printable text is sent
-    // via beforeinput as {type:"text"} so IME/composition and modifiers resolve first.
+    // Printable single char (no ctrl/meta) -> insert as text; everything else
+    // (Enter, Backspace, Tab, arrows, shortcuts) -> keydown/keyup.
+    const isPrintable = (e: KeyboardEvent) => e.key.length === 1 && !e.ctrlKey && !e.metaKey;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) return;
       e.preventDefault();
-      sendInput({ type: "keydown", key: e.key });
+      if (isPrintable(e)) sendInput({ type: "text", text: e.key });
+      else sendInput({ type: "keydown", key: e.key });
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) return;
+      if (isPrintable(e)) return; // printable was handled on keydown
       e.preventDefault();
       sendInput({ type: "keyup", key: e.key });
-    };
-    const onBeforeInput = (e: Event) => {
-      const data = (e as InputEvent).data;
-      if (typeof data === "string" && data.length > 0) {
-        e.preventDefault();
-        sendInput({ type: "text", text: data });
-      }
     };
 
     el.addEventListener("mousemove", onMouseMove);
@@ -112,20 +113,9 @@ export function useBrowserSurfaceEvents({ surfaceRef, sendInput, sendResize }: O
     el.addEventListener("contextmenu", onContextMenu);
     el.addEventListener("keydown", onKeyDown);
     el.addEventListener("keyup", onKeyUp);
-    el.addEventListener("beforeinput", onBeforeInput);
-
-    // Report the surface's real pixel size so the server can lay out the page.
-    const ro = new ResizeObserver(() => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        sendResize(Math.round(rect.width), Math.round(rect.height));
-      }
-    });
-    ro.observe(el);
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
-      ro.disconnect();
       el.removeEventListener("mousemove", onMouseMove);
       el.removeEventListener("mousedown", onMouseDown);
       el.removeEventListener("mouseup", onMouseUp);
@@ -134,7 +124,6 @@ export function useBrowserSurfaceEvents({ surfaceRef, sendInput, sendResize }: O
       el.removeEventListener("contextmenu", onContextMenu);
       el.removeEventListener("keydown", onKeyDown);
       el.removeEventListener("keyup", onKeyUp);
-      el.removeEventListener("beforeinput", onBeforeInput);
     };
-  }, [surfaceRef, sendInput, sendResize]);
+  }, [surfaceRef, sendInput]);
 }

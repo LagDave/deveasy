@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BrowserController } from "../../api/browser";
 import {
   useActivateTab,
@@ -30,7 +30,7 @@ const CONTROLLER_LABEL: Record<"agent" | "human", string> = {
  * input (§14.1 — REST via hooks, live stream via useBrowserSocket).
  */
 export function BrowserView({ sessionId, onClose }: Props) {
-  const { frameImgRef, tabs, url, controller, connState, errorMessage, sendInput, sendResize } =
+  const { frameImgRef, tabs, url, controller, connState, errorMessage, sendInput, sendNavigate } =
     useBrowserSocket(sessionId);
 
   const openBrowser = useOpenBrowser(sessionId);
@@ -40,7 +40,13 @@ export function BrowserView({ sessionId, onClose }: Props) {
   const activateTab = useActivateTab(sessionId);
 
   const surfaceRef = useRef<HTMLImageElement | null>(null);
-  useBrowserSurfaceEvents({ surfaceRef, sendInput, sendResize });
+  useBrowserSurfaceEvents({ surfaceRef, sendInput });
+
+  // Address-bar text, seeded from the live URL as the page navigates.
+  const [address, setAddress] = useState("");
+  useEffect(() => {
+    if (url) setAddress(url);
+  }, [url]);
 
   // Launching the pane is what boots Chromium. Fire once per session mount.
   const launchedRef = useRef(false);
@@ -69,9 +75,24 @@ export function BrowserView({ sessionId, onClose }: Props) {
       />
 
       <div className="flex items-center gap-2 border-b border-line px-3 py-1.5">
-        <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted" title={url ?? undefined}>
-          {url ?? (connState === "open" ? "about:blank" : "Connecting…")}
-        </span>
+        <form
+          className="min-w-0 flex-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const target = address.trim();
+            if (target) sendNavigate(target);
+          }}
+        >
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder={connState === "open" ? "Enter a URL and press Enter" : "Connecting…"}
+            spellCheck={false}
+            autoComplete="off"
+            className="w-full rounded border border-line bg-surface-2 px-2 py-1 font-mono text-xs text-ink outline-none placeholder:text-faint focus:border-accent"
+          />
+        </form>
         <ControllerIndicator controller={controller} onTakeControl={takeControl} />
         <button
           type="button"

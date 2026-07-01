@@ -286,6 +286,18 @@
         </ul>
         <p><strong>Updated Done criteria:</strong> Layer 1 met (build, typecheck, 98 tests). Behavioral acceptance (Layer 2, <code>test-results.json</code>) is generated and <em>pending</em> a live run — it needs a running app with a real Chromium and a live MCP handshake, and the Windows item needs Windows hardware. <code>-d</code> stays blocked until those pass or are waived.</p>
       </article>
+      <article class="revision-entry">
+        <h3>Rev 2 - 2026-07-01</h3>
+        <p><strong>Change:</strong> Made the browser an overlay pane and fixed three interaction bugs that left it inert on first live use.</p>
+        <p><strong>Reason:</strong> User QA — first hands-on use surfaced the Layer-2 gaps flagged at execution time.</p>
+        <ul>
+          <li><strong>Overlay pane:</strong> <code>SessionPanel</code> now floats <code>BrowserView</code> as an absolute right-side drawer (z-20, shadow) over the chat, instead of an inline flex split that compressed the transcript.</li>
+          <li><strong>Address bar:</strong> the URL was display-only — no way to leave <code>about:blank</code>. Replaced with an editable input; added a client→server WS <code>navigate</code> message handled as <strong>human</strong> control (new <code>who</code> param on <code>BrowserActionService.navigate</code>, so the operator is never refused by <code>BROWSER_HUMAN_DRIVING</code>).</li>
+          <li><strong>Text input:</strong> typing went through <code>beforeinput</code>, which never fires on a non-editable <code>&lt;img&gt;</code>. Printable keys now send as <code>{type:"text"}</code> on keydown; named keys as keydown/keyup.</li>
+          <li><strong>Click mapping:</strong> coordinates were hardcoded to 1280×800 while the server resized the viewport to the pane, and ignored <code>object-contain</code> letterboxing. Fixed the viewport at 1280×800 (dropped the resize round-trip) and now map through the contained content rect (scale + centering offset).</li>
+        </ul>
+        <p><strong>Updated Done criteria:</strong> Layer 1 re-verified (typecheck, 98 tests, frontend build). Layer 2 (<code>test-results.json</code>) still pending a live run — the address bar, typing, and click accuracy now need hands-on confirmation.</p>
+      </article>
     </section>
 
     <section class="spec-card" id="done">
