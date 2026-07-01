@@ -353,10 +353,15 @@ export class SessionStreamService {
     if (!runtime) return;
     const usage = (event.usage ?? {}) as Record<string, unknown>;
     const num = (v: unknown): number => (typeof v === "number" ? v : 0);
+    // The current context size is the input of the most recent API call — the last
+    // iteration. The top-level usage sums cache reads across every turn (cumulative),
+    // which massively overcounts, so it must NOT be used for "context window used".
+    const iterations = Array.isArray(usage.iterations) ? (usage.iterations as unknown[]) : [];
+    const src = (iterations.length ? iterations[iterations.length - 1] : usage) as Record<string, unknown>;
     const used =
-      num(usage.input_tokens) +
-      num(usage.cache_read_input_tokens) +
-      num(usage.cache_creation_input_tokens);
+      num(src.input_tokens) +
+      num(src.cache_read_input_tokens) +
+      num(src.cache_creation_input_tokens);
     // contextWindow lives on the per-model usage map; take the first entry's value.
     const modelUsage = (event.modelUsage ?? {}) as Record<string, { contextWindow?: unknown }>;
     const first = Object.values(modelUsage)[0];
