@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config";
-import { BROWSER_MCP_CONFIG_DIR, BROWSER_MCP_PATH } from "../config/constants";
+import { BROWSER_MCP_CONFIG_DIR, MCP_PATH } from "../config/constants";
 import { childLogger } from "../lib/logger";
 import { issueBrowserMcpToken, revokeBrowserMcpToken } from "../mcp/browserMcpTokens";
 import { resolveExecutable } from "../utils/platform";
@@ -242,9 +242,9 @@ export class ClaudeProcessService {
     const { port } = loadConfig();
     const config = {
       mcpServers: {
-        "deveasy-browser": {
+        deveasy: {
           type: "http",
-          url: `http://127.0.0.1:${port}${BROWSER_MCP_PATH}`,
+          url: `http://127.0.0.1:${port}${MCP_PATH}`,
           headers: { "x-deveasy-session": String(sessionId), "x-deveasy-token": token },
         },
       },

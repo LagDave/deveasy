@@ -20,23 +20,45 @@ function requireProjectIdFromQuery(req: Request): number {
  * only create, list, and kill terminals.
  */
 export class TerminalController {
-  /** POST /api/terminal { projectId } — spawn a PTY in the project cwd. */
+  /**
+   * POST /api/terminal { projectId, sessionId? } — spawn a PTY in the project cwd.
+   * Pass a sessionId to make it a session terminal (shown in the session pane +
+   * closed on session delete); omit it for a plain project terminal.
+   */
   static async create(req: Request, res: Response): Promise<Response> {
     try {
-      const projectId = Number((req.body as { projectId?: unknown })?.projectId);
+      const body = (req.body ?? {}) as { projectId?: unknown; sessionId?: unknown };
+      const projectId = Number(body.projectId);
       if (!Number.isInteger(projectId) || projectId <= 0) {
         throw new TerminalError("TERMINAL_NO_PROJECT", "A valid projectId is required.");
       }
-      return ok(res, await TerminalProcessService.create(projectId), 201);
+      let sessionId: number | null = null;
+      if (body.sessionId !== undefined && body.sessionId !== null) {
+        sessionId = Number(body.sessionId);
+        if (!Number.isInteger(sessionId) || sessionId <= 0) {
+          throw new TerminalError("TERMINAL_INPUT_INVALID", "sessionId must be a positive integer.");
+        }
+      }
+      return ok(res, await TerminalProcessService.create(projectId, sessionId), 201);
     } catch (error) {
       log.error({ err: error }, "terminal create failed");
       return handleTerminalError(res, error);
     }
   }
 
-  /** GET /api/terminal?projectId= — list live terminals for the project. */
+  /**
+   * GET /api/terminal?projectId= — list live terminals for the project.
+   * GET /api/terminal?sessionId= — list live terminals owned by a session.
+   */
   static async list(req: Request, res: Response): Promise<Response> {
     try {
+      if (req.query.sessionId !== undefined) {
+        const sessionId = Number(req.query.sessionId);
+        if (!Number.isInteger(sessionId) || sessionId <= 0) {
+          throw new TerminalError("TERMINAL_INPUT_INVALID", "A valid sessionId query parameter is required.");
+        }
+        return ok(res, { terminals: TerminalProcessService.listBySession(sessionId) });
+      }
       const projectId = requireProjectIdFromQuery(req);
       return ok(res, { terminals: TerminalProcessService.list(projectId) });
     } catch (error) {

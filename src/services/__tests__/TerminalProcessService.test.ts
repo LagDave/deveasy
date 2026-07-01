@@ -112,6 +112,40 @@ describe("TerminalProcessService", () => {
     expect(list.some((t) => t.id === info.id)).toBe(false);
   });
 
+  it("tags a session terminal and lists it by session and project", async () => {
+    const SESSION_ID = 42;
+    const plain = await TerminalProcessService.create(PROJECT_ID);
+    created.push(plain.id);
+    const sess = await TerminalProcessService.create(PROJECT_ID, SESSION_ID);
+    created.push(sess.id);
+
+    expect(sess.sessionId).toBe(SESSION_ID);
+    expect(plain.sessionId).toBeNull();
+
+    const bySession = TerminalProcessService.listBySession(SESSION_ID);
+    expect(bySession.some((t) => t.id === sess.id)).toBe(true);
+    expect(bySession.some((t) => t.id === plain.id)).toBe(false);
+
+    // The project TERMINAL tab still sees both.
+    const byProject = TerminalProcessService.list(PROJECT_ID);
+    expect(byProject.some((t) => t.id === sess.id)).toBe(true);
+    expect(byProject.some((t) => t.id === plain.id)).toBe(true);
+  });
+
+  it("closeForSession kills only that session's terminals", async () => {
+    const SESSION_ID = 43;
+    const plain = await TerminalProcessService.create(PROJECT_ID);
+    created.push(plain.id);
+    const sess = await TerminalProcessService.create(PROJECT_ID, SESSION_ID);
+    created.push(sess.id);
+
+    TerminalProcessService.closeForSession(SESSION_ID);
+
+    const byProject = TerminalProcessService.list(PROJECT_ID);
+    expect(byProject.some((t) => t.id === sess.id)).toBe(false); // session terminal gone
+    expect(byProject.some((t) => t.id === plain.id)).toBe(true); // project terminal kept
+  });
+
   it("throws TERMINAL_PROJECT_NOT_FOUND for a missing project", async () => {
     vi.spyOn(ProjectModel, "findById").mockResolvedValue(undefined);
     await expect(TerminalProcessService.create(PROJECT_ID)).rejects.toMatchObject({

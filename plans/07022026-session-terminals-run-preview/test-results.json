@@ -1,0 +1,113 @@
+{
+  "plan": "plans/07022026-session-terminals-run-preview",
+  "generatedAt": "2026-07-02",
+  "status": "Not Run",
+  "items": [
+    {
+      "id": "T1",
+      "title": "A session terminal shows in both the TERMINAL tab and the session strip",
+      "surface": "ui",
+      "precondition": "DevEasy running; a session open on a project.",
+      "steps": [
+        "1. In the session pane, add a terminal (the '+' in the terminal strip) — or have the agent call terminal_create.",
+        "2. Look at the session pane's terminal strip.",
+        "3. Open the project's editor TERMINAL tab."
+      ],
+      "expected": "The terminal appears in BOTH the session strip and the project TERMINAL tab.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T2",
+      "title": "Two session terminals are tabbed below the browser",
+      "surface": "ui",
+      "precondition": "A session with the browser pane open.",
+      "steps": ["1. Create two session terminals.", "2. Observe the strip below the browser."],
+      "expected": "Both terminals appear as tabs below the browser pane; switching tabs shows each.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T3",
+      "title": "Pane reveals when a browser OR a session terminal becomes active",
+      "surface": "ui",
+      "precondition": "Session open, pane hidden.",
+      "steps": [
+        "1. With the pane hidden, have the agent create a terminal (terminal_create) — pane should slide in showing the terminal.",
+        "2. Separately, have the agent navigate the browser — pane shows the browser region."
+      ],
+      "expected": "The pane auto-reveals on either browser or terminal activity; browser on top, terminals below, each region shown when active.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T4",
+      "title": "Agent terminal tools create/run/read/close session terminals",
+      "surface": "ui",
+      "precondition": "A live session.",
+      "steps": [
+        "1. Ask the agent to open a terminal and run a command (e.g. `echo hi`).",
+        "2. Confirm the terminal appears in the session strip and shows the output.",
+        "3. Ask the agent to close it."
+      ],
+      "expected": "terminal_create/run/read/close drive real session terminals visible in the pane; a terminal not owned by the session is refused (TERMINAL_NOT_IN_SESSION).",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Exercises the unified /mcp terminal tools live."
+    },
+    {
+      "id": "T5",
+      "title": "Browser tools still work after the MCP rename (regression)",
+      "surface": "ui",
+      "precondition": "A live session.",
+      "steps": ["1. Ask the agent to open a URL in the browser (browser_navigate).", "2. Confirm the page loads."],
+      "expected": "The renamed /mcp 'deveasy' server still serves browser_* tools; the agent opens the page.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "Regression gate for the /mcp/browser -> /mcp rename."
+    },
+    {
+      "id": "T6",
+      "title": "Session delete closes its terminals; stop leaves them",
+      "surface": "ui",
+      "precondition": "A session with one or more session terminals running.",
+      "steps": [
+        "1. Stop the session (end the CLI) — confirm the terminals keep running.",
+        "2. Delete the session — confirm its terminals (and browser) are closed."
+      ],
+      "expected": "Stop leaves terminals running; delete closes the session's terminals and browser.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    },
+    {
+      "id": "T7",
+      "title": "Run-and-preview skill launches the app and opens it",
+      "surface": "ui",
+      "precondition": "A session on a full-stack project whose servers are NOT already running.",
+      "steps": [
+        "1. Ask the session to 'run this app locally and open it'.",
+        "2. Watch the terminals start backend + frontend in the session strip.",
+        "3. Wait for the browser to open."
+      ],
+      "expected": "The skill starts both servers in visible terminals, waits until the frontend port answers, then opens the browser on the running app — no manual steps.",
+      "status": "pending",
+      "evidence": "",
+      "notes": "The skill must be discovered in the session's capabilities first (injected via .claude/skills)."
+    },
+    {
+      "id": "T8",
+      "title": "No regression in plain project terminals / TERMINAL tab",
+      "surface": "ui",
+      "precondition": "DevEasy running.",
+      "steps": ["1. Open a terminal from a project folder / the TERMINAL tab (no session).", "2. Run a command."],
+      "expected": "Project-only terminals (sessionId null) behave exactly as before; they do not appear in any session strip.",
+      "status": "pending",
+      "evidence": "",
+      "notes": ""
+    }
+  ]
+}

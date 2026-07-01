@@ -43,12 +43,15 @@ export interface TerminalSubscriber {
 export interface TerminalInfo {
   id: string;
   projectId: number;
+  /** Owning session, or null for a plain project terminal (created from a folder). */
+  sessionId: number | null;
   createdAt: string;
 }
 
 interface LiveTerminal {
   id: string;
   projectId: number;
+  sessionId: number | null;
   pty: IPty;
   createdAt: string;
   /** Ring buffer of recent output, capped by SCROLLBACK_MAX_BYTES. */
@@ -72,8 +75,12 @@ export class TerminalProcessService {
   private static readonly live = new Map<string, LiveTerminal>();
   private static signalsBound = false;
 
-  /** Spawn a PTY for a project and register it. Returns its public metadata. */
-  static async create(projectId: number): Promise<TerminalInfo> {
+  /**
+   * Spawn a PTY for a project and register it. Pass a sessionId to make it a session
+   * terminal (shown in the session pane + closed on session delete); omit it for a
+   * plain project terminal. Returns its public metadata.
+   */
+  static async create(projectId: number, sessionId: number | null = null): Promise<TerminalInfo> {
     this.bindSignals();
 
     if (this.live.size >= MAX_TERMINALS) {
@@ -113,6 +120,7 @@ export class TerminalProcessService {
     const entry: LiveTerminal = {
       id,
       projectId,
+      sessionId,
       pty,
       createdAt,
       scrollback: [],
@@ -121,19 +129,29 @@ export class TerminalProcessService {
       exited: false,
     };
     this.live.set(id, entry);
-    log.info({ terminalId: id, projectId, pid: pty.pid }, "Terminal started");
+    log.info({ terminalId: id, projectId, sessionId, pid: pty.pid }, "Terminal started");
 
     pty.onData((data: string) => this.onData(entry, data));
     pty.onExit(({ exitCode }) => this.onExit(entry, exitCode));
 
-    return { id, projectId, createdAt };
+    return this.toInfo(entry);
   }
 
-  /** Live terminals for a project (for reattach on reload). */
+  /** Live terminals for a project (for the TERMINAL tab) — includes session terminals. */
   static list(projectId: number): TerminalInfo[] {
-    return [...this.live.values()]
-      .filter((t) => t.projectId === projectId)
-      .map((t) => ({ id: t.id, projectId: t.projectId, createdAt: t.createdAt }));
+    return [...this.live.values()].filter((t) => t.projectId === projectId).map((t) => this.toInfo(t));
+  }
+
+  /** Live terminals owned by a session (for the session pane strip). */
+  static listBySession(sessionId: number): TerminalInfo[] {
+    return [...this.live.values()].filter((t) => t.sessionId === sessionId).map((t) => this.toInfo(t));
+  }
+
+  /** Kill every terminal owned by a session — used on session delete. */
+  static closeForSession(sessionId: number): void {
+    for (const entry of [...this.live.values()]) {
+      if (entry.sessionId === sessionId) this.killEntry(entry);
+    }
   }
 
   /**
@@ -180,7 +198,17 @@ export class TerminalProcessService {
     this.killEntry(entry);
   }
 
+  /** Current buffered output (scrollback) for a terminal — lets the agent read/poll it. */
+  static snapshot(terminalId: string): string | null {
+    const entry = this.live.get(terminalId);
+    return entry ? entry.scrollback.join("") : null;
+  }
+
   // --- internals ---
+
+  private static toInfo(t: LiveTerminal): TerminalInfo {
+    return { id: t.id, projectId: t.projectId, sessionId: t.sessionId, createdAt: t.createdAt };
+  }
 
   /** Append output to the ring buffer (byte-capped) and broadcast to subscribers. */
   private static onData(entry: LiveTerminal, data: string): void {

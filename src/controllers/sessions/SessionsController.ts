@@ -5,6 +5,7 @@ import { SessionMessageModel } from "../../models/SessionMessageModel";
 import { SessionModel } from "../../models/SessionModel";
 import { BrowserProcessService } from "../../services/BrowserProcessService";
 import { ConfigInjectionService } from "../../services/ConfigInjectionService";
+import { TerminalProcessService } from "../../services/TerminalProcessService";
 import { SessionStreamService } from "./feature-services/SessionStreamService";
 import { handleSessionError, ok } from "./feature-utils/controllerResponses";
 import { SessionError } from "./feature-utils/SessionError";
@@ -130,6 +131,7 @@ export class SessionsController {
       SessionStreamService.stop(sessionId); // no-op if not live
       await SessionModel.delete(sessionId); // session_messages cascade
       await BrowserProcessService.closeAndWipe(sessionId); // close + wipe the session's browser profile; no-op if none
+      TerminalProcessService.closeForSession(sessionId); // kill the session's terminals; no-op if none
       log.info({ sessionId }, "Session deleted");
       return ok(res, { sessionId });
     } catch (error) {

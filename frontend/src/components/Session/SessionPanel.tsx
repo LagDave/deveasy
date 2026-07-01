@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../../api";
 import { useProjects } from "../../hooks/queries/useProjects";
+import { useSessionTerminals } from "../../hooks/queries/useSessionTerminals";
 import {
   useAllSessions,
   useCreateSession,
@@ -21,6 +23,7 @@ import { Spinner } from "../ui/Spinner";
 import { SessionComposer } from "./SessionComposer";
 import { flattenEvents, skillLoadName } from "./sessionEvents";
 import { SessionSidebar } from "./SessionSidebar";
+import { SessionTerminals } from "./SessionTerminals";
 import { SessionTranscript } from "./SessionTranscript";
 
 /** A session the panel should open and (if fresh) seed the wizard turn into. */
@@ -42,15 +45,25 @@ const STATUS_PILL: Record<string, string> = {
   error: "pill-danger",
 };
 
-/** True if an event is an assistant turn that called a browser (MCP) tool. */
-function isBrowserToolEvent(event: SessionEvent): boolean {
+/** True if an event is an assistant turn that called a tool whose name matches. */
+function callsTool(event: SessionEvent, match: string): boolean {
   if (event.type !== "assistant") return false;
   const content = (event.message as { content?: unknown } | undefined)?.content;
   if (!Array.isArray(content)) return false;
   return content.some((block) => {
     const b = block as { type?: unknown; name?: unknown };
-    return b.type === "tool_use" && typeof b.name === "string" && b.name.includes("browser");
+    return b.type === "tool_use" && typeof b.name === "string" && b.name.includes(match);
   });
+}
+
+/** True if an event is an assistant turn that called a browser (MCP) tool. */
+function isBrowserToolEvent(event: SessionEvent): boolean {
+  return callsTool(event, "browser");
+}
+
+/** True if an event is an assistant turn that called a terminal (MCP) tool. */
+function isTerminalToolEvent(event: SessionEvent): boolean {
+  return callsTool(event, "terminal");
 }
 
 /**
@@ -66,6 +79,7 @@ export function SessionPanel({
   openSession?: OpenSessionRequest | null;
   onOpenConsumed?: () => void;
 } = {}) {
+  const queryClient = useQueryClient();
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: sessions, isLoading: sessionsLoading } = useAllSessions();
   const createSession = useCreateSession();
@@ -134,23 +148,35 @@ export function SessionPanel({
   } = useSession(activeSessionId);
   const activeSession = sessions?.find((s) => s.id === activeSessionId) ?? null;
 
-  // Auto-reveal the browser pane when the agent drives it: the MCP tool call arrives
-  // in the live session stream, so slide the pane in for the operator to watch. Only
-  // live turns trigger it (streaming) — never the history backfill on session load.
-  const browserScanRef = useRef(0);
+  // The session's terminals drive the bottom of the overlay pane. Enabled only for a
+  // real session; agent-created terminals arrive via the stream watcher's refetch.
+  const { data: sessionTerminals } = useSessionTerminals(activeSessionId);
+  const hasTerminals = (sessionTerminals?.terminals.length ?? 0) > 0;
+  // The overlay pane opens for a browser OR any session terminal; each region shows
+  // only when its own surface is active.
+  const showPane = showBrowser || hasTerminals;
+
+  // Auto-reveal the overlay when the agent drives a surface: the MCP tool call arrives
+  // in the live session stream. A browser_* call slides the browser in; a terminal_*
+  // call refetches the session terminals so the agent-created one appears and the strip
+  // reveals. Only live turns trigger it (streaming) — never the history backfill on load.
+  const toolScanRef = useRef(0);
   useEffect(() => {
     if (!streaming) {
-      browserScanRef.current = events.length;
+      toolScanRef.current = events.length;
       return;
     }
-    for (let i = browserScanRef.current; i < events.length; i++) {
-      if (isBrowserToolEvent(events[i])) {
-        setShowBrowser(true);
-        break;
-      }
+    let sawTerminal = false;
+    for (let i = toolScanRef.current; i < events.length; i++) {
+      const event = events[i];
+      if (isBrowserToolEvent(event)) setShowBrowser(true);
+      if (isTerminalToolEvent(event)) sawTerminal = true;
     }
-    browserScanRef.current = events.length;
-  }, [events, streaming]);
+    if (sawTerminal && activeSessionId != null) {
+      void queryClient.invalidateQueries({ queryKey: ["session-terminals", activeSessionId] });
+    }
+    toolScanRef.current = events.length;
+  }, [events, streaming, activeSessionId, queryClient]);
 
   // Seed the create-project session's opening turn once the CLI process is ready
   // (isReady, not just ws-open — the backend wires its message handler and starts
@@ -277,16 +303,34 @@ export function SessionPanel({
               />
             </div>
             <AnimatePresence>
-              {showBrowser && (
+              {showPane && (
                 <motion.div
-                  key="browser-pane"
+                  key="session-pane"
                   initial={{ x: "100%" }}
                   animate={{ x: 0 }}
                   exit={{ x: "100%" }}
                   transition={{ type: "spring", stiffness: 340, damping: 36 }}
                   className="absolute inset-y-0 right-0 z-20 flex w-[60%] min-w-[480px] flex-col border-l border-line bg-[#0b0b0b] shadow-2xl"
                 >
-                  <BrowserView sessionId={activeSessionId} onClose={() => setShowBrowser(false)} />
+                  {/* Browser on top, terminal strip below — each region shows only when
+                      its surface is active. When both show they split the height (the
+                      divider sits between them). */}
+                  {showBrowser && (
+                    <div className={`min-h-0 flex-1 ${hasTerminals ? "border-b border-line" : ""}`}>
+                      <BrowserView
+                        sessionId={activeSessionId}
+                        onClose={() => setShowBrowser(false)}
+                      />
+                    </div>
+                  )}
+                  {hasTerminals && (
+                    <div className="min-h-0 flex-1">
+                      <SessionTerminals
+                        sessionId={activeSessionId}
+                        projectId={activeSession?.project_id ?? 0}
+                      />
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

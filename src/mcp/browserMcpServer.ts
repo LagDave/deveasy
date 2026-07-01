@@ -1,10 +1,12 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
-import { BROWSER_MCP_PATH } from "../config/constants";
+import { MCP_PATH } from "../config/constants";
 import { childLogger } from "../lib/logger";
+import { SessionModel } from "../models/SessionModel";
 import { BrowserActionService } from "../services/BrowserActionService";
 import { BrowserError } from "../services/BrowserError";
 import { BrowserProcessService } from "../services/BrowserProcessService";
+import { TerminalError, TerminalProcessService } from "../services/TerminalProcessService";
 import { validateBrowserMcpToken } from "./browserMcpTokens";
 
 const log = childLogger({ module: "browserMcpServer" });
@@ -12,7 +14,7 @@ const log = childLogger({ module: "browserMcpServer" });
 /**
  * In-process MCP server exposing the session's browser as native, semantic agent
  * tools (navigate/click/type/read/tabs — never coordinate-based). Mounted at
- * BROWSER_MCP_PATH on the existing Express server, co-located with
+ * MCP_PATH on the existing Express server, co-located with
  * BrowserProcessService, so a tool call drives the SAME Chromium the operator is
  * watching — no cross-process hop. The CLI is pointed here via a per-session
  * --mcp-config carrying the session id + token in headers.
@@ -57,10 +59,10 @@ const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/ser
 
 /** Mount the MCP endpoint. Stateless, so only POST carries JSON-RPC; GET/DELETE are 405. */
 export function attachBrowserMcp(app: Express): void {
-  app.post(BROWSER_MCP_PATH, (req, res) => void handleMcpPost(req, res));
-  app.get(BROWSER_MCP_PATH, (_req, res) => methodNotAllowed(res));
-  app.delete(BROWSER_MCP_PATH, (_req, res) => methodNotAllowed(res));
-  log.info({ path: BROWSER_MCP_PATH }, "Browser MCP endpoint mounted");
+  app.post(MCP_PATH, (req, res) => void handleMcpPost(req, res));
+  app.get(MCP_PATH, (_req, res) => methodNotAllowed(res));
+  app.delete(MCP_PATH, (_req, res) => methodNotAllowed(res));
+  log.info({ path: MCP_PATH }, "Browser MCP endpoint mounted");
 }
 
 /** Loopback + per-session token check (§5.4). Exported for unit testing the gate. */
@@ -98,7 +100,7 @@ async function handleMcpPost(req: Request, res: Response): Promise<void> {
 
 /** Build a fresh MCP server whose tools are bound to one session's browser. */
 function buildServer(sessionId: number): McpServerLike {
-  const server = new McpServer({ name: "deveasy-browser", version: "1.0.0" });
+  const server = new McpServer({ name: "deveasy", version: "1.0.0" });
 
   server.registerTool(
     "browser_navigate",
@@ -185,6 +187,57 @@ function buildServer(sessionId: number): McpServerLike {
     }),
   );
 
+  // --- terminal tools (session-scoped; created in the session's project) ---
+
+  server.registerTool(
+    "terminal_create",
+    { description: "Open a new terminal in this session's project and return its id. Use terminal_run to execute commands in it." },
+    () => run(sessionId, async () => {
+      const projectId = await projectIdForSession(sessionId);
+      return JSON.stringify(await TerminalProcessService.create(projectId, sessionId));
+    }),
+  );
+
+  server.registerTool(
+    "terminal_run",
+    { description: "Run a shell command in a session terminal (writes the command + Enter). Returns immediately — the process keeps running; poll terminal_read for output.", inputSchema: { terminalId: z.string(), command: z.string() } },
+    (args) => run(sessionId, async () => {
+      const terminalId = String(args.terminalId);
+      assertOwned(sessionId, terminalId);
+      TerminalProcessService.write(terminalId, `${String(args.command)}\n`);
+      return `ran in ${terminalId}: ${String(args.command)}`;
+    }),
+  );
+
+  server.registerTool(
+    "terminal_read",
+    { description: "Read a terminal's current output buffer — use it to poll readiness (e.g. a 'listening on' line).", inputSchema: { terminalId: z.string() } },
+    (args) => run(sessionId, async () => {
+      const terminalId = String(args.terminalId);
+      assertOwned(sessionId, terminalId);
+      const out = TerminalProcessService.snapshot(terminalId);
+      if (out === null) throw new TerminalError("TERMINAL_NOT_FOUND", "No such terminal.", { terminalId });
+      return out;
+    }),
+  );
+
+  server.registerTool(
+    "terminal_list",
+    { description: "List this session's terminals (id, projectId, createdAt)." },
+    () => run(sessionId, async () => JSON.stringify(TerminalProcessService.listBySession(sessionId))),
+  );
+
+  server.registerTool(
+    "terminal_close",
+    { description: "Close (kill) a session terminal by id.", inputSchema: { terminalId: z.string() } },
+    (args) => run(sessionId, async () => {
+      const terminalId = String(args.terminalId);
+      assertOwned(sessionId, terminalId);
+      TerminalProcessService.kill(terminalId);
+      return `closed ${terminalId}`;
+    }),
+  );
+
   return server;
 }
 
@@ -193,9 +246,29 @@ async function run(sessionId: number, fn: () => Promise<string>): Promise<ToolRe
   try {
     return { content: [{ type: "text", text: await fn() }] };
   } catch (err) {
-    const text = err instanceof BrowserError ? `${err.code}: ${err.message}` : "Browser action failed.";
+    const text =
+      err instanceof BrowserError || err instanceof TerminalError
+        ? `${err.code}: ${err.message}`
+        : err instanceof Error
+          ? err.message
+          : "Tool action failed.";
     log.warn({ sessionId, err }, "MCP tool failed");
     return { content: [{ type: "text", text }], isError: true };
+  }
+}
+
+/** Resolve the project a session belongs to (its terminals are created there). */
+async function projectIdForSession(sessionId: number): Promise<number> {
+  const session = await SessionModel.findById(sessionId);
+  if (!session) throw new TerminalError("SESSION_NOT_FOUND", "No such session.", { sessionId });
+  return session.project_id;
+}
+
+/** Guard: the agent may only drive terminals that belong to its own session. */
+function assertOwned(sessionId: number, terminalId: string): void {
+  const owned = TerminalProcessService.listBySession(sessionId).some((t) => t.id === terminalId);
+  if (!owned) {
+    throw new TerminalError("TERMINAL_NOT_IN_SESSION", "That terminal is not in this session.", { terminalId });
   }
 }
 

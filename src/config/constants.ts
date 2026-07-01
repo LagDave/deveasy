@@ -41,8 +41,8 @@ export const BROWSER_IDLE_MS = 15 * 60 * 1000;
 export const BROWSER_EVICTION_INTERVAL_MS = 60 * 1000;
 /** Durable per-session Chromium profiles (login survives reload + restart). DevEasy-managed, gitignored. */
 export const BROWSER_PROFILES_DIR = path.join(REPO_ROOT, ".deveasy-state", "browser-profiles");
-/** In-process MCP endpoint the CLI is pointed at via --mcp-config (not under /api). */
-export const BROWSER_MCP_PATH = "/mcp/browser";
+/** In-process MCP endpoint the CLI is pointed at via --mcp-config (not under /api). The "deveasy" server exposes the session's browser + terminal tools. */
+export const MCP_PATH = "/mcp";
 /** Per-session --mcp-config files DevEasy writes at CLI spawn. DevEasy-managed, gitignored. */
 export const BROWSER_MCP_CONFIG_DIR = path.join(REPO_ROOT, ".deveasy-state", "mcp-configs");
 /** Default viewport / screencast geometry. */

@@ -1,6 +1,6 @@
 import type { Express, Request } from "express";
 import { describe, expect, it, vi } from "vitest";
-import { BROWSER_MCP_PATH } from "../../config/constants";
+import { MCP_PATH } from "../../config/constants";
 import { attachBrowserMcp, authorizeMcpRequest } from "../browserMcpServer";
 import { issueBrowserMcpToken, revokeBrowserMcpToken, validateBrowserMcpToken } from "../browserMcpTokens";
 
@@ -62,8 +62,8 @@ describe("attachBrowserMcp", () => {
   it("registers POST/GET/DELETE on the MCP path", () => {
     const app = { post: vi.fn(), get: vi.fn(), delete: vi.fn() } as unknown as Express;
     attachBrowserMcp(app);
-    expect(app.post).toHaveBeenCalledWith(BROWSER_MCP_PATH, expect.any(Function));
-    expect(app.get).toHaveBeenCalledWith(BROWSER_MCP_PATH, expect.any(Function));
-    expect(app.delete).toHaveBeenCalledWith(BROWSER_MCP_PATH, expect.any(Function));
+    expect(app.post).toHaveBeenCalledWith(MCP_PATH, expect.any(Function));
+    expect(app.get).toHaveBeenCalledWith(MCP_PATH, expect.any(Function));
+    expect(app.delete).toHaveBeenCalledWith(MCP_PATH, expect.any(Function));
   });
 });

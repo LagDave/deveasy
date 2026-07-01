@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Session Terminals + Run-and-Preview Spec</title>
+  <style>
+    :root { color-scheme: light; --paper:#ffffff; --ink:#080808; --muted:#5f5f5f; --line:#d8d8d8; --soft:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.5; }
+    .spec-shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:48px 0; }
+    .spec-hero,.spec-card,.task-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .spec-hero { border-color:var(--ink); padding:32px; margin-bottom:20px; }
+    .hero-topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .spec-card { padding:28px; margin-top:16px; }
+    .task-card { padding:20px; background:var(--soft); margin-top:14px; }
+    .eyebrow,dt { color:var(--muted); font-size:0.78rem; font-weight:700; text-transform:uppercase; }
+    .eyebrow { margin:0; }
+    .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border:1px solid var(--ink); border-radius:999px; background:var(--ink); color:var(--paper); font-size:0.78rem; font-weight:800; text-transform:uppercase; }
+    .status-card { border-color:var(--ink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { max-width:840px; margin-bottom:24px; font-size:clamp(2.25rem,6vw,4rem); line-height:0.95; }
+    h2 { font-size:1.35rem; } h3 { font-size:1rem; }
+    code { padding:0.1rem 0.3rem; border:1px solid var(--line); border-radius:4px; background:var(--soft); font-size:0.92em; }
+    .meta-grid,.split-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .meta-grid { margin:0; }
+    .meta-grid div,.split-grid>div { border:1px solid var(--line); border-radius:8px; padding:16px; }
+    dd { margin:4px 0 0; font-weight:700; }
+    .task-card dl { display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; margin:0; }
+    .task-card dt { padding-top:2px; }
+    .task-card dd { font-weight:400; margin:0; }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+    .note { border-left:3px solid var(--ink); padding:4px 0 4px 14px; margin:12px 0; }
+    ul { margin:8px 0; } li { margin:4px 0; }
+    @media (max-width:640px){ .spec-shell{width:min(100% - 20px,1120px);padding:24px 0;} .spec-hero,.spec-card{padding:20px;} .task-card dl{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <main class="spec-shell">
+    <header class="spec-hero">
+      <div class="hero-topline">
+        <p class="eyebrow">DevEasy Plan Spec</p>
+        <span class="status-pill status-completed">Completed</span>
+      </div>
+      <h1>Session Terminals + Run-and-Preview</h1>
+      <dl class="meta-grid">
+        <div class="status-card"><dt>Status</dt><dd>Completed</dd></div>
+        <div><dt>Plan Folder</dt><dd>plans/07022026-session-terminals-run-preview</dd></div>
+        <div><dt>Size</dt><dd>Large</dd></div>
+        <div><dt>Risk</dt><dd>Level 3</dd></div>
+      </dl>
+    </header>
+
+    <section class="spec-card" id="why">
+      <h2>Why</h2>
+      <p>Sessions can already drive a browser; they can't drive terminals. So "run this app locally and open it" only works if the servers happen to be running already — the agent has no managed, visible way to start them. This makes the session the manager of both its <strong>browsers</strong> and its <strong>terminals</strong>, and adds a skill that reliably starts a full-stack app and opens it.</p>
+      <div class="note"><p><strong>Confirmed live:</strong> a prior session transcript shows the agent successfully calling the browser MCP tool to open an app — the agent↔<code>/mcp</code> link works. This plan reuses that proven surface for terminals.</p></div>
+    </section>
+
+    <section class="spec-card" id="what">
+      <h2>What</h2>
+      <p>Terminals gain an optional <code>sessionId</code>. Created from a project folder (today's path) they stay <strong>project-only</strong>. Created for a session (by the agent's new terminal tools, or by the operator from the session pane) they are <strong>session terminals</strong>: they appear in both the project TERMINAL tab <em>and</em> a tabbed terminal strip below the browser in the session pane, and are closed when the session is deleted. A unified <code>/mcp</code> server exposes <code>browser_*</code> + <code>terminal_*</code> tools, and a <strong>run-and-preview skill</strong> orchestrates: detect scripts → start backend + frontend in session terminals → wait until the port answers → open the browser to the app. Done when: asking a session to "run this app and open it" starts both servers in visible terminals (tabbed below the browser), waits for readiness, and lands the browser on the running app — and deleting the session tears its terminals down.</p>
+      <div class="note">
+        <p><strong>Decisions locked (grill, 2026-07-02):</strong> Run mechanism = <strong>visible terminals via a terminal MCP tool</strong> (not the agent's background shell). Terminal model = <strong>optional <code>sessionId</code></strong>, default null = project-only. Pane = <strong>browser (top) + terminal strip (bottom), each region shows when active</strong>; the pane opens when either exists. Cleanup = <strong>delete only</strong> (stopping a session leaves its terminals running). Both the operator and the agent can CRUD session terminals.</p>
+      </div>
+    </section>
+
+    <section class="spec-card" id="context">
+      <h2>Context</h2>
+      <h3>Relevant files (existing — analogs & touch points)</h3>
+      <ul>
+        <li><code>src/services/TerminalProcessService.ts</code> - the PTY registry (keyed by UUID, stores <code>projectId</code>, persistent in-memory, reaped on signals). Gains a nullable <code>sessionId</code> + session-scoped list/close. Extend, don't rewrite.</li>
+        <li><code>src/controllers/terminal/TerminalController.ts</code>, <code>src/routes/terminal.ts</code> - REST create/list/delete; create gains optional <code>sessionId</code>, list gains a <code>sessionId</code> filter.</li>
+        <li><code>src/controllers/sessions/SessionsController.ts:123</code> - <code>remove()</code> already calls <code>BrowserProcessService.closeAndWipe</code>; add <code>TerminalProcessService.closeForSession</code> beside it.</li>
+        <li><code>src/mcp/browserMcpServer.ts</code> - the working per-session MCP server (Streamable HTTP, loopback + token auth). <strong>Generalized</strong> here: renamed to the <code>deveasy</code> server at <code>/mcp</code>, exposing <code>browser_*</code> + <code>terminal_*</code> tools.</li>
+        <li><code>src/mcp/browserMcpTokens.ts</code> - per-session token store; reused unchanged (auth is per session, not per tool family).</li>
+        <li><code>src/services/ClaudeProcessService.ts</code> - <code>writeMcpConfig()</code> points the CLI at the MCP endpoint; update the path + server name.</li>
+        <li><code>src/config/constants.ts</code> - <code>BROWSER_MCP_PATH</code> → generalize to <code>MCP_PATH = "/mcp"</code> (+ keep browser constants).</li>
+        <li><code>src/models/SessionModel.ts</code> - <code>findById(id)</code> → <code>project_id</code>; the terminal tools resolve a session's project this way.</li>
+        <li><code>frontend/src/hooks/useTerminalSocket.ts</code>, <code>components/CodeEditor/terminal/TerminalInstance.tsx</code>, <code>TerminalPane.tsx</code> - the terminal render surface; reuse verbatim for the session terminal strip.</li>
+        <li><code>frontend/src/components/Session/SessionPanel.tsx</code> - the overlay pane (browser today); becomes browser (top) + terminal strip (bottom), and reveals on agent terminal activity (mirrors the existing browser auto-reveal).</li>
+        <li><code>.claude/skills/</code> (<code>SHARED_SKILLS_DIR</code>) - the shared skills dir injected into every project (holds <code>create-new-ts-project</code>); the run-and-preview skill is added here.</li>
+      </ul>
+      <h3>Patterns to follow</h3>
+      <ul>
+        <li>Terminal REST mirrors the existing terminal controller + the <code>gbp-automation</code> envelope (§6.1, §8.1).</li>
+        <li>The terminal MCP tools mirror the <code>browser_*</code> tools in <code>browserMcpServer.ts</code> (same <code>run()</code> wrapper, typed-error surfacing, session resolution).</li>
+        <li>The session terminal strip reuses <code>useTerminalSocket</code> + <code>TerminalInstance</code> — no new terminal rendering.</li>
+        <li>Auto-reveal reuses the <code>SessionPanel</code> session-stream watcher (already added for the browser) — extend it to <code>terminal_*</code> tool calls.</li>
+      </ul>
+      <p><strong>Reference files:</strong> <code>TerminalProcessService.ts</code> (service), <code>browserMcpServer.ts</code> (MCP tool shape), <code>useTerminalSocket.ts</code> + <code>TerminalInstance.tsx</code> (terminal UI).</p>
+    </section>
+
+    <section class="spec-card" id="constraints">
+      <h2>Constraints</h2>
+      <div class="split-grid">
+        <div>
+          <h3>Must</h3>
+          <ul>
+            <li><code>sessionId</code> is nullable; terminals created without it behave exactly as today (project-only).</li>
+            <li>Session terminals appear in BOTH the project TERMINAL tab and the session strip.</li>
+            <li>Session delete closes the session's terminals (session stop does not).</li>
+            <li>Terminal MCP tools reuse the existing loopback + per-session token guard (§5.4); create session terminals in the session's project.</li>
+            <li>Keep <code>TerminalProcessService</code> under the size ceiling (§2.4) — extract if the additions push it past ~800.</li>
+            <li>Tests for the service (session list/close), the terminal MCP tools, and the delete hook (§20.1, §20.2).</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Must Not</h3>
+          <ul>
+            <li>Do not change existing project-terminal behavior or the TERMINAL tab.</li>
+            <li>Do not run servers in the agent's hidden background shell — session terminals only (visibility + lifecycle).</li>
+            <li>No new DB tables — terminals stay in-memory like today (only their session association is added).</li>
+            <li>Do not weaken the MCP auth or the API-key scrub.</li>
+            <li>No second MCP endpoint — one <code>/mcp</code> server for the session's whole workspace.</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Out of scope (v2)</h3>
+      <ul>
+        <li>Persisting terminals across a DevEasy restart (still in-memory).</li>
+        <li>Resizable browser/terminal split ratio (fixed split v1).</li>
+        <li>Generic "run any stack" detection beyond the project's package.json scripts.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="risk">
+      <h2>Risk</h2>
+      <p><strong>Level:</strong> 3 — extends the <em>shared</em> <code>TerminalProcessService</code> (used by the live TERMINAL tab), renames the MCP surface, and adds a new pane layout + an injected skill.</p>
+      <h3>Risks identified</h3>
+      <ul>
+        <li><strong>Blast radius on the terminal stack.</strong> The TERMINAL tab, <code>/api/terminal</code>, and <code>/ws/terminal</code> all use <code>TerminalProcessService</code>. <strong>Mitigation:</strong> <code>sessionId</code> is additive + nullable; <code>list(projectId)</code> is unchanged; existing tests must stay green.</li>
+        <li><strong>MCP rename touches the working browser feature.</strong> <strong>Mitigation:</strong> a called-out, contained refactor — path constant + config line + server name; <code>browser_*</code> tool names keep "browser" so the browser auto-reveal still matches. Verify a browser tool call still works after the rename (regression gate).</li>
+        <li><strong>Agent starts a long-running server via a terminal tool.</strong> <code>terminal_run</code> writes a command and returns immediately (PTY keeps running) — it must not block on the server staying up. Readiness is a separate poll (<code>terminal_read</code> or an HTTP check). <strong>Mitigation:</strong> the skill polls; the tool never awaits process exit.</li>
+        <li><strong>Auto-reveal false-positives.</strong> Detection must distinguish <code>browser_*</code> vs <code>terminal_*</code> so a terminal call doesn't spuriously trigger browser-only logic. <strong>Mitigation:</strong> key on the tool base name.</li>
+        <li><strong>Concurrency.</strong> Two servers per session × sessions can exhaust the <code>MAX_TERMINALS</code> cap. <strong>Mitigation:</strong> keep the cap; the skill reuses existing terminals when present rather than spawning duplicates.</li>
+      </ul>
+      <p><strong>Blast radius:</strong> <code>TerminalProcessService</code> (+ its consumers: TERMINAL tab, <code>/api/terminal</code>, <code>/ws/terminal</code>), <code>SessionsController.remove</code>, the MCP server + its path constant + <code>ClaudeProcessService</code> config, <code>SessionPanel</code> layout. New: terminal MCP tools, session terminal UI, the skill.</p>
+      <h3>Pushback</h3>
+      <ul>
+        <li><strong>The MCP rename is the one debatable bit.</strong> Keeping <code>/mcp/browser</code> and bolting terminal tools onto a "browser" server would avoid the churn but leaves a misnamed surface and messy tool namespaces (<code>mcp__deveasy-browser__terminal_run</code>). Renaming to <code>deveasy</code>/<code>/mcp</code> is the correct abstraction for "session workspace control" and the churn is small — recommended. If you'd rather not touch the browser wiring at all, we keep the old name and accept the smell.</li>
+      </ul>
+    </section>
+
+    <section class="spec-card" id="tasks">
+      <h2>Tasks</h2>
+      <p class="eyebrow">Large / 5 tasks. Order: T1 → (T2, T3) → T4 → T5. T3 depends on T1; T4 on T1/T2; T5 on T3.</p>
+
+      <article class="task-card">
+        <h3>T1: TerminalProcessService — session association</h3>
+        <dl>
+          <dt>Do</dt><dd>Add nullable <code>sessionId</code> to the live entry + <code>TerminalInfo</code>; <code>create(projectId, sessionId = null)</code>; <code>listBySession(sessionId)</code>; <code>closeForSession(sessionId)</code> (kill all matching). Leave <code>list(projectId)</code> returning every project terminal (session ones included).</dd>
+          <dt>Files</dt><dd><code>src/services/TerminalProcessService.ts</code>, <code>src/services/__tests__/TerminalProcessService.test.ts</code></dd>
+          <dt>Depends on</dt><dd>none</dd>
+          <dt>Verify</dt><dd><code>npm test</code> (existing terminal tests stay green + new session list/close); <code>npm run typecheck</code></dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T2: /api/terminal sessionId + session-delete cleanup</h3>
+        <dl>
+          <dt>Do</dt><dd>POST <code>/api/terminal</code> accepts optional <code>sessionId</code> (validated); GET supports a <code>?sessionId=</code> filter → <code>listBySession</code>. In <code>SessionsController.remove</code>, call <code>TerminalProcessService.closeForSession(sessionId)</code> beside the browser <code>closeAndWipe</code>.</dd>
+          <dt>Files</dt><dd><code>src/controllers/terminal/TerminalController.ts</code>, <code>src/routes/terminal.ts</code>, <code>src/controllers/sessions/SessionsController.ts</code>, tests</dd>
+          <dt>Depends on</dt><dd>T1</dd>
+          <dt>Verify</dt><dd><code>npm test</code>; <code>curl</code> create-with-session + list-by-session + session delete drops them</dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T3: Unified /mcp server + terminal tools</h3>
+        <dl>
+          <dt>Do</dt><dd>Generalize <code>browserMcpServer.ts</code> to the <code>deveasy</code> server at <code>MCP_PATH = "/mcp"</code> (rename constant; update <code>ClaudeProcessService.writeMcpConfig</code> path + server key; SPA fallback already excludes <code>/mcp</code>). Keep all <code>browser_*</code> tools. Add <code>terminal_create</code> / <code>terminal_run</code> (write command + newline) / <code>terminal_read</code> (recent output) / <code>terminal_list</code> / <code>terminal_close</code>, resolving the session's <code>projectId</code> via <code>SessionModel.findById</code> and creating session terminals.</dd>
+          <dt>Files</dt><dd><code>src/mcp/browserMcpServer.ts</code> (→ generalized), <code>src/config/constants.ts</code>, <code>src/services/ClaudeProcessService.ts</code>, <code>src/index.ts</code>, tests</dd>
+          <dt>Depends on</dt><dd>T1</dd>
+          <dt>Verify</dt><dd><code>npm test</code> (terminal tool handlers + token reject); regression: a <code>browser_*</code> tool still resolves after the rename</dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T4: Frontend — session terminal strip + stacked pane</h3>
+        <dl>
+          <dt>Do</dt><dd>Session terminals api + React Query hooks (<code>create(sessionId)</code>, <code>listBySession</code>, <code>close</code>). The overlay pane becomes browser (top) + a tabbed terminal strip (bottom), each region shown when active; the pane opens when a browser OR a session terminal exists. Terminals render via the existing <code>useTerminalSocket</code>/<code>TerminalInstance</code>. A "+" adds a session terminal; per-tab close. Extend the <code>SessionPanel</code> session-stream watcher to also reveal + refetch on <code>terminal_*</code> tool calls.</dd>
+          <dt>Files</dt><dd><code>frontend/src/api/terminal.ts</code>, <code>frontend/src/hooks/queries/useSessionTerminals.ts</code>, <code>frontend/src/components/Session/SessionTerminals.tsx</code>, <code>frontend/src/components/Session/SessionPanel.tsx</code></dd>
+          <dt>Depends on</dt><dd>T1, T2</dd>
+          <dt>Verify</dt><dd><code>npm --prefix frontend run build</code>; manual: agent/operator creates a terminal → appears below the browser + in the TERMINAL tab</dd>
+        </dl>
+      </article>
+
+      <article class="task-card">
+        <h3>T5: Run-and-preview skill</h3>
+        <dl>
+          <dt>Do</dt><dd>Add <code>.claude/skills/run-and-preview/SKILL.md</code>: detect the project's frontend + backend dev scripts and ports (package.json / vite config); start each in a session terminal via <code>terminal_create</code> + <code>terminal_run</code>; poll readiness (<code>terminal_read</code> for a listening line, or an HTTP check) — never block; then <code>browser_navigate</code> to the frontend URL; narrate each step. Reuse existing terminals if present (don't duplicate).</dd>
+          <dt>Files</dt><dd><code>.claude/skills/run-and-preview/SKILL.md</code></dd>
+          <dt>Depends on</dt><dd>T3</dd>
+          <dt>Verify</dt><dd>Manual: the skill appears in a session's capabilities; "run this app and open it" starts both servers in visible terminals and opens the browser on the running app</dd>
+        </dl>
+      </article>
+    </section>
+
+    <section class="spec-card" id="done">
+      <h2>Done</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" disabled> <code>npm test</code> + <code>npm --prefix frontend run build</code> pass; <code>npm run typecheck</code> zero errors</li>
+        <li><input type="checkbox" disabled> Existing project terminals + the TERMINAL tab behave exactly as before (no regression)</li>
+        <li><input type="checkbox" disabled> A session terminal shows in BOTH the TERMINAL tab and the session strip below the browser; 2+ are tabbed</li>
+        <li><input type="checkbox" disabled> The pane reveals when a browser OR a session terminal becomes active (each region shows when active)</li>
+        <li><input type="checkbox" disabled> Agent <code>terminal_*</code> tools create/run/read/close session terminals; a <code>browser_*</code> tool still works after the MCP rename</li>
+        <li><input type="checkbox" disabled> Deleting the session closes its terminals (and browser); stopping the session leaves terminals running</li>
+        <li><input type="checkbox" disabled> "Run this app and open it" starts backend + frontend in visible terminals, waits for ready, and opens the browser on the app</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
